@@ -1,0 +1,15 @@
+# Exclude frontend files from Railway deployment
+src/
+dist/
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+index.html
+my-project/
+
+# Keep only backend files needed
+# api/ (if we want to keep serverless functions, but we're using server.js)
+# graph.js (needed)
+# server.js (needed)
+# package.json (needed, but we might need to optimize)
+

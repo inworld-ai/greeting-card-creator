@@ -1,0 +1,1283 @@
+import { useState, useEffect, useRef } from 'react'
+import { synthesizeSpeech } from '../services/ttsService'
+import { shareStory } from '../services/shareService'
+import './StoryNarration.css'
+import './StoryGeneration.css'
+
+import type { VoiceId, StoryType } from '../App'
+
+/**
+ * Cleans markdown formatting from story text for display and formats paragraphs
+ */
+function cleanStoryTextForDisplay(text: string): string {
+  let cleaned = text
+    // Remove hashtags at the start of lines (markdown headers)
+    .replace(/^#+\s*/gm, '')
+    // Remove markdown bold/italic formatting but keep the text
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold**
+    .replace(/\*([^*]+)\*/g, '$1') // *italic*
+    .replace(/__([^_]+)__/g, '$1') // __bold__
+    .replace(/_([^_]+)_/g, '$1') // _italic_
+    // Remove markdown links but keep the text
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    // Normalize extra whitespace
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .trim()
+  
+  // Format into consistent paragraphs
+  // Split on double newlines first (existing paragraph breaks)
+  let paragraphs = cleaned.split(/\n\n+/)
+  
+  // If we have very few paragraphs or very long paragraphs, try to split them better
+  const formattedParagraphs = paragraphs.map(para => {
+    para = para.trim()
+    // If paragraph is very long (more than ~150 characters), try to split on sentence boundaries
+    if (para.length > 150) {
+      // Split on sentence endings followed by space
+      const sentences = para.split(/([.!?]\s+)/)
+      const chunks: string[] = []
+      let currentChunk = ''
+      
+      for (let i = 0; i < sentences.length; i++) {
+        const sentence = sentences[i]
+        currentChunk += sentence
+        
+        // If chunk is getting long (around 100-120 chars) and we're at a sentence boundary, start new chunk
+        if (currentChunk.length > 100 && /[.!?]\s*$/.test(currentChunk.trim())) {
+          chunks.push(currentChunk.trim())
+          currentChunk = ''
+        }
+      }
+      
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim())
+      }
+      
+      // If we successfully split, return the chunks; otherwise return original
+      return chunks.length > 1 ? chunks.join('\n\n') : para
+    }
+    
+    return para
+  }).filter(p => p.length > 0)
+  
+  // Join paragraphs with double newlines for consistent spacing
+  return formattedParagraphs.join('\n\n')
+}
+
+interface StoryNarrationProps {
+  storyText: string
+  childName: string
+  voiceId: VoiceId
+  storyType: StoryType
+  onRestart: () => void
+  isProgressive?: boolean
+  onFullStoryReady?: (fullStory: string) => void
+  customApiKey?: string
+  customVoiceId?: string
+  isShared?: boolean
+}
+
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false }: StoryNarrationProps) {
+  // REMOVED: isAudioReady state - story page shows immediately
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
+  const [error, setError] = useState<string | null>(null)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
+  const [isLinkCopied, setIsLinkCopied] = useState(false)
+  const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
+  const [hasStartedNarration, setHasStartedNarration] = useState(false)
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false) // Track if audio is currently playing
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const checkAudioIntervalRef = useRef<NodeJS.Timeout | null>(null) // Interval to check if audio has ended
+  const secondAudioRef = useRef<HTMLAudioElement | null>(null)
+  const isGeneratingRef = useRef<boolean>(false)
+  const currentStoryTextRef = useRef<string>('')
+  const hasStartedFirstChunkRef = useRef<boolean>(false)
+  const fullStoryRef = useRef<string>('')
+  const hasStartedNarrationForStoryRef = useRef<string>('') // Track which story text we've started narration for
+  const isNarrationInProgressRef = useRef<boolean>(false) // Track if narration is in progress (generating or playing)
+  const narrationTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Track the narration start timeout so we can cancel it
+  const shouldStopAllAudioRef = useRef<boolean>(false) // Global flag to stop all audio immediately
+  const allAudioElementsRef = useRef<Set<HTMLAudioElement>>(new Set()) // Track all audio elements created
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: stop any ongoing audio when component unmounts
+      cleanupAudio()
+      isGeneratingRef.current = false
+    }
+  }, [])
+
+  // Resume AudioContext on any user interaction to enable autoplay
+  useEffect(() => {
+    const handleUserInteraction = async () => {
+      // Try to resume any suspended audio contexts
+      if (audioRef.current) {
+        // If it's our custom audio wrapper, try to access the underlying context
+        try {
+          // The audio element might have an audioContext property if it's from our custom wrapper
+          const audio = audioRef.current as any
+          if (audio.audioContext && audio.audioContext.state === 'suspended') {
+            await audio.audioContext.resume()
+            console.log('🎵 AudioContext resumed on user interaction')
+            // Try to play if we were waiting for user interaction
+            if (needsUserInteraction && audio.paused !== false) {
+              try {
+                await audio.play()
+                setNeedsUserInteraction(false)
+                console.log('🎵 Audio started after AudioContext resume')
+              } catch (e) {
+                console.log('Audio still needs explicit play button')
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    }
+
+    // Listen for any user interaction
+    window.addEventListener('click', handleUserInteraction, { once: true })
+    window.addEventListener('touchstart', handleUserInteraction, { once: true })
+    window.addEventListener('keydown', handleUserInteraction, { once: true })
+
+    return () => {
+      window.removeEventListener('click', handleUserInteraction)
+      window.removeEventListener('touchstart', handleUserInteraction)
+      window.removeEventListener('keydown', handleUserInteraction)
+    }
+  }, [needsUserInteraction])
+
+  // Helper function to extract title and story body
+  const extractTitleAndStory = (text: string): [string, string] => {
+    // Look for "Title: " pattern at the start
+    const titleMatch = text.match(/^Title:\s*(.+?)(?:\n\n|\n)/i)
+    if (titleMatch) {
+      const title = titleMatch[1].trim()
+      const storyBody = text.substring(titleMatch[0].length).trim()
+      return [title, storyBody]
+    }
+    // If no title found, return empty title and full text
+    return ['', text]
+  }
+
+  // Helper function to split story into smaller chunks for faster TTS start
+  // First chunk is smaller (100 words) for ultra-fast start, rest are larger (300 words)
+  const splitStoryIntoSmallChunks = (text: string, firstChunkWords: number = 100, restChunkWords: number = 300): string[] => {
+    // Extract title first (we'll add it back to first chunk)
+    const [_title, storyBody] = extractTitleAndStory(text)
+    
+    // Remove any "Part 1", "Part 2", "Page 1", "Page 2" text
+    const cleanedBody = storyBody
+      .replace(/^Part\s+[12]:?\s*/gmi, '')
+      .replace(/^Page\s+[12]:?\s*/gmi, '')
+      .replace(/\n+Part\s+[12]:?\s*/gmi, '\n')
+      .replace(/\n+Page\s+[12]:?\s*/gmi, '\n')
+      .trim()
+    
+    // Split into words
+    const words = cleanedBody.split(/\s+/)
+    const chunks: string[] = []
+    
+    // First chunk is smaller for ultra-fast start
+    if (words.length > 0) {
+      const firstChunk = words.slice(0, firstChunkWords).join(' ')
+      if (firstChunk.trim()) {
+        chunks.push(firstChunk.trim())
+      }
+      
+      // Remaining chunks are larger
+      for (let i = firstChunkWords; i < words.length; i += restChunkWords) {
+        const chunk = words.slice(i, i + restChunkWords).join(' ')
+        if (chunk.trim()) {
+          chunks.push(chunk.trim())
+        }
+      }
+    }
+    
+    return chunks.length > 0 ? chunks : [cleanedBody]
+  }
+
+  // Helper function to clean up audio properly and stop immediately
+  // Helper function to start polling for audio end detection
+  const startPollingForAudioEnd = () => {
+    // Clear any existing polling
+    if (checkAudioIntervalRef.current) {
+      clearInterval(checkAudioIntervalRef.current)
+    }
+    
+    console.log('🟡 Starting polling interval to detect when audio ends')
+    console.log(`🟡 Total tracked audio elements: ${allAudioElementsRef.current.size}`)
+    
+    let pollCount = 0
+    checkAudioIntervalRef.current = setInterval(() => {
+      pollCount++
+      // Check all tracked audio elements
+      let anyPlaying = false
+      let playingCount = 0
+      let endedCount = 0
+      let pausedCount = 0
+      let noSrcCount = 0
+      
+      allAudioElementsRef.current.forEach((audio) => {
+        // Check if audio is actually playing (not ended, not paused, and has a source)
+        if (audio.src) {
+          if (!audio.ended && !audio.paused && audio.readyState >= 2) {
+            anyPlaying = true
+            playingCount++
+          } else if (audio.ended) {
+            endedCount++
+          } else if (audio.paused) {
+            pausedCount++
+          }
+        } else {
+          noSrcCount++
+        }
+      })
+      
+      // Also check audioRef
+      if (audioRef.current) {
+        if (audioRef.current.src) {
+          if (!audioRef.current.ended && !audioRef.current.paused && audioRef.current.readyState >= 2) {
+            anyPlaying = true
+            playingCount++
+          } else if (audioRef.current.ended) {
+            endedCount++
+          } else if (audioRef.current.paused) {
+            pausedCount++
+          }
+        } else {
+          noSrcCount++
+        }
+      }
+      
+      // Log every 10th poll to help debug
+      if (pollCount % 10 === 0) {
+        console.log(`🟡 Polling check #${pollCount}: playing=${playingCount}, ended=${endedCount}, paused=${pausedCount}, noSrc=${noSrcCount}, total=${allAudioElementsRef.current.size}, anyPlaying=${anyPlaying}, isAudioPlaying=${isAudioPlaying}`)
+      }
+      
+      // If no audio is playing, set state to false (regardless of current state)
+      if (!anyPlaying && allAudioElementsRef.current.size > 0) {
+        // Always update state if no audio is playing (even if state already says false)
+        // This ensures the button becomes active
+        console.log(`🟡🟡🟡 POLLING DETECTED ALL AUDIO HAS ENDED! (poll #${pollCount}, playing: ${playingCount}, ended: ${endedCount}, paused: ${pausedCount}, total tracked: ${allAudioElementsRef.current.size}, isAudioPlaying: ${isAudioPlaying}) 🟡🟡🟡`)
+        setIsAudioPlaying(false)
+        isNarrationInProgressRef.current = false
+        if (checkAudioIntervalRef.current) {
+          clearInterval(checkAudioIntervalRef.current)
+          checkAudioIntervalRef.current = null
+        }
+        if (onFullStoryReady && fullStoryRef.current) {
+          onFullStoryReady(fullStoryRef.current)
+        }
+      }
+    }, 300) // Check every 300ms for faster detection
+  }
+
+  const cleanupAudio = () => {
+    console.log('🛑 Cleaning up all audio...')
+    
+    // Set global stop flag FIRST - this will prevent any chained audio from playing
+    shouldStopAllAudioRef.current = true
+    
+    // Stop ALL tracked audio elements (similar to page refresh)
+    allAudioElementsRef.current.forEach((audio) => {
+      try {
+        console.log('🛑 Stopping tracked audio element')
+        audio.pause()
+        audio.currentTime = 0
+        // Remove all event listeners
+        audio.onplay = null
+        audio.onpause = null
+        audio.onended = null
+        audio.onerror = null
+        audio.onloadstart = null
+        audio.onloadeddata = null
+        audio.oncanplay = null
+        audio.oncanplaythrough = null
+        // Break the chain by removing src
+        if (audio.src && audio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audio.src)
+        }
+        audio.src = ''
+        audio.load() // Force reload to break any pending operations
+      } catch (e) {
+        console.warn('Error stopping tracked audio element:', e)
+      }
+    })
+    allAudioElementsRef.current.clear()
+    
+    // Clear any pending narration timeout
+    if (narrationTimeoutRef.current) {
+      clearTimeout(narrationTimeoutRef.current)
+      narrationTimeoutRef.current = null
+    }
+    
+    // Stop and clean up audioRef
+    if (audioRef.current) {
+      const oldAudio = audioRef.current
+      console.log('🛑 Stopping audioRef audio element')
+      // Stop immediately - don't wait for pause
+      oldAudio.pause()
+      oldAudio.currentTime = 0
+      // Remove ALL event listeners by replacing all event handler properties
+      oldAudio.onplay = null
+      oldAudio.onpause = null
+      oldAudio.onended = null
+      oldAudio.onerror = null
+      oldAudio.onloadstart = null
+      oldAudio.onloadeddata = null
+      oldAudio.oncanplay = null
+      oldAudio.oncanplaythrough = null
+      // If it's a custom audio wrapper, try to stop the underlying audio context
+      if ((oldAudio as any).stop) {
+        try {
+          (oldAudio as any).stop()
+        } catch (e) {
+          // Ignore errors if stop doesn't exist
+        }
+      }
+      // Break the chain by removing src
+      if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(oldAudio.src)
+      }
+      oldAudio.src = ''
+      oldAudio.load() // Force reload to break any pending operations
+      audioRef.current = null
+    }
+    
+    // Stop and clean up secondAudioRef
+    if (secondAudioRef.current) {
+      const oldAudio = secondAudioRef.current
+      console.log('🛑 Stopping secondAudioRef audio element')
+      oldAudio.pause()
+      oldAudio.currentTime = 0
+      oldAudio.onplay = null
+      oldAudio.onpause = null
+      oldAudio.onended = null
+      oldAudio.onerror = null
+      oldAudio.onloadstart = null
+      oldAudio.onloadeddata = null
+      oldAudio.oncanplay = null
+      oldAudio.oncanplaythrough = null
+      if ((oldAudio as any).stop) {
+        try {
+          (oldAudio as any).stop()
+        } catch (e) {
+          // Ignore errors if stop doesn't exist
+        }
+      }
+      if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(oldAudio.src)
+      }
+      oldAudio.src = ''
+      oldAudio.load() // Force reload to break any pending operations
+      secondAudioRef.current = null
+    }
+    
+    // Also try to stop any audio elements that might be in the DOM (though they shouldn't be)
+    try {
+      const allAudioElements = document.querySelectorAll('audio')
+      allAudioElements.forEach((audio) => {
+        audio.pause()
+        audio.currentTime = 0
+        audio.src = ''
+      })
+    } catch (e) {
+      // Ignore errors
+    }
+    
+    // Reset the narration tracking when cleaning up
+    hasStartedNarrationForStoryRef.current = ''
+    isNarrationInProgressRef.current = false
+    hasStartedFirstChunkRef.current = false // Reset first chunk flag on cleanup
+    setIsAudioPlaying(false) // Reset audio playing state
+    
+    // Reset stop flag after a brief delay to allow cleanup to complete
+    setTimeout(() => {
+      shouldStopAllAudioRef.current = false
+    }, 100)
+    
+    console.log('✅ Audio cleanup complete')
+  }
+
+  const handleStartNarration = async (textToSpeak?: string) => {
+    const text = textToSpeak || storyText
+    
+    // Prevent multiple simultaneous generations (but allow if we're just starting)
+    if (isGeneratingRef.current) {
+      console.log('🎵 Audio generation already in progress, skipping duplicate call')
+      return
+    }
+    
+    // Prevent restarting narration if we've already started for this exact story text
+    if (hasStartedNarrationForStoryRef.current === text && audioRef.current && !audioRef.current.ended) {
+      console.log('🎵 Narration already started for this exact story text, skipping duplicate call')
+      return
+    }
+    
+    // Prevent restarting if we're already playing and the new text contains the old text (progressive update)
+    if (hasStartedNarrationForStoryRef.current && text.includes(hasStartedNarrationForStoryRef.current) && audioRef.current && !audioRef.current.ended) {
+      console.log('🎵 Already playing a prefix of this story text, skipping duplicate call (progressive update)')
+      return
+    }
+    
+    // Prevent restarting if the old text contains the new text (shouldn't happen, but safety check)
+    if (hasStartedNarrationForStoryRef.current && hasStartedNarrationForStoryRef.current.includes(text) && audioRef.current && !audioRef.current.ended) {
+      console.log('🎵 Already playing a longer version of this story text, skipping duplicate call')
+      return
+    }
+    
+    // Mark that narration is in progress (set this at the start of the function)
+    isNarrationInProgressRef.current = true
+    setIsGeneratingAudio(true) // Show "Preparing audio..." on button
+
+    try {
+      isGeneratingRef.current = true
+      setError(null)
+      
+      // Stop and clean up any existing audio FIRST
+      cleanupAudio()
+      
+      // Reset stop flag for new narration
+      shouldStopAllAudioRef.current = false
+
+      // Use provided text or current storyText
+      const text = textToSpeak || storyText
+      currentStoryTextRef.current = text
+
+      // Extract title for TTS
+      const [title] = extractTitleAndStory(text)
+      
+      // Split story into chunks: first chunk is tiny (100 words) for ultra-fast start
+      // This allows TTS to start in ~1-2 seconds while generating the rest
+      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300) // First: 100 words, Rest: 300 words
+      console.log(`🟡 Splitting story into ${storyChunks.length} chunks (first: ${storyChunks[0]?.split(/\s+/).length || 0} words) for ultra-fast TTS start`)
+
+      // Add title to the first chunk for TTS (if title exists)
+      const firstChunkWithTitle = title ? `${title}. ${storyChunks[0]}` : storyChunks[0]
+      console.log(`🟡 Generating TTS for first chunk (${firstChunkWithTitle.length} chars, ~${firstChunkWithTitle.split(/\s+/).length} words) - should start in ~1-2 seconds...`)
+      
+      // Start TTS on first chunk immediately (small chunk = fast generation)
+      // Use onFirstChunkReady to start playing as soon as first WAV chunk is ready (2-3 seconds)
+      let firstWavChunkReady = false
+      const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
+        voiceId: customVoiceId || voiceId,
+        apiKey: customApiKey,
+        onAllChunksCreated: (allChunks) => {
+          // Track all WAV chunks from this text chunk
+          allChunks.forEach(chunk => {
+            allAudioElementsRef.current.add(chunk)
+          })
+          console.log(`🟡 Tracked ${allChunks.length} WAV chunks from first text chunk`)
+        },
+        onFirstChunkReady: (firstWavChunk) => {
+          // Start playing the first WAV chunk immediately when it's ready
+          // Don't wait for all WAV chunks to be generated
+          if (!firstWavChunkReady && !shouldStopAllAudioRef.current) {
+            firstWavChunkReady = true
+            console.log('🎵 First WAV chunk ready, starting playback immediately (before all chunks)...')
+            
+            // Track this audio element
+            allAudioElementsRef.current.add(firstWavChunk)
+            
+            // Start playing immediately
+            if (firstWavChunk.readyState >= 2) {
+              firstWavChunk.play().then(() => {
+                console.log('✅ First WAV chunk started playing immediately')
+                setHasStartedNarration(true)
+                setIsAudioPlaying(true) // Audio is now playing, disable restart button
+                setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+                // Start polling immediately when audio starts
+                startPollingForAudioEnd()
+              }).catch(err => {
+                console.warn('⚠️ Autoplay prevented for first chunk:', err)
+                setNeedsUserInteraction(true)
+              })
+            } else {
+              firstWavChunk.addEventListener('canplay', () => {
+                if (!shouldStopAllAudioRef.current) {
+                  firstWavChunk.play().then(() => {
+                    console.log('✅ First WAV chunk started playing after canplay')
+                    setHasStartedNarration(true)
+                    setIsAudioPlaying(true) // Audio is now playing, disable restart button
+                    setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+                    // Start polling immediately when audio starts
+                    startPollingForAudioEnd()
+                  }).catch(err => {
+                    console.warn('⚠️ Autoplay prevented for first chunk:', err)
+                    setNeedsUserInteraction(true)
+                  })
+                }
+              }, { once: true })
+            }
+          }
+        }
+      })
+      
+      // Track this audio element and all its chunks
+      allAudioElementsRef.current.add(firstAudio)
+      if ((firstAudio as any).__lastChunk) {
+        allAudioElementsRef.current.add((firstAudio as any).__lastChunk)
+      }
+      
+      // Check if story text changed while we were generating
+      // Only discard if it's a completely different story, not just an update
+      const currentText = currentStoryTextRef.current
+      if (currentText && currentText !== text) {
+        // If the new text is longer and contains the old text, it's just an update (progressive generation)
+        // Only discard if it's a completely different story
+        if (!text.includes(currentText.substring(0, Math.min(100, currentText.length)))) {
+          console.log('Story text changed significantly during generation, discarding audio')
+        cleanupAudio()
+        isGeneratingRef.current = false
+        isNarrationInProgressRef.current = false
+        setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+        return
+        } else {
+          console.log('Story text updated (progressive generation), keeping audio')
+          // Update the current text reference but don't discard audio
+          currentStoryTextRef.current = text
+        }
+      }
+      
+      audioRef.current = firstAudio
+      
+      // Mark that we've started narration for this story text
+      hasStartedNarrationForStoryRef.current = text
+      
+      // Audio generation complete - hide "Preparing audio..." message
+      setIsGeneratingAudio(false)
+
+      // Set up first audio event handlers
+      // Note: onFirstChunkReady callback should have already started playback
+      // But we still need to track when it actually starts playing
+      firstAudio.onplay = () => {
+        // Audio started playing - mark that narration has started
+        setHasStartedNarration(true)
+        setIsAudioPlaying(true) // Audio is now playing, disable restart button
+      }
+      
+      // REMOVED: Auto-play fallback - user must click "Start Story" button to begin
+
+      // Don't set onended here - let the chaining logic handle it
+      // This prevents conflicts with the Promise.all chaining
+
+      firstAudio.onerror = (event) => {
+        console.error('First audio playback error:', event)
+        setError('Error playing audio. Please try again.')
+        audioRef.current = null
+      }
+
+      // Start generating remaining chunks in parallel while first chunk plays
+      const remainingChunks = storyChunks.slice(1)
+      if (remainingChunks.length > 0) {
+        console.log(`🟡 Starting TTS generation for ${remainingChunks.length} remaining chunks (in parallel)...`)
+        
+        // Get the last WAV chunk of the first text chunk to chain to the second text chunk
+        const firstTextChunkLastAudio = (firstAudio as any).__lastChunk || firstAudio
+        
+        // Generate all remaining chunks in parallel, but chain them as soon as first WAV chunk is ready
+        const audioPromises = remainingChunks.map((chunk, chunkIndex) => {
+          return synthesizeSpeech(chunk, { 
+            voiceId: customVoiceId || voiceId, 
+            apiKey: customApiKey,
+            onAllChunksCreated: (allChunks) => {
+              // Track all WAV chunks from this text chunk
+              allChunks.forEach(wavChunk => {
+                allAudioElementsRef.current.add(wavChunk)
+              })
+              console.log(`🟡 Tracked ${allChunks.length} WAV chunks from text chunk ${chunkIndex + 2}`)
+              
+              // Set up ended handler on the last WAV chunk of this text chunk
+              // This is the actual last chunk of the entire story
+              if (allChunks.length > 0 && chunkIndex === remainingChunks.length - 1) {
+                const lastChunk = allChunks[allChunks.length - 1]
+                if ((lastChunk as any).__isLastWavChunk) {
+                  const lastChunkHandler = () => {
+                    console.log('🟡🟡🟡 LAST WAV CHUNK OF ENTIRE STORY ENDED! 🟡🟡🟡')
+                    console.log('🟡 Setting isAudioPlaying to false and enabling restart button')
+                    setIsAudioPlaying(false)
+                    isNarrationInProgressRef.current = false
+                    if (checkAudioIntervalRef.current) {
+                      clearInterval(checkAudioIntervalRef.current)
+                      checkAudioIntervalRef.current = null
+                    }
+                    if (onFullStoryReady && fullStoryRef.current) {
+                      onFullStoryReady(fullStoryRef.current)
+                    }
+                  }
+                  lastChunk.addEventListener('ended', lastChunkHandler, { once: true })
+                  console.log('🟡 Set up last WAV chunk handler for final text chunk')
+                }
+              }
+            },
+            onFirstChunkReady: (firstWavChunk) => {
+              // Chain this text chunk's first WAV chunk to the previous text chunk's last WAV chunk
+              if (chunkIndex === 0) {
+                // This is the first remaining chunk - chain it to the first text chunk's last WAV chunk
+                const handler = async () => {
+                  console.log(`🟡 Text chunk 1 ended, attempting to play text chunk 2 (early chaining)...`)
+                  try {
+                    // Check stop flag before playing
+                    if (shouldStopAllAudioRef.current) {
+                      console.log('🛑 Audio playback stopped by cleanup flag')
+                      return
+                    }
+                    const playPromise = firstWavChunk.play()
+                    if (playPromise !== undefined) {
+                      await playPromise
+                      console.log(`✅ Text chunk 2 started playing successfully (early start)`)
+                    }
+                  } catch (err: any) {
+                    console.error('Error playing next text chunk:', err)
+                    setError('Error playing next part of story. Please try again.')
+                  }
+                }
+                
+                firstTextChunkLastAudio.onended = null
+                firstTextChunkLastAudio.addEventListener('ended', handler, { once: true })
+                console.log(`🔗 Early chaining: first text chunk's last WAV → second text chunk's first WAV`)
+              }
+            }
+          })
+        })
+        
+        Promise.all(audioPromises).then((audioChunks) => {
+        // Track all audio chunks
+        audioChunks.forEach(audio => {
+          allAudioElementsRef.current.add(audio)
+          if ((audio as any).__lastChunk) {
+            allAudioElementsRef.current.add((audio as any).__lastChunk)
+          }
+        })
+        
+        // Check if story text changed while we were generating
+        if (currentStoryTextRef.current !== text) {
+            console.log('Story text changed during chunk generation, discarding audio')
+            audioChunks.forEach(audio => {
+              if (audio.src && audio.src.startsWith('blob:')) {
+                URL.revokeObjectURL(audio.src)
+              }
+            })
+          return
+        }
+
+          // Chain all remaining audio chunks together sequentially
+          let currentAudio = audioChunks[0]
+          let finalAudioElement: HTMLAudioElement | null = null // Track the actual final audio element
+          
+          for (let i = 1; i < audioChunks.length; i++) {
+            const nextAudio = audioChunks[i]
+            
+            // Get the last WAV chunk of this text chunk for chaining to the next text chunk
+            const nextTextChunkLastAudio = (nextAudio as any).__lastChunk || nextAudio
+            
+            // Track the final audio element
+            if (i === audioChunks.length - 1) {
+              finalAudioElement = nextTextChunkLastAudio
+            }
+            
+            // Remove any existing ended handlers to prevent conflicts
+            const newEndedHandler = async () => {
+              console.log(`🟡 Text chunk ${i + 1} ended, attempting to play text chunk ${i + 2}...`)
+              try {
+                // Check if audio element exists and is valid
+                if (!nextAudio) {
+                  console.error('Next audio chunk is null or undefined')
+                  setError('Error: Next audio chunk is missing.')
+          return
+        }
+
+                // Check stop flag before playing
+                if (shouldStopAllAudioRef.current) {
+                  console.log('🛑 Audio playback stopped by cleanup flag')
+                  return
+                }
+                // Try to play immediately
+                const playPromise = nextAudio.play()
+                
+                if (playPromise !== undefined) {
+                  await playPromise
+                  console.log(`✅ Text chunk ${i + 2} started playing successfully`)
+                } else {
+                  console.warn('play() returned undefined, audio may already be playing')
+                }
+              } catch (err: any) {
+                console.error('Error playing next audio chunk:', err)
+                console.error('Error details:', {
+                  message: err?.message,
+                  name: err?.name,
+                  stack: err?.stack,
+                  audioElement: nextAudio,
+                  readyState: (nextAudio as any)?.readyState,
+                  paused: nextAudio?.paused,
+                  ended: nextAudio?.ended
+                })
+                setError('Error playing next part of story. Please try again.')
+              }
+            }
+            
+            // Set up chaining - remove old handler first if it exists
+            currentAudio.onended = null
+            currentAudio.addEventListener('ended', newEndedHandler, { once: true })
+            
+            // Set up event handlers for next chunk
+            nextAudio.onplay = () => {
+              // Next chunk started playing
+            }
+            
+            // If this is the last chunk, set up final ended handler on its last audio element
+            if (i === audioChunks.length - 1) {
+              console.log(`🟡 This is the final text chunk (${i + 2}), setting up final ended handler`)
+              console.log(`🟡 Final audio element:`, nextTextChunkLastAudio)
+              console.log(`🟡 Final audio element src:`, nextTextChunkLastAudio.src)
+              console.log(`🟡 Final audio element ended:`, nextTextChunkLastAudio.ended)
+              
+              const finalChunkEndedHandler = () => {
+                console.log('🟡🟡🟡 FINAL text chunk ended - all narration complete! 🟡🟡🟡')
+                console.log('🟡 Setting isAudioPlaying to false and enabling restart button')
+                setIsAudioPlaying(false) // Audio has ended, enable restart button
+                isNarrationInProgressRef.current = false
+                if (checkAudioIntervalRef.current) {
+                  clearInterval(checkAudioIntervalRef.current)
+                  checkAudioIntervalRef.current = null
+                }
+                if (onFullStoryReady && fullStoryRef.current) {
+                  onFullStoryReady(fullStoryRef.current)
+                }
+              }
+              // Remove any existing handler first
+              nextTextChunkLastAudio.onended = null
+              nextTextChunkLastAudio.addEventListener('ended', finalChunkEndedHandler, { once: true })
+              
+              // Also set up on the main nextAudio element as backup
+              nextAudio.onended = null
+              nextAudio.addEventListener('ended', () => {
+                console.log('🟡🟡🟡 FINAL audio chunk ended (backup handler) - all narration complete! 🟡🟡🟡')
+                setIsAudioPlaying(false)
+                isNarrationInProgressRef.current = false
+                if (checkAudioIntervalRef.current) {
+                  clearInterval(checkAudioIntervalRef.current)
+                  checkAudioIntervalRef.current = null
+                }
+                if (onFullStoryReady && fullStoryRef.current) {
+                  onFullStoryReady(fullStoryRef.current)
+                }
+              }, { once: true })
+              
+              console.log(`🟡 Set up final chunk ended handlers on both last audio element and main audio (text chunk ${i + 2})`)
+            }
+            
+            currentAudio = nextTextChunkLastAudio
+          }
+          
+          // Set up ended handler for the final audio element (after all chaining is set up)
+          if (finalAudioElement) {
+            // Remove any existing handler first
+            finalAudioElement.onended = null
+            const finalEndedHandler = () => {
+              console.log('🟡 FINAL audio element ended - all narration complete!')
+              console.log('🟡 Setting isAudioPlaying to false and enabling restart button')
+              setIsAudioPlaying(false) // Audio has ended, enable restart button
+              isNarrationInProgressRef.current = false
+              if (checkAudioIntervalRef.current) {
+                clearInterval(checkAudioIntervalRef.current)
+                checkAudioIntervalRef.current = null
+              }
+              if (onFullStoryReady && fullStoryRef.current) {
+                onFullStoryReady(fullStoryRef.current)
+              }
+            }
+            finalAudioElement.addEventListener('ended', finalEndedHandler, { once: true })
+            console.log('🟡 Set up final audio element ended handler')
+            
+            // Also set up a polling check as a backup to detect when audio has ended
+            // This helps catch cases where the ended event might not fire
+            if (checkAudioIntervalRef.current) {
+              clearInterval(checkAudioIntervalRef.current)
+            }
+            console.log('🟡 Starting polling interval to detect when audio ends')
+            let pollCount = 0
+            checkAudioIntervalRef.current = setInterval(() => {
+              pollCount++
+              // Check all tracked audio elements
+              let anyPlaying = false
+              let playingCount = 0
+              let endedCount = 0
+              let pausedCount = 0
+              let noSrcCount = 0
+              
+              allAudioElementsRef.current.forEach((audio) => {
+                // Check if audio is actually playing (not ended, not paused, and has a source)
+                if (audio.src) {
+                  if (!audio.ended && !audio.paused && audio.readyState >= 2) {
+                    anyPlaying = true
+                    playingCount++
+                  } else if (audio.ended) {
+                    endedCount++
+                  } else if (audio.paused) {
+                    pausedCount++
+                  }
+                } else {
+                  noSrcCount++
+                }
+              })
+              
+              // Also check the final audio element specifically
+              if (finalAudioElement) {
+                if (finalAudioElement.src) {
+                  if (!finalAudioElement.ended && !finalAudioElement.paused && finalAudioElement.readyState >= 2) {
+                    anyPlaying = true
+                    playingCount++
+                  } else if (finalAudioElement.ended) {
+                    endedCount++
+                  } else if (finalAudioElement.paused) {
+                    pausedCount++
+                  }
+                } else {
+                  noSrcCount++
+                }
+              }
+              
+              // Also check audioRef
+              if (audioRef.current) {
+                if (audioRef.current.src) {
+                  if (!audioRef.current.ended && !audioRef.current.paused && audioRef.current.readyState >= 2) {
+                    anyPlaying = true
+                    playingCount++
+                  } else if (audioRef.current.ended) {
+                    endedCount++
+                  } else if (audioRef.current.paused) {
+                    pausedCount++
+                  }
+                } else {
+                  noSrcCount++
+                }
+              }
+              
+              // Log every 10th poll to help debug
+              if (pollCount % 10 === 0) {
+                console.log(`🟡 Polling check #${pollCount}: playing=${playingCount}, ended=${endedCount}, paused=${pausedCount}, noSrc=${noSrcCount}, total=${allAudioElementsRef.current.size}, anyPlaying=${anyPlaying}, isAudioPlaying=${isAudioPlaying}`)
+              }
+              
+              // If no audio is playing, set state to false (regardless of current state)
+              if (!anyPlaying) {
+                // Always update state if no audio is playing (even if state already says false)
+                // This ensures the button becomes active
+                console.log(`🟡🟡🟡 POLLING DETECTED ALL AUDIO HAS ENDED! (poll #${pollCount}, playing: ${playingCount}, ended: ${endedCount}, paused: ${pausedCount}, total tracked: ${allAudioElementsRef.current.size}, isAudioPlaying: ${isAudioPlaying}) 🟡🟡🟡`)
+                setIsAudioPlaying(false)
+                isNarrationInProgressRef.current = false
+                if (checkAudioIntervalRef.current) {
+                  clearInterval(checkAudioIntervalRef.current)
+                  checkAudioIntervalRef.current = null
+                }
+                if (onFullStoryReady && fullStoryRef.current) {
+                  onFullStoryReady(fullStoryRef.current)
+                }
+              }
+            }, 300) // Check every 300ms for faster detection
+          }
+          
+          // Store second audio for reference (though chaining handles it now)
+          if (audioChunks.length > 0) {
+            secondAudioRef.current = audioChunks[0]
+          }
+          
+          console.log(`✅ All ${audioChunks.length + 1} audio chunks ready and chained!`)
+        }).catch(err => {
+          console.error('Error generating remaining audio chunks:', err)
+          setError('Error generating audio for some parts of the story.')
+        })
+      } else {
+        // No remaining chunks, just mark as complete when first ends
+        firstAudio.onended = () => {
+          console.log('🟡 Single chunk ended')
+          setIsAudioPlaying(false) // Audio has ended, enable restart button
+          isNarrationInProgressRef.current = false
+          if (checkAudioIntervalRef.current) {
+            clearInterval(checkAudioIntervalRef.current)
+            checkAudioIntervalRef.current = null
+          }
+          if (onFullStoryReady && fullStoryRef.current) {
+            onFullStoryReady(fullStoryRef.current)
+          }
+        }
+        
+        // Also set up polling check for single chunk case as a backup
+        if (checkAudioIntervalRef.current) {
+          clearInterval(checkAudioIntervalRef.current)
+        }
+        checkAudioIntervalRef.current = setInterval(() => {
+          // Check if audio has ended or is paused and has no source
+          const isEnded = firstAudio.ended || !firstAudio.src || (firstAudio.paused && firstAudio.currentTime > 0 && firstAudio.currentTime >= firstAudio.duration - 0.1)
+          
+          if (isEnded) {
+            // Only log and update if we actually need to change the state
+            if (isAudioPlaying || isNarrationInProgressRef.current) {
+              console.log(`🟡 Polling detected single chunk audio has ended (ended: ${firstAudio.ended}, paused: ${firstAudio.paused}, currentTime: ${firstAudio.currentTime}, duration: ${firstAudio.duration})`)
+              setIsAudioPlaying(false)
+              isNarrationInProgressRef.current = false
+              if (checkAudioIntervalRef.current) {
+                clearInterval(checkAudioIntervalRef.current)
+                checkAudioIntervalRef.current = null
+              }
+              if (onFullStoryReady && fullStoryRef.current) {
+                onFullStoryReady(fullStoryRef.current)
+              }
+            }
+          }
+        }, 300) // Check every 300ms for faster detection
+      }
+
+      // Start playing first chunk if it hasn't already started via onFirstChunkReady callback
+      // The onFirstChunkReady callback should have already started playback, but this is a fallback
+      if (!firstWavChunkReady) {
+        try {
+          // Check stop flag before playing
+          if (shouldStopAllAudioRef.current) {
+            console.log('🛑 Audio playback stopped by cleanup flag')
+            return
+          }
+      await firstAudio.play()
+          console.log('🎵 First audio chunk started playing (fallback - onFirstChunkReady may not have fired)')
+          setHasStartedNarration(true)
+          setIsAudioPlaying(true) // Audio is now playing, disable restart button
+          setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+          setNeedsUserInteraction(false)
+        } catch (playError: any) {
+          console.error('Error auto-playing first audio:', playError)
+          isGeneratingRef.current = false
+          isNarrationInProgressRef.current = false
+          // If autoplay fails (e.g., browser policy), show a play button
+          if (playError.name === 'NotAllowedError' || playError.message?.includes('user gesture')) {
+            console.log('⚠️ Autoplay blocked by browser policy, showing play button')
+            setNeedsUserInteraction(true)
+            setError(null) // Don't show error, just show play button
+          } else {
+            setError('Error starting audio playback. Please try again.')
+          }
+        }
+      } else {
+        // Audio already started via onFirstChunkReady callback
+      isGeneratingRef.current = false
+      }
+    } catch (err: any) {
+      console.error('Error generating speech:', err)
+      setError(err.message || 'Failed to generate speech. Please try again.')
+      // Story page shows immediately
+      isGeneratingRef.current = false
+        isNarrationInProgressRef.current = false
+        setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+      cleanupAudio()
+    }
+  }
+
+
+
+  // Handle progressive story updates
+  useEffect(() => {
+    if (isProgressive && onFullStoryReady && storyText && !fullStoryRef.current) {
+      // This is the first chunk - store it and notify parent when full story is ready
+      fullStoryRef.current = storyText
+    } else if (!isProgressive && storyText && storyText !== fullStoryRef.current) {
+      // Full story has arrived - update the ref
+      fullStoryRef.current = storyText
+      if (onFullStoryReady) {
+        onFullStoryReady(storyText)
+      }
+    }
+  }, [storyText, isProgressive, onFullStoryReady])
+
+  // Auto-start narration when storyText changes
+  useEffect(() => {
+    // Don't auto-start if there's no story text
+    if (!storyText || storyText.trim().length === 0) {
+      return
+    }
+
+    // If we're already generating or narration is in progress, don't restart (most important check)
+    if (isGeneratingRef.current || isNarrationInProgressRef.current || (audioRef.current && !audioRef.current.ended)) {
+      console.log('🎵 Already generating, narrating, or playing audio, skipping duplicate narration start')
+      currentStoryTextRef.current = storyText
+      return
+    }
+    
+    // If we've already started narration for this exact story text, don't restart
+    if (hasStartedNarrationForStoryRef.current === storyText && audioRef.current && !audioRef.current.ended) {
+      console.log('🎵 Already playing this exact story text, skipping duplicate narration start')
+      currentStoryTextRef.current = storyText
+      return
+    }
+    
+    // If we're already playing and the new text contains the old text (progressive update), don't restart
+    if (hasStartedNarrationForStoryRef.current && storyText.includes(hasStartedNarrationForStoryRef.current) && audioRef.current && !audioRef.current.ended) {
+      console.log('🎵 Already playing a prefix of this story text, skipping duplicate narration start (progressive update)')
+      currentStoryTextRef.current = storyText
+      return
+    }
+    
+    // CRITICAL: If we're NOT in progressive mode (full story) but we have a first chunk that's being processed,
+    // and the new full story contains the first chunk text, we need to handle this carefully
+    // The full story should start narration immediately (delay=0ms), not wait for the first chunk's delayed callback
+    if (!isProgressive && hasStartedFirstChunkRef.current && currentStoryTextRef.current && storyText.includes(currentStoryTextRef.current)) {
+      console.log('🎵 Full story contains first chunk that is already being processed')
+      // Update the story text reference
+      currentStoryTextRef.current = storyText
+      // Don't return - let the useEffect continue to set up the scheduled callback
+      // The scheduled callback will check and skip if narration has already started
+      // But we should start narration immediately here (delay=0ms) instead of waiting
+      // Skip the cleanup and reset logic below for this case, but continue to scheduling
+    } else {
+    // In progressive mode, if we've already started the first chunk, don't restart
+    if (isProgressive && hasStartedFirstChunkRef.current && storyText === fullStoryRef.current) {
+      // Full story has arrived, but we're already playing first chunk
+      // Just update the display, don't restart audio
+      currentStoryTextRef.current = storyText
+      return
+    }
+
+    // Update the current story text reference
+    currentStoryTextRef.current = storyText
+
+    // In progressive mode with first chunk, mark that we've started
+      // Note: isNarrationInProgressRef will be set in handleStartNarration when it actually starts
+    if (isProgressive && !hasStartedFirstChunkRef.current) {
+      hasStartedFirstChunkRef.current = true
+    }
+
+    // Stop and clean up any existing audio IMMEDIATELY when story changes
+    // (unless we're in progressive mode and already playing)
+    if (!isProgressive || !hasStartedFirstChunkRef.current) {
+      cleanupAudio()
+    }
+
+      // Reset state
+    if (!isProgressive || !hasStartedFirstChunkRef.current) {
+      setError(null)
+    }
+    }
+
+    // REMOVED: Auto-start narration - user must click "Start Story" button to begin
+    // This prevents conflicts between auto-play and manual button clicks
+    
+    // Clear any pending narration timeout (safety cleanup)
+    if (narrationTimeoutRef.current) {
+      clearTimeout(narrationTimeoutRef.current)
+      narrationTimeoutRef.current = null
+    }
+
+    return () => {
+      if (narrationTimeoutRef.current) {
+        clearTimeout(narrationTimeoutRef.current)
+        narrationTimeoutRef.current = null
+      }
+      // Cleanup audio on story change - this runs when storyText changes
+      // But only if we're not in progressive mode or haven't started yet
+      if (!isProgressive || !hasStartedFirstChunkRef.current) {
+        cleanupAudio()
+        isGeneratingRef.current = false
+      }
+    }
+  }, [storyText, isProgressive]) // Re-run when storyText changes
+
+  return (
+    <div className="story-narration">
+      {/* REMOVED: "Almost ready!" message - story page shows immediately */}
+      
+      {(() => {
+        const [title, storyBody] = extractTitleAndStory(storyText)
+        const cleanedBody = cleanStoryTextForDisplay(storyBody)
+          .replace(/^Part\s+[12]:?\s*/gmi, '')
+          .replace(/^Page\s+[12]:?\s*/gmi, '')
+          .replace(/\n+Part\s+[12]:?\s*/gmi, '\n')
+          .replace(/\n+Page\s+[12]:?\s*/gmi, '\n')
+          .trim()
+        
+        // Split into paragraphs for better formatting
+        const paragraphs = cleanedBody.split(/\n\n+/).filter(p => p.trim().length > 0)
+        
+        return (
+          <div className="story-text-container">
+            {title && (
+              <h2 className="story-title" style={{ 
+                fontSize: '1.8rem', 
+                fontWeight: 'bold', 
+                marginBottom: '1.5rem',
+                textAlign: 'center',
+                color: '#8b4513'
+              }}>
+                {title}
+              </h2>
+            )}
+            <div className="story-text">
+              {paragraphs.map((para, index) => (
+                <p key={index} style={{ marginBottom: '1rem', marginTop: index === 0 ? 0 : '1rem' }}>
+                  {para.trim()}
+                </p>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {error && (
+        <div className="error-message" style={{ color: '#f5576c', marginBottom: '16px', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+
+      {needsUserInteraction && audioRef.current && (
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <button 
+            onClick={async () => {
+              try {
+                if (audioRef.current) {
+                  await audioRef.current.play()
+                  setNeedsUserInteraction(false)
+                  setHasStartedNarration(true) // Mark that narration has started
+                  console.log('🎵 Audio started after user interaction')
+                }
+              } catch (err: any) {
+                console.error('Error playing audio after user interaction:', err)
+                setError('Error starting audio. Please try again.')
+              }
+            }}
+            className="play-button"
+            style={{ 
+              padding: '16px 32px',
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              background: 'linear-gradient(135deg, #228b22 0%, #0f5132 100%)',
+              color: '#fff8f0',
+              border: '2px solid #0f5132',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontFamily: "'Cinzel', serif",
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+          >
+            ▶️ Start Story Narration
+              </button>
+        </div>
+      )}
+
+             <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                 {/* Start Story button - more prominent, comes first */}
+                 <button 
+                   onClick={async () => {
+                     // Only start if audio is not playing
+                     if (!isAudioPlaying && !isGeneratingAudio) {
+                       await handleStartNarration(storyText)
+                     }
+                   }} 
+                   disabled={isGeneratingAudio || isAudioPlaying}
+                   className="restart-story-button"
+                   style={{
+                     fontSize: '1.3rem',
+                     padding: '18px 36px',
+                     fontWeight: '700',
+                     order: 1,
+                     opacity: (isGeneratingAudio || isAudioPlaying) ? 0.6 : 1,
+                     cursor: (isGeneratingAudio || isAudioPlaying) ? 'not-allowed' : 'pointer'
+                   }}
+                 >
+                   {isGeneratingAudio 
+                     ? 'Waking the Elf...' 
+                     : hasStartedNarration 
+                       ? 'Restart Story 🧝' 
+                       : 'Start Narration 🧝'}
+              </button>
+                 
+                 {!isShared && (
+                   <>
+                     {!shareUrl ? (
+                       <button 
+                         onClick={async () => {
+                           setIsSharing(true)
+                           setShareError(null)
+                           try {
+                             const result = await shareStory({
+                               storyText,
+                               childName,
+                               voiceId,
+                               storyType: _storyType,
+                               customApiKey,
+                               customVoiceId
+                             })
+                             setShareUrl(result.shareUrl)
+                             // Copy to clipboard
+                             try {
+                               await navigator.clipboard.writeText(result.shareUrl)
+                             } catch (e) {
+                               console.warn('Failed to copy to clipboard:', e)
+                             }
+                           } catch (err: any) {
+                             setShareError(err.message || 'Failed to share story')
+                           } finally {
+                             setIsSharing(false)
+                           }
+                         }}
+                         disabled={isSharing}
+                         className="share-story-button"
+                         style={{ order: 2 }}
+                       >
+                         {isSharing ? 'Sharing...' : 'Share Story 🎁'}
+              </button>
+                     ) : (
+                       <div className="share-success" style={{ order: 2 }}>
+                         <p>Story shared! Link copied to clipboard:</p>
+                         <input 
+                           type="text" 
+                           value={shareUrl} 
+                           readOnly 
+                           className="share-url-input"
+                           onClick={(e) => (e.target as HTMLInputElement).select()}
+                         />
+                         <button 
+                           onClick={async () => {
+                             try {
+                               await navigator.clipboard.writeText(shareUrl)
+                               setIsLinkCopied(true)
+                               // Reset after 2 seconds
+                               setTimeout(() => {
+                                 setIsLinkCopied(false)
+                               }, 2000)
+                             } catch (e) {
+                               console.warn('Failed to copy to clipboard:', e)
+                             }
+                           }}
+                           className="copy-link-button"
+                         >
+                           {isLinkCopied ? '✅ Copied' : '📋 Copy Link'}
+              </button>
+                       </div>
+            )}
+                     {shareError && (
+                       <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
+                         {shareError}
+          </div>
+                     )}
+        </>
+      )}
+                 <button 
+                   onClick={() => {
+                     // Use browser refresh to ensure all audio stops completely
+                     // This is the most reliable way to stop all audio and reset the app
+                     window.location.href = '/'
+                   }} 
+                   className="restart-button"
+                   style={{ order: 3 }}
+                 >
+                   Create Another Christmas Story
+                 </button>
+               </div>
+    </div>
+  )
+}
+
+export default StoryNarration
+

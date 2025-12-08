@@ -1,0 +1,27 @@
+# Exclude the template/example project directory (not needed for deployment)
+my-project/
+
+# Exclude backend files (too large for Vercel serverless functions - deploy separately)
+api/
+graph.js
+server.js
+
+# Exclude development files
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.log
+
+# Exclude environment files (Vercel uses its own env vars)
+.env
+.env.local
+.env.*.local
+
+# Exclude documentation (except README)
+*.md
+!README.md
