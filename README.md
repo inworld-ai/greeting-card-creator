@@ -51,10 +51,10 @@ A delightful web application powered by Inworld AI that creates personalized Chr
    ```
 
    **Important Notes:**
-   - **Google AI API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey) - used for story generation
    - **Inworld API Key**: Get from [Inworld Studio](https://studio.inworld.ai/) → Settings → API Keys. Must be the **Base64-encoded** key
    - **Inworld Voice ID**: Default voice to use. The app includes preset voices for "Holly the Elf" and "Clark the Elf"
    - **Inworld Model ID**: Use `inworld-tts-1-max` (default, better quality) or `inworld-tts-1` (faster)
+   - **Google AI API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey) - used for story generation
 
 4. **Run the application**:
    ```bash
