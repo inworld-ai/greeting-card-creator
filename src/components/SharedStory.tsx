@@ -59,7 +59,7 @@ function SharedStory() {
     return (
       <div className="app">
         <div className="app-container">
-          <h1 className="app-title"><span className="app-title-content">A Christmas Creation From You</span></h1>
+          <h1 className="app-title"><span className="app-title-content">The Voice Before Christmas</span></h1>
           <div className="story-narration">
             <div className="loading-container">
               <h2 className="loading-title">Loading Story...</h2>
@@ -84,7 +84,7 @@ function SharedStory() {
     return (
       <div className="app">
         <div className="app-container">
-          <h1 className="app-title"><span className="app-title-content">A Christmas Creation From You</span></h1>
+          <h1 className="app-title"><span className="app-title-content">The Voice Before Christmas</span></h1>
           <div className="story-narration">
             <div className="error-message" style={{ color: '#f5576c', textAlign: 'center', padding: '40px' }}>
               <h2>Oops!</h2>
