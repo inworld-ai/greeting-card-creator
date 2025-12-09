@@ -257,8 +257,45 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           
           if (allAnswered || isWrappingUp) {
             if (!isComplete) {
+              // If wrapping up but not all detected, extract answers from conversation history
+              if (isWrappingUp && !allAnswered) {
+                console.log('⚠️ Conversation wrapping up but not all answers detected, extracting from history...')
+                // Extract user responses for each question from conversation history
+                questions.forEach(q => {
+                  if (!updatedAnswers[q.key]) {
+                    // Find user responses related to this question
+                    const questionIndex = conversationHistory.findIndex(msg => 
+                      msg.role === 'assistant' && 
+                      msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase())
+                    )
+                    if (questionIndex >= 0) {
+                      // Get all user responses after this question
+                      const userResponses = conversationHistory
+                        .slice(questionIndex + 1)
+                        .filter((msg, idx) => {
+                          // Stop at next assistant question
+                          const nextQuestionIndex = conversationHistory.findIndex((m, i) => 
+                            i > questionIndex && 
+                            m.role === 'assistant' && 
+                            questions.some(q2 => q2.key !== q.key && m.content.toLowerCase().includes(q2.question.substring(0, 20).toLowerCase()))
+                          )
+                          return msg.role === 'user' && (nextQuestionIndex < 0 || idx < nextQuestionIndex - questionIndex - 1)
+                        })
+                        .map(msg => msg.content)
+                        .join(' ')
+                      
+                      if (userResponses.trim()) {
+                        updatedAnswers[q.key] = userResponses.trim()
+                        console.log(`✅ Extracted answer for ${q.key}: ${userResponses.substring(0, 50)}...`)
+                      }
+                    }
+                  }
+                })
+              }
+              
               setIsComplete(true)
               console.log('✅ All questions answered! Completing conversation...')
+              console.log('📊 Final answers:', updatedAnswers)
               // Don't auto-submit - show Continue button instead
             }
           }
@@ -361,18 +398,59 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleSubmit = () => {
-    // Convert answers to the expected format
+    // Stop recognition if still running
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    }
+    
+    // If conversation is complete, extract any missing answers from conversation history
+    let finalAnswers = { ...answeredQuestions }
+    
+    if (isComplete) {
+      // Extract any missing answers from conversation history
+      questions.forEach(q => {
+        if (!finalAnswers[q.key] || finalAnswers[q.key].trim() === '') {
+          const questionIndex = conversationHistory.findIndex(msg => 
+            msg.role === 'assistant' && 
+            msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase())
+          )
+          if (questionIndex >= 0) {
+            const userResponses = conversationHistory
+              .slice(questionIndex + 1)
+              .filter((msg, idx) => {
+                const nextQuestionIndex = conversationHistory.findIndex((m, i) => 
+                  i > questionIndex && 
+                  m.role === 'assistant' && 
+                  questions.some(q2 => q2.key !== q.key && m.content.toLowerCase().includes(q2.question.substring(0, 20).toLowerCase()))
+                )
+                return msg.role === 'user' && (nextQuestionIndex < 0 || idx < nextQuestionIndex - questionIndex - 1)
+              })
+              .map(msg => msg.content)
+              .join(' ')
+            
+            if (userResponses.trim()) {
+              finalAnswers[q.key] = userResponses.trim()
+            }
+          }
+        }
+      })
+    }
+    
+    console.log('📤 Submitting answers:', finalAnswers)
+    
+    // Convert answers to the expected format - ensure all fields have values
     if (experienceType === 'year-review') {
       onSubmit({
-        favoriteMemory: answeredQuestions.favoriteMemory || '',
-        newThing: answeredQuestions.newThing || '',
-        lookingForward: answeredQuestions.lookingForward || ''
+        favoriteMemory: finalAnswers.favoriteMemory || 'Not specified',
+        newThing: finalAnswers.newThing || 'Not specified',
+        lookingForward: finalAnswers.lookingForward || 'Not specified'
       })
     } else {
       onSubmit({
-        dreamGift: answeredQuestions.dreamGift || '',
-        experience: answeredQuestions.experience || '',
-        practicalNeed: answeredQuestions.practicalNeed || ''
+        dreamGift: finalAnswers.dreamGift || 'Not specified',
+        experience: finalAnswers.experience || 'Not specified',
+        practicalNeed: finalAnswers.practicalNeed || 'Not specified'
       })
     }
   }
@@ -409,25 +487,21 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       </div>
 
       <div className="conversational-content">
-        <div className="ai-avatar">🎤</div>
-        
-        <div className="conversation-messages">
-          {conversationHistory.map((msg, index) => (
-            <div key={index} className={`message-bubble ${msg.role === 'assistant' ? 'assistant' : 'user'}`}>
-              <p className="message-text">{msg.content}</p>
-            </div>
-          ))}
-          {currentResponse && !conversationHistory.some(msg => msg.content === currentResponse) && (
-            <div className="message-bubble assistant">
-              <p className="message-text">{currentResponse}</p>
-            </div>
-          )}
+        <div className="olivia-blob-container">
+          <div className={`olivia-blob ${isProcessing ? 'processing' : isListening ? 'listening' : isComplete ? 'complete' : 'idle'}`}>
+            <div className="blob-inner"></div>
+            <div className="blob-pulse"></div>
+            {isComplete && (
+              <div className="complete-overlay">
+                <div className="checkmark">✓</div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="listening-indicator">
           {isComplete ? (
             <div className="complete">
-              <span>✅ Conversation Complete!</span>
               <button
                 className="btn btn-primary continue-btn"
                 onClick={handleSubmit}
@@ -437,13 +511,12 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
               </button>
             </div>
           ) : isProcessing ? (
-            <div className="processing">
-              <span>⏳ Olivia is thinking...</span>
+            <div className="processing-text">
+              <span>Olivia is thinking...</span>
             </div>
           ) : isListening ? (
-            <div className="listening-active">
-              <div className="pulse-ring"></div>
-              <span>🎤 Listening...</span>
+            <div className="listening-text">
+              <span>Listening...</span>
             </div>
           ) : (
             <button
@@ -451,7 +524,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
               onClick={handleManualStart}
               disabled={isProcessing || isComplete}
             >
-              🎤 Speak Now
+              Start Conversation
             </button>
           )}
         </div>
