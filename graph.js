@@ -125,12 +125,21 @@ export function createTTSOnlyGraph(apiKey, voiceId = null) {
 
 /**
  * Creates a text-only graph for Year in Review generation
+ * @param {string} apiKey - Inworld API key
+ * @param {boolean} isCustomVoice - If true, write in first person. If false, write in third person.
  */
-export function createYearInReviewGraph(apiKey) {
+export function createYearInReviewGraph(apiKey, isCustomVoice = true) {
   const {
     RemoteLLMChatNode,
     SequentialGraphBuilder,
   } = require('@inworld/runtime/graph');
+
+  const perspective = isCustomVoice 
+    ? `- Write in first person (as if {{name}} is telling their own story)
+- Use "I", "my", "me" throughout (e.g., "I had an amazing year", "my favorite memory", "I'm looking forward to")`
+    : `- Write in third person (as if someone is telling {{name}}'s story)
+- Use "{{name}}", "their", "they" throughout (e.g., "{{name}} had an amazing year", "their favorite memory", "{{name}} is looking forward to")
+- Write as if an elf narrator is sharing {{name}}'s story`
 
   const graphBuilder = new SequentialGraphBuilder({
     id: 'year-in-review-llm',
@@ -162,7 +171,7 @@ Looking Forward to in 2026: {{lookingForward}}
 
 Requirements:
 - Start with a title on the first line in the format: "Title: [Story Title]"
-- Write in first person (as if {{name}} is telling their own story)
+${perspective}
 - Create a warm, heartfelt narrative that weaves together these three elements
 - Make it feel like a personal Christmas letter or reflection
 - Keep it to about 200-300 words
@@ -185,12 +194,21 @@ Requirements:
 
 /**
  * Creates a text-only graph for Wish List generation
+ * @param {string} apiKey - Inworld API key
+ * @param {boolean} isCustomVoice - If true, write in first person. If false, write in third person.
  */
-export function createWishListGraph(apiKey) {
+export function createWishListGraph(apiKey, isCustomVoice = true) {
   const {
     RemoteLLMChatNode,
     SequentialGraphBuilder,
   } = require('@inworld/runtime/graph');
+
+  const perspective = isCustomVoice 
+    ? `- Write in first person (as if {{name}} is sharing their wishes)
+- Use "I", "my", "me" throughout (e.g., "I've been dreaming of", "my wish is", "I would love")`
+    : `- Write in third person (as if someone is sharing {{name}}'s wishes)
+- Use "{{name}}", "their", "they" throughout (e.g., "{{name}} has been dreaming of", "their wish is", "{{name}} would love")
+- Write as if an elf narrator is sharing {{name}}'s wish list`
 
   const graphBuilder = new SequentialGraphBuilder({
     id: 'wish-list-llm',
@@ -222,7 +240,7 @@ Practical Need: {{practicalNeed}}
 
 Requirements:
 - Start with a title on the first line in the format: "Title: [Wish List Title]"
-- Write in first person (as if {{name}} is sharing their wishes)
+${perspective}
 - Create a warm, personal narrative that presents these three wishes
 - Make it feel like a heartfelt letter to Santa or a personal reflection
 - Keep it to about 200-300 words

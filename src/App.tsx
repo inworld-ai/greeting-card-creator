@@ -325,6 +325,7 @@ function App() {
               <YearInReviewGeneration
                 answers={storyData.yearReviewAnswers}
                 name={storyData.childName || 'You'}
+                isCustomVoice={!!storyData.customVoiceId}
                 onStoryGenerated={handleStoryGenerated}
                 onFirstChunkReady={handleFirstChunkReady}
                 customApiKey={storyData.customApiKey}
@@ -335,6 +336,7 @@ function App() {
               <WishListGeneration
                 answers={storyData.wishListAnswers}
                 name={storyData.childName || 'You'}
+                isCustomVoice={!!storyData.customVoiceId}
                 onListGenerated={handleStoryGenerated}
                 onFirstChunkReady={handleFirstChunkReady}
                 customApiKey={storyData.customApiKey}

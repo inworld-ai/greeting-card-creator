@@ -612,7 +612,7 @@ app.post('/api/generate-year-review', async (req, res) => {
   console.log('📝 ==========================================')
   
   try {
-    const { favoriteMemory, newThing, lookingForward, name, apiKey } = req.body
+    const { favoriteMemory, newThing, lookingForward, name, apiKey, isCustomVoice } = req.body
 
     if (!favoriteMemory || !newThing || !lookingForward || !name) {
       return res.status(400).json({ 
@@ -633,11 +633,15 @@ app.post('/api/generate-year-review', async (req, res) => {
       })
     }
 
+    // Determine if custom voice (first person) or preset voice (third person)
+    const useCustomVoice = isCustomVoice === true || isCustomVoice === 'true'
+    
     const startTime = Date.now()
     console.log(`📝 Generating year in review for ${name}`)
     console.log(`📝 Using ${apiKey ? 'custom' : 'default'} API key`)
+    console.log(`📝 Perspective: ${useCustomVoice ? 'First person (custom voice)' : 'Third person (preset voice)'}`)
 
-    const graph = createYearInReviewGraph(selectedApiKey)
+    const graph = createYearInReviewGraph(selectedApiKey, useCustomVoice)
     const { outputStream } = await graph.start({
       name,
       favoriteMemory,
@@ -776,7 +780,7 @@ app.post('/api/generate-wish-list', async (req, res) => {
   console.log('🎁 ==========================================')
   
   try {
-    const { dreamGift, experience, practicalNeed, name, apiKey } = req.body
+    const { dreamGift, experience, practicalNeed, name, apiKey, isCustomVoice } = req.body
 
     if (!dreamGift || !experience || !practicalNeed || !name) {
       return res.status(400).json({ 
@@ -797,11 +801,15 @@ app.post('/api/generate-wish-list', async (req, res) => {
       })
     }
 
+    // Determine if custom voice (first person) or preset voice (third person)
+    const useCustomVoice = isCustomVoice === true || isCustomVoice === 'true'
+    
     const startTime = Date.now()
     console.log(`🎁 Generating wish list for ${name}`)
     console.log(`🎁 Using ${apiKey ? 'custom' : 'default'} API key`)
+    console.log(`🎁 Perspective: ${useCustomVoice ? 'First person (custom voice)' : 'Third person (preset voice)'}`)
 
-    const graph = createWishListGraph(selectedApiKey)
+    const graph = createWishListGraph(selectedApiKey, useCustomVoice)
     const { outputStream } = await graph.start({
       name,
       dreamGift,

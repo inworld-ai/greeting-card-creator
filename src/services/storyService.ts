@@ -357,7 +357,8 @@ export async function generateYearInReview(
   },
   onChunkGenerated: (chunk: StoryChunk) => void,
   apiKey?: string,
-  name?: string
+  name?: string,
+  isCustomVoice?: boolean
 ): Promise<string> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate-year-review`, {
@@ -371,6 +372,7 @@ export async function generateYearInReview(
         newThing: answers.newThing,
         lookingForward: answers.lookingForward,
         apiKey,
+        isCustomVoice: isCustomVoice ?? true, // Default to true (first person) if not specified
       }),
     })
 
@@ -477,7 +479,8 @@ export async function generateWishList(
   },
   onChunkGenerated: (chunk: StoryChunk) => void,
   apiKey?: string,
-  name?: string
+  name?: string,
+  isCustomVoice?: boolean
 ): Promise<string> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate-wish-list`, {
@@ -491,6 +494,7 @@ export async function generateWishList(
         experience: answers.experience,
         practicalNeed: answers.practicalNeed,
         apiKey,
+        isCustomVoice: isCustomVoice ?? true, // Default to true (first person) if not specified
       }),
     })
 
