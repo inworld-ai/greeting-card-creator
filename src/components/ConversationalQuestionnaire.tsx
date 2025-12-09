@@ -229,7 +229,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         
         // Check if an answer was detected and update answered questions
         setAnsweredQuestions(prevAnswers => {
-          let updatedAnswers = prevAnswers
+          let updatedAnswers = { ...prevAnswers } // Create a new object to ensure state update
           if (data.detectedAnswer && data.detectedQuestionKey) {
             updatedAnswers = {
               ...prevAnswers,
@@ -259,17 +259,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                 questions.forEach(q => {
                   if (!updatedAnswers[q.key]) {
                     // Find user responses related to this question
-                    const questionIndex = conversationHistory.findIndex(msg => 
+                    const questionIndex = updatedHistory.findIndex(msg => 
                       msg.role === 'assistant' && 
                       msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase())
                     )
                     if (questionIndex >= 0) {
                       // Get all user responses after this question
-                      const userResponses = conversationHistory
+                      const userResponses = updatedHistory
                         .slice(questionIndex + 1)
                         .filter((msg, idx) => {
                           // Stop at next assistant question
-                          const nextQuestionIndex = conversationHistory.findIndex((m, i) => 
+                          const nextQuestionIndex = updatedHistory.findIndex((m, i) => 
                             i > questionIndex && 
                             m.role === 'assistant' && 
                             questions.some(q2 => q2.key !== q.key && m.content.toLowerCase().includes(q2.question.substring(0, 20).toLowerCase()))
@@ -295,6 +295,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             }
           }
           
+          // Always return updatedAnswers to ensure state updates
           return updatedAnswers
         })
         
