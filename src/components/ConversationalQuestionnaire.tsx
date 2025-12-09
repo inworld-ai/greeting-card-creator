@@ -230,7 +230,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       // Update conversation history and answered questions together
       setConversationHistory(prev => {
         const updatedHistory: ConversationMessage[] = [...prev, { role: 'assistant' as const, content: aiResponse }]
-        setCurrentResponse(aiResponse)
         
         // Check if an answer was detected and update answered questions
         setAnsweredQuestions(prevAnswers => {
