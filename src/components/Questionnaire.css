@@ -76,7 +76,8 @@
 
 .btn-primary {
   background-color: #dc3545;
-  color: white;
+  color: #ffffff;
+  border: none;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -87,6 +88,7 @@
 
 .btn-primary:active:not(:disabled) {
   transform: translateY(0);
+  background-color: #bd2130;
 }
 
 .btn-primary:disabled {
@@ -97,7 +99,8 @@
 
 .btn-secondary {
   background-color: #6c757d;
-  color: white;
+  color: #ffffff;
+  border: none;
 }
 
 .btn-secondary:hover {
@@ -108,6 +111,7 @@
 
 .btn-secondary:active {
   transform: translateY(0);
+  background-color: #545b62;
 }
 
 @media (max-width: 768px) {
