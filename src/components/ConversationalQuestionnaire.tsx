@@ -111,10 +111,15 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     setCurrentResponse('')
     
     try {
+      console.log('🎤 Starting conversation...')
       await sendMessage('')
-    } catch (error) {
-      console.error('Error starting conversation:', error)
+    } catch (error: any) {
+      console.error('❌ Error starting conversation:', error)
       setIsProcessing(false)
+      // Show error to user
+      const errorMessage = error?.message || 'Failed to start conversation. Please try again.'
+      setCurrentResponse(`Error: ${errorMessage}`)
+      alert(`Unable to start conversation: ${errorMessage}`)
     }
   }
 
@@ -256,9 +261,14 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           }, 500)
         }
       }
-    } catch (error) {
-      console.error('Error sending message:', error)
+    } catch (error: any) {
+      console.error('❌ Error sending message:', error)
       setIsProcessing(false)
+      // Show error to user
+      const errorMessage = error?.message || 'Failed to send message. Please try again.'
+      setCurrentResponse(`Error: ${errorMessage}`)
+      // Don't alert on every error, just log it
+      console.error('Error details:', error)
     }
   }
 
