@@ -826,7 +826,7 @@ IMPORTANT GUIDELINES:
 - Don't rush - take your time to have a real conversation
 - Keep your responses concise (1-2 sentences typically)
 - If this is the first message and no conversation has started, begin by introducing yourself warmly and asking the first question
-- If all three questions have been answered, thank them warmly and say something like: "Thank you so much for sharing! I'll take your answers and create your ${experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'} now." Then end the conversation
+- If all three questions have been answered, thank them warmly and say something like: "Thank you so much for sharing! I'll take your answers and create your ${experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'} now." Then end the conversation. Make sure to include the phrase "I'll take your answers and create your ${experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'} now" in your closing message.
 
 ${answeredContext}
 
