@@ -265,10 +265,11 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
             cursor: 'pointer',
             fontSize: '0.95rem',
             fontWeight: '600',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            minWidth: '200px'
           }}
         >
-          🎙️ Record Voice Clone (Easy)
+          <span style={{ color: useVoiceClone ? '#fff' : '#333' }}>🎙️ Record Voice Clone (Easy)</span>
         </button>
         <button
           onClick={() => {
@@ -285,10 +286,11 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
             cursor: 'pointer',
             fontSize: '0.95rem',
             fontWeight: '600',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            minWidth: '200px'
           }}
         >
-          🔑 Use Existing Voice (Advanced)
+          <span style={{ color: !useVoiceClone ? '#fff' : '#333' }}>🔑 Use Existing Voice (Advanced)</span>
         </button>
       </div>
 
@@ -303,10 +305,22 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
             border: '1px solid #b3d9ff',
             marginBottom: '20px'
           }}>
-            <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#555', margin: 0 }}>
+            <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#555', margin: '0 0 12px 0' }}>
               <strong>🎤 Record a 10-15 second audio sample</strong> of yourself speaking clearly. 
-              The voice will be cloned instantly and ready to use! No Inworld account needed.
+              An AI voice will be made instantly and ready to use! Follow this script when recording:
             </p>
+            <div style={{ 
+              backgroundColor: '#fff', 
+              padding: '14px', 
+              borderRadius: '6px', 
+              border: '1px solid #d0e7ff',
+              fontSize: '0.9rem',
+              lineHeight: '1.8',
+              color: '#333',
+              fontStyle: 'italic'
+            }}>
+              "Hello, my name is {childName}. I'm excited to share my Christmas story with you. This year has been wonderful, and I can't wait to tell you all about it. Thank you for listening!"
+            </div>
           </div>
 
           {/* Recording Interface */}
