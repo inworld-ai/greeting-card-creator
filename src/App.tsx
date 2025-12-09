@@ -272,10 +272,24 @@ function App() {
     return 'landing'
   }
 
+  // Determine the title based on the current step
+  const getTitle = (): string => {
+    if (step === 'landing') {
+      return 'The Voice Before Christmas'
+    } else if (step === 'type-selection' || step === 'name-input' || step === 'custom-narrator' || step === 'image-upload' || step === 'generating' || step === 'narration') {
+      return 'Christmas Story Generator'
+    } else if (step.startsWith('year-review')) {
+      return 'Year In Review'
+    } else if (step.startsWith('wish-list')) {
+      return 'Christmas Wish List'
+    }
+    return 'The Voice Before Christmas'
+  }
+
   return (
     <div className="app">
       <div className="app-container">
-        <h1 className="app-title"><span className="app-title-content">The Voice Before Christmas</span></h1>
+        <h1 className="app-title"><span className="app-title-content">{getTitle()}</span></h1>
         
         {step === 'landing' && (
           <LandingPage onSelectExperience={handleExperienceSelected} />
