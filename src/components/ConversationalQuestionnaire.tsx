@@ -157,7 +157,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   const startConversation = async () => {
     setIsProcessing(true)
-    setCurrentResponse('')
     
     try {
       console.log('🎤 Starting conversation...')
