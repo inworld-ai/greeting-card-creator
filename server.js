@@ -833,7 +833,12 @@ ${nextQuestion ? `Next question to ask: "${nextQuestion.question}"` : 'All quest
 
 ${conversationContext}`
 
+    // For the first message, use a default greeting prompt
     const userPrompt = userMessage || "Hello, let's start the conversation!"
+
+    console.log(`💬 Starting conversation with userMessage: "${userPrompt}"`)
+    console.log(`💬 System prompt length: ${systemPrompt.length}`)
+    console.log(`💬 Conversation history length: ${conversationHistory.length}`)
 
     const { outputStream } = await graph.start({
       systemPrompt: systemPrompt,
@@ -842,23 +847,45 @@ ${conversationContext}`
 
     let responseText = ''
     let done = false
+    let hasContent = false
 
     while (!done) {
       const result = await outputStream.next()
       
       await result.processResponse({
         ContentStream: async (contentStream) => {
+          hasContent = true
           for await (const chunk of contentStream) {
             if (chunk.text) {
               responseText += chunk.text
+              console.log(`💬 Received text chunk: ${chunk.text.substring(0, 50)}...`)
             }
+          }
+        },
+        Content: (content) => {
+          hasContent = true
+          if (content.content) {
+            responseText += content.content
+            console.log(`💬 Received content: ${content.content.substring(0, 50)}...`)
           }
         },
         default: (data) => {
           if (data?.text) {
+            hasContent = true
             responseText += data.text
+            console.log(`💬 Received default text: ${data.text.substring(0, 50)}...`)
+          } else if (typeof data === 'string') {
+            hasContent = true
+            responseText += data
+            console.log(`💬 Received string: ${data.substring(0, 50)}...`)
+          } else {
+            console.log(`💬 Received unknown data type:`, typeof data, data)
           }
         },
+        error: (error) => {
+          console.error('❌ Graph error:', error)
+          throw error
+        }
       })
 
       done = result.done
@@ -866,8 +893,12 @@ ${conversationContext}`
 
     await graph.stop()
 
-    if (!responseText || responseText.trim().length === 0) {
-      return res.status(500).json({ error: 'No response generated' })
+    console.log(`💬 Final response text length: ${responseText.length}`)
+    console.log(`💬 Has content: ${hasContent}`)
+
+    if (!hasContent || !responseText || responseText.trim().length === 0) {
+      console.error('❌ No response generated from graph')
+      return res.status(500).json({ error: 'No response generated from AI' })
     }
 
     const cleanResponse = responseText.trim()

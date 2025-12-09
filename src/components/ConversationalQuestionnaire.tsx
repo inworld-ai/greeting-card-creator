@@ -132,6 +132,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   const sendMessage = async (userMessage: string) => {
     try {
+      console.log('📤 Sending message to backend:', { experienceType, userMessage, conversationHistory, answeredQuestions })
+      
       const response = await fetch(`${API_BASE_URL}/api/conversational-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,11 +149,19 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       })
 
       if (!response.ok) {
-        throw new Error('Failed to get conversational response')
+        const errorText = await response.text()
+        console.error('❌ Backend error:', errorText)
+        throw new Error(`Failed to get conversational response: ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('📥 Received response from backend:', data)
       const aiResponse = data.response || ''
+      
+      if (!aiResponse) {
+        console.error('❌ No response text from backend')
+        throw new Error('No response received from backend')
+      }
 
       // Add AI response to conversation history
       setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponse }])
