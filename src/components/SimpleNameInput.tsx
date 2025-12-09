@@ -48,6 +48,12 @@ function SimpleNameInput({ onSubmit, onBack, title, prompt }: SimpleNameInputPro
           <MicrophoneButton onTranscript={handleVoiceTranscript} />
         </div>
         
+      </div>
+      
+      <div className="name-input-actions">
+        <button onClick={onBack} className="back-button">
+          ← Back
+        </button>
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}
@@ -56,10 +62,6 @@ function SimpleNameInput({ onSubmit, onBack, title, prompt }: SimpleNameInputPro
           Continue →
         </button>
       </div>
-      
-      <button onClick={onBack} className="back-button">
-        ← Back
-      </button>
     </div>
   )
 }

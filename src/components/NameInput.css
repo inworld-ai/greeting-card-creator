@@ -10,6 +10,13 @@
   flex-direction: column;
 }
 
+.name-input-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
 .name-input-field {
   padding: 18px 20px;
   font-size: 1.2rem;
@@ -49,18 +56,16 @@
 }
 
 .submit-button {
-  padding: 18px 28px;
-  font-size: 1.1rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
   font-weight: 600;
   background: #dc3545;
   color: #ffffff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   font-family: 'Georgia', serif;
-  position: relative;
-  overflow: hidden;
 }
 
 .submit-button:hover:not(:disabled) {
@@ -75,23 +80,22 @@
 }
 
 .submit-button:disabled {
-  opacity: 0.5;
+  background-color: #ccc;
   cursor: not-allowed;
-  filter: grayscale(0.3);
+  opacity: 0.6;
 }
 
 .back-button {
-  padding: 12px 28px;
+  padding: 0.75rem 1.5rem;
   font-size: 1rem;
+  font-weight: 600;
   background: #6c757d;
   color: #ffffff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  align-self: flex-start;
+  transition: all 0.2s ease;
   font-family: 'Georgia', serif;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .back-button:hover {
@@ -102,6 +106,7 @@
 
 .back-button:active {
   transform: translateY(0);
+  background: #545b62;
 }
 
 .voice-selection {

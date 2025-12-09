@@ -72,6 +72,12 @@ function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
           </div>
         </div>
         
+      </div>
+      
+      <div className="name-input-actions">
+        <button onClick={onBack} className="back-button">
+          ← Go Back
+        </button>
         <button
           onClick={handleSubmit}
           disabled={!name.trim() || !voiceId}
@@ -80,10 +86,6 @@ function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
           Create My Christmas Story
         </button>
       </div>
-      
-      <button onClick={onBack} className="back-button">
-        ← Go Back
-      </button>
     </div>
   )
 }
