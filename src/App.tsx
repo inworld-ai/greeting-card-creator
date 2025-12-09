@@ -2,6 +2,7 @@ import { useState } from 'react'
 import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
+import VoiceSelection from './components/VoiceSelection'
 import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
 import WishListQuestionnaire from './components/WishListQuestionnaire'
 import CustomNarrator from './components/CustomNarrator'
@@ -46,6 +47,8 @@ type Step =
   | 'name-input' 
   | 'year-review-questionnaire'
   | 'wish-list-questionnaire'
+  | 'year-review-voice-selection'
+  | 'wish-list-voice-selection'
   | 'custom-narrator' 
   | 'image-upload'
   | 'generating' 
@@ -99,7 +102,7 @@ function App() {
       childName: 'You', // Year in review uses "You" instead of a name
       yearReviewAnswers: answers 
     }))
-    setStep('custom-narrator')
+    setStep('year-review-voice-selection')
   }
 
   const handleWishListSubmitted = (answers: {
@@ -112,7 +115,17 @@ function App() {
       childName: 'You', // Wish list uses "You" instead of a name
       wishListAnswers: answers 
     }))
-    setStep('custom-narrator')
+    setStep('wish-list-voice-selection')
+  }
+
+  const handleVoiceSelected = (voiceId: VoiceId | 'custom') => {
+    if (voiceId === 'custom') {
+      setStep('custom-narrator')
+    } else {
+      setStoryData(prev => ({ ...prev, voiceId }))
+      setFirstChunkText('')
+      setStep('image-upload')
+    }
   }
 
   const handleCustomNarratorSubmitted = (apiKey: string, voiceId: string) => {
@@ -179,16 +192,18 @@ function App() {
     if (step === 'name-input') return 'type-selection'
     if (step === 'year-review-questionnaire') return 'landing'
     if (step === 'wish-list-questionnaire') return 'landing'
+    if (step === 'year-review-voice-selection') return 'year-review-questionnaire'
+    if (step === 'wish-list-voice-selection') return 'wish-list-questionnaire'
     if (step === 'custom-narrator') {
       if (storyData.experienceType === 'story') return 'name-input'
-      if (storyData.experienceType === 'year-review') return 'year-review-questionnaire'
-      if (storyData.experienceType === 'wish-list') return 'wish-list-questionnaire'
+      if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
+      if (storyData.experienceType === 'wish-list') return 'wish-list-voice-selection'
     }
     if (step === 'image-upload') {
       if (storyData.customApiKey || storyData.customVoiceId) return 'custom-narrator'
       if (storyData.experienceType === 'story') return 'name-input'
-      if (storyData.experienceType === 'year-review') return 'custom-narrator'
-      if (storyData.experienceType === 'wish-list') return 'custom-narrator'
+      if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
+      if (storyData.experienceType === 'wish-list') return 'wish-list-voice-selection'
     }
     return 'landing'
   }
@@ -228,6 +243,22 @@ function App() {
           <WishListQuestionnaire
             onSubmit={handleWishListSubmitted}
             onBack={() => setStep('landing')}
+          />
+        )}
+
+        {step === 'year-review-voice-selection' && (
+          <VoiceSelection
+            onSubmit={handleVoiceSelected}
+            onBack={() => setStep('year-review-questionnaire')}
+            title="Choose a narrator voice for your year in review!"
+          />
+        )}
+
+        {step === 'wish-list-voice-selection' && (
+          <VoiceSelection
+            onSubmit={handleVoiceSelected}
+            onBack={() => setStep('wish-list-questionnaire')}
+            title="Choose a narrator voice for your wish list!"
           />
         )}
         
