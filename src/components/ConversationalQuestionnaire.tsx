@@ -77,10 +77,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         isProcessingUserInput = true
         console.log('User response:', transcript)
 
-        // Add user message to conversation history
-        setConversationHistory(prev => [...prev, { role: 'user', content: transcript }])
-
-        // Process the response (this will set isProcessing which will hide the listening indicator)
+        // Process the response with the updated conversation history
         try {
           await handleUserMessage(transcript)
         } finally {
@@ -180,17 +177,26 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     setIsProcessing(true)
     setCurrentResponse('')
     
-    try {
-      await sendMessage(userMessage)
-    } catch (error) {
-      console.error('Error handling user message:', error)
-      setIsProcessing(false)
-    }
+    // Update conversation history first, then send with updated history
+    setConversationHistory(prev => {
+      const updatedHistory: ConversationMessage[] = [...prev, { role: 'user' as const, content: userMessage }]
+      // Send message with updated history using functional update
+      sendMessage(userMessage, updatedHistory, answeredQuestions).catch((error: any) => {
+        console.error('Error sending message:', error)
+        setIsProcessing(false)
+      })
+      return updatedHistory
+    })
   }
 
-  const sendMessage = async (userMessage: string) => {
+  const sendMessage = async (userMessage: string, currentHistory: ConversationMessage[] = conversationHistory, currentAnswers: Record<string, string> = answeredQuestions) => {
     try {
-      console.log('📤 Sending message to backend:', { experienceType, userMessage, conversationHistory, answeredQuestions })
+      console.log('📤 Sending message to backend:', { 
+        experienceType, 
+        userMessage, 
+        conversationHistoryLength: currentHistory.length, 
+        answeredQuestions: Object.keys(currentAnswers) 
+      })
       
       const response = await fetch(`${API_BASE_URL}/api/conversational-chat`, {
         method: 'POST',
@@ -198,11 +204,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         body: JSON.stringify({
           experienceType,
           userMessage,
-          conversationHistory: conversationHistory.map(msg => ({
+          conversationHistory: currentHistory.map(msg => ({
             role: msg.role,
             content: msg.content
           })),
-          answeredQuestions
+          answeredQuestions: currentAnswers
         })
       })
 
@@ -221,32 +227,41 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         throw new Error('No response received from backend')
       }
 
-      // Add AI response to conversation history
-      setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponse }])
-      setCurrentResponse(aiResponse)
+      // Update conversation history and answered questions together
+      setConversationHistory(prev => {
+        const updatedHistory: ConversationMessage[] = [...prev, { role: 'assistant' as const, content: aiResponse }]
+        setCurrentResponse(aiResponse)
+        
+        // Check if an answer was detected and update answered questions
+        setAnsweredQuestions(prevAnswers => {
+          let updatedAnswers = prevAnswers
+          if (data.detectedAnswer && data.detectedQuestionKey) {
+            updatedAnswers = {
+              ...prevAnswers,
+              [data.detectedQuestionKey]: data.detectedAnswer
+            }
+            console.log(`✅ Answer detected for ${data.detectedQuestionKey}: ${data.detectedAnswer.substring(0, 50)}...`)
+            console.log(`📊 Progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
+          }
 
-      // Check if an answer was detected and update answered questions
-      let updatedAnswers = answeredQuestions
-      if (data.detectedAnswer && data.detectedQuestionKey) {
-        updatedAnswers = {
-          ...answeredQuestions,
-          [data.detectedQuestionKey]: data.detectedAnswer
-        }
-        setAnsweredQuestions(updatedAnswers)
-      }
-
-      // Check if all questions are answered
-      const allAnswered = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
-      if (allAnswered || (aiResponse.toLowerCase().includes('thank') && aiResponse.toLowerCase().includes('complete'))) {
-        if (!isComplete) {
-          setIsComplete(true)
-          // Wait a moment, then submit
-          setTimeout(() => {
-            handleSubmit()
-          }, 2000)
-        }
-        return
-      }
+          // Check if all questions are answered
+          const allAnswered = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
+          if (allAnswered || (aiResponse.toLowerCase().includes('thank') && aiResponse.toLowerCase().includes('complete'))) {
+            if (!isComplete) {
+              setIsComplete(true)
+              console.log('✅ All questions answered! Completing conversation...')
+              // Wait a moment, then submit
+              setTimeout(() => {
+                handleSubmit()
+              }, 2000)
+            }
+          }
+          
+          return updatedAnswers
+        })
+        
+        return updatedHistory
+      })
 
       // Get TTS audio for the response using Olivia voice
       // Use the ttsService which handles the WAV chunk parsing correctly
@@ -292,13 +307,18 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           console.error('❌ Audio playback error:', error)
           setIsProcessing(false)
           // In continuous mode, recognition should already be running
+          // Don't try to restart if it's already running
           if (!isComplete && recognitionRef.current && !isListening) {
             setTimeout(() => {
               try {
-                console.log('🎤 Restarting speech recognition after audio error')
+                // Check if recognition is already running before starting
                 recognitionRef.current?.start()
-              } catch (error) {
-                console.error('Error restarting recognition:', error)
+              } catch (error: any) {
+                if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                  console.log('🎤 Recognition already running, ignoring restart attempt')
+                } else {
+                  console.error('Error restarting recognition:', error)
+                }
               }
             }, 300)
           }
@@ -312,10 +332,13 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         if (!isComplete && recognitionRef.current && !isListening) {
           setTimeout(() => {
             try {
-              console.log('🎤 Restarting speech recognition after TTS error')
               recognitionRef.current?.start()
-            } catch (error) {
-              console.error('Error restarting recognition:', error)
+            } catch (error: any) {
+              if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                console.log('🎤 Recognition already running, ignoring restart attempt')
+              } else {
+                console.error('Error restarting recognition:', error)
+              }
             }
           }, 300)
         }

@@ -903,32 +903,65 @@ ${conversationContext}`
 
     const cleanResponse = responseText.trim()
 
-    // Determine if a question was answered based on the AI's response
-    // Check if the AI response indicates the user answered a question
+    // Determine if a question was answered based on the conversation flow
+    // More sophisticated detection: check if we have enough information about the current topic
     let detectedAnswer = null
     let detectedQuestionKey = null
     
     if (userMessage && userMessage.trim().length > 10 && nextQuestion) {
-      // Check if AI response suggests the question was answered
       const responseLower = cleanResponse.toLowerCase()
+      const userMessageLower = userMessage.toLowerCase()
       
-      // Check if response acknowledges the answer or moves to next question
-      const acknowledgesAnswer = responseLower.includes('thank') || 
-                                  responseLower.includes('great') ||
-                                  responseLower.includes('wonderful') ||
-                                  responseLower.includes('that\'s') ||
-                                  responseLower.includes('i see') ||
-                                  responseLower.includes('interesting')
+      // Check if AI is asking a follow-up about the SAME topic (not moving on)
+      const isFollowUp = responseLower.includes('what was') || 
+                        responseLower.includes('tell me more') ||
+                        responseLower.includes('can you tell me') ||
+                        responseLower.includes('what made') ||
+                        responseLower.includes('specific') ||
+                        responseLower.includes('particular') ||
+                        (responseLower.includes('?') && !responseLower.includes('next') && !responseLower.includes('another'))
       
+      // Check if AI is moving to the next topic
       const movesToNext = responseLower.includes('next') ||
                           responseLower.includes('another') ||
                           responseLower.includes('also') ||
-                          (answeredKeys.length > 0 && !responseLower.includes('?'))
+                          responseLower.includes('what\'s something new') ||
+                          responseLower.includes('what are you looking forward') ||
+                          (answeredKeys.length > 0 && !isFollowUp && !responseLower.includes('?'))
       
-      // If user gave a substantial response (20+ chars) and AI acknowledges or moves on, consider it answered
-      if (userMessage.length > 20 && (acknowledgesAnswer || movesToNext)) {
-        detectedAnswer = userMessage
+      // Check if AI is acknowledging and wrapping up the current topic
+      const acknowledgesAndWraps = (responseLower.includes('thank') || 
+                                    responseLower.includes('great') ||
+                                    responseLower.includes('wonderful') ||
+                                    responseLower.includes('lovely') ||
+                                    responseLower.includes('sounds')) &&
+                                   !isFollowUp
+      
+      // If user gave a substantial response AND AI is moving on (not asking follow-up), consider it answered
+      // OR if user has given multiple responses about the same topic, consider it answered
+      const userResponseCount = conversationHistory.filter(msg => 
+        msg.role === 'user' && 
+        conversationHistory.some(m => m.role === 'assistant' && m.content.includes(nextQuestion.question.substring(0, 20)))
+      ).length
+      
+      if (userMessage.length > 15 && (movesToNext || (acknowledgesAndWraps && userResponseCount >= 2))) {
+        // Collect all user responses about this topic
+        const topicResponses = conversationHistory
+          .filter((msg, idx) => {
+            // Get responses that came after the question was asked
+            const questionAsked = conversationHistory.some((m, i) => 
+              i < idx && 
+              m.role === 'assistant' && 
+              m.content.toLowerCase().includes(nextQuestion.question.substring(0, 20).toLowerCase())
+            )
+            return msg.role === 'user' && questionAsked
+          })
+          .map(msg => msg.content)
+          .concat(userMessage)
+        
+        detectedAnswer = topicResponses.join(' ')
         detectedQuestionKey = nextQuestion.key
+        console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount + 1} responses`)
       }
     }
 
