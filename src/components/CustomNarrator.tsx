@@ -238,8 +238,9 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         marginTop: '20px', 
         marginBottom: '20px',
         display: 'flex',
+        flexDirection: 'column',
         gap: '12px',
-        justifyContent: 'center'
+        alignItems: 'center'
       }}>
         <button
           onClick={() => {
@@ -286,7 +287,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           }}
         >
           <span style={{ 
-            color: !useVoiceClone ? '#ffffff' : '#333333',
+            color: !useVoiceClone ? '#ffffff' : '#ffffff',
             display: 'inline-block',
             width: '100%'
           }}>🔑 Use Existing Voice (Advanced)</span>
