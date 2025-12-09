@@ -61,33 +61,51 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
     recognition.onstart = () => {
       setIsListening(true)
+      console.log('🎤 Speech recognition started')
     }
 
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript.trim()
       console.log('User response:', transcript)
-      setIsListening(false)
+      
+      // Don't set isListening to false immediately - let it stay true until we start processing
+      // This prevents the UI from flickering
 
       // Add user message to conversation history
       setConversationHistory(prev => [...prev, { role: 'user', content: transcript }])
 
-      // Process the response
+      // Process the response (this will set isProcessing which will hide the listening indicator)
       await handleUserMessage(transcript)
     }
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error)
-      setIsListening(false)
-      if (event.error === 'no-speech') {
-        // Don't alert on no-speech, just allow user to try again
-        console.log('No speech detected, user can try again')
-      } else if (event.error === 'not-allowed') {
+      
+      // Only stop listening for certain errors
+      if (event.error === 'not-allowed') {
+        setIsListening(false)
         alert("Please allow microphone access to use voice input!")
+      } else if (event.error === 'network') {
+        // Network errors are often transient - don't stop listening immediately
+        console.log('Network error in speech recognition, will retry')
+        // Don't set isListening to false - let it retry
+      } else if (event.error === 'no-speech') {
+        // Don't stop listening on no-speech - user might still be speaking
+        console.log('No speech detected yet, continuing to listen')
+      } else {
+        // For other errors, stop listening
+        setIsListening(false)
       }
     }
 
     recognition.onend = () => {
-      setIsListening(false)
+      // Only stop listening if we're not processing (audio might have ended but we're still waiting for response)
+      if (!isProcessing) {
+        console.log('🎤 Speech recognition ended (not processing)')
+        setIsListening(false)
+      } else {
+        console.log('🎤 Speech recognition ended (but processing, keeping state)')
+      }
     }
 
     recognitionRef.current = recognition
@@ -219,13 +237,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           setIsProcessing(false)
           // Start listening after AI finishes speaking (unless conversation is complete)
           if (!isComplete && recognitionRef.current && !isListening) {
+            // Small delay to ensure audio cleanup is complete
             setTimeout(() => {
               try {
+                console.log('🎤 Starting speech recognition after audio ended')
                 recognitionRef.current?.start()
               } catch (error) {
                 console.error('Error starting recognition:', error)
+                // If start fails, reset listening state
+                setIsListening(false)
               }
-            }, 500)
+            }, 300)
           }
         }
 
@@ -236,11 +258,13 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           if (!isComplete && recognitionRef.current && !isListening) {
             setTimeout(() => {
               try {
+                console.log('🎤 Starting speech recognition after audio error')
                 recognitionRef.current?.start()
               } catch (error) {
                 console.error('Error starting recognition:', error)
+                setIsListening(false)
               }
-            }, 500)
+            }, 300)
           }
         }
 
@@ -252,11 +276,13 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         if (!isComplete && recognitionRef.current && !isListening) {
           setTimeout(() => {
             try {
+              console.log('🎤 Starting speech recognition after TTS error')
               recognitionRef.current?.start()
             } catch (error) {
               console.error('Error starting recognition:', error)
+              setIsListening(false)
             }
-          }, 500)
+          }, 300)
         }
       }
     } catch (error: any) {
@@ -334,20 +360,20 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             <div className="complete">
               <span>✅ Conversation Complete!</span>
             </div>
+          ) : isProcessing ? (
+            <div className="processing">
+              <span>⏳ Olivia is thinking...</span>
+            </div>
           ) : isListening ? (
             <div className="listening-active">
               <div className="pulse-ring"></div>
               <span>🎤 Listening...</span>
             </div>
-          ) : isProcessing ? (
-            <div className="processing">
-              <span>⏳ Olivia is thinking...</span>
-            </div>
           ) : (
             <button
               className="btn btn-primary start-listening-btn"
               onClick={handleManualStart}
-              disabled={isProcessing}
+              disabled={isProcessing || isComplete}
             >
               🎤 Speak Now
             </button>
