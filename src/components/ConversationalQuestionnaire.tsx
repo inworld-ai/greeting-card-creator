@@ -25,7 +25,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, string>>({})
   const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [currentResponse, setCurrentResponse] = useState('')
   const [isComplete, setIsComplete] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -175,7 +174,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   const handleUserMessage = async (userMessage: string) => {
     setIsProcessing(true)
-    setCurrentResponse('')
     
     // Update conversation history first, then send with updated history
     setConversationHistory(prev => {
@@ -390,7 +388,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       setIsProcessing(false)
       // Show error to user
       const errorMessage = error?.message || 'Failed to send message. Please try again.'
-      setCurrentResponse(`Error: ${errorMessage}`)
+      alert(`Error: ${errorMessage}`)
       // Don't alert on every error, just log it
       console.error('Error details:', error)
     }
