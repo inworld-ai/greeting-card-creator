@@ -246,14 +246,20 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
           // Check if all questions are answered
           const allAnswered = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
-          if (allAnswered || (aiResponse.toLowerCase().includes('thank') && aiResponse.toLowerCase().includes('complete'))) {
+          
+          // Check if Olivia is wrapping up the conversation
+          const isWrappingUp = aiResponse.toLowerCase().includes('i\'ll take your answers') ||
+                              aiResponse.toLowerCase().includes('create your') ||
+                              (aiResponse.toLowerCase().includes('thank') && 
+                               (aiResponse.toLowerCase().includes('year in review') || 
+                                aiResponse.toLowerCase().includes('wish list') ||
+                                aiResponse.toLowerCase().includes('create')))
+          
+          if (allAnswered || isWrappingUp) {
             if (!isComplete) {
               setIsComplete(true)
               console.log('✅ All questions answered! Completing conversation...')
-              // Wait a moment, then submit
-              setTimeout(() => {
-                handleSubmit()
-              }, 2000)
+              // Don't auto-submit - show Continue button instead
             }
           }
           
