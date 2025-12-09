@@ -349,11 +349,16 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleManualStart = () => {
+    // In continuous mode, this button should rarely be needed
+    // But if recognition stopped, restart it
     if (recognitionRef.current && !isListening && !isProcessing && !isComplete) {
       try {
+        console.log('🎤 Manually restarting speech recognition')
         recognitionRef.current.start()
+        setIsListening(true)
       } catch (error) {
         console.error('Error starting recognition:', error)
+        setIsListening(false)
       }
     }
   }
