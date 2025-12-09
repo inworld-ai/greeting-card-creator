@@ -1,33 +1,74 @@
 import { useState } from 'react'
+import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
+import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
+import WishListQuestionnaire from './components/WishListQuestionnaire'
 import CustomNarrator from './components/CustomNarrator'
 import StoryGeneration from './components/StoryGeneration'
+import YearInReviewGeneration from './components/YearInReviewGeneration'
+import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
 import './App.css'
 
 export type StoryType = string | null
+export type ExperienceType = 'story' | 'year-review' | 'wish-list'
 
 export type VoiceId = 'christmas_story_generator__male_elf_narrator' | 'christmas_story_generator__female_elf_narrator' | string
 
 export interface StoryData {
+  experienceType: ExperienceType
   type: StoryType
   childName: string
   voiceId: VoiceId
   storyText: string
   customApiKey?: string
   customVoiceId?: string
+  // For year-review
+  yearReviewAnswers?: {
+    favoriteMemory: string
+    newThing: string
+    lookingForward: string
+  }
+  // For wish-list
+  wishListAnswers?: {
+    dreamGift: string
+    experience: string
+    practicalNeed: string
+  }
 }
 
+type Step = 
+  | 'landing' 
+  | 'type-selection' 
+  | 'name-input' 
+  | 'year-review-questionnaire'
+  | 'wish-list-questionnaire'
+  | 'custom-narrator' 
+  | 'generating' 
+  | 'narration'
+
 function App() {
-  const [step, setStep] = useState<'type-selection' | 'name-input' | 'custom-narrator' | 'generating' | 'narration'>('type-selection')
+  const [step, setStep] = useState<Step>('landing')
   const [storyData, setStoryData] = useState<StoryData>({
+    experienceType: 'story',
     type: null,
     childName: '',
     voiceId: 'christmas_story_generator__male_elf_narrator',
     storyText: ''
   })
   const [firstChunkText, setFirstChunkText] = useState<string>('')
+
+  const handleExperienceSelected = (experience: ExperienceType) => {
+    setStoryData(prev => ({ ...prev, experienceType: experience }))
+    if (experience === 'story') {
+      setStep('type-selection')
+    } else if (experience === 'year-review') {
+      setStep('year-review-questionnaire')
+    } else if (experience === 'wish-list') {
+      setStep('wish-list-questionnaire')
+    }
+  }
 
   const handleStoryTypeSelected = (type: StoryType) => {
     setStoryData(prev => ({ ...prev, type }))
@@ -40,52 +81,78 @@ function App() {
       setStep('custom-narrator')
     } else {
       setStoryData(prev => ({ ...prev, childName: name, voiceId }))
-      setFirstChunkText('') // Reset first chunk
+      setFirstChunkText('')
       setStep('generating')
     }
   }
 
+  const handleYearReviewSubmitted = (answers: {
+    favoriteMemory: string
+    newThing: string
+    lookingForward: string
+  }) => {
+    setStoryData(prev => ({ 
+      ...prev, 
+      childName: 'You', // Year in review uses "You" instead of a name
+      yearReviewAnswers: answers 
+    }))
+    setStep('custom-narrator')
+  }
+
+  const handleWishListSubmitted = (answers: {
+    dreamGift: string
+    experience: string
+    practicalNeed: string
+  }) => {
+    setStoryData(prev => ({ 
+      ...prev, 
+      childName: 'You', // Wish list uses "You" instead of a name
+      wishListAnswers: answers 
+    }))
+    setStep('custom-narrator')
+  }
+
   const handleCustomNarratorSubmitted = (apiKey: string, voiceId: string) => {
-    // If apiKey is empty, it means voice was cloned via API (no user API key needed)
-    // If apiKey is provided, it's the manual entry flow
     setStoryData(prev => ({ 
       ...prev, 
       voiceId, 
-      customApiKey: apiKey || undefined, // Only set if provided
+      customApiKey: apiKey || undefined,
       customVoiceId: voiceId 
     }))
-    setFirstChunkText('') // Reset first chunk
+    setFirstChunkText('')
     setStep('generating')
   }
 
   const handleStoryGenerationError = () => {
-    // If we have a custom API key, go back to custom narrator page
-    // Otherwise, go back to name input
     if (storyData.customApiKey) {
       setStep('custom-narrator')
     } else {
-      setStep('name-input')
+      if (storyData.experienceType === 'story') {
+        setStep('name-input')
+      } else if (storyData.experienceType === 'year-review') {
+        setStep('year-review-questionnaire')
+      } else if (storyData.experienceType === 'wish-list') {
+        setStep('wish-list-questionnaire')
+      }
     }
   }
 
   const handleFirstChunkReady = (chunkText: string) => {
-    console.log('🟡 App: First chunk ready, moving to narration to start TTS early')
     setFirstChunkText(chunkText)
-    // Move to narration step early so TTS can start on first chunk
     setStep('narration')
   }
 
   const handleStoryGenerated = (storyText: string) => {
     setStoryData(prev => ({ ...prev, storyText }))
-    // If we're not already in narration (shouldn't happen, but safety check)
     if (step === 'generating') {
       setStep('narration')
     }
   }
 
   const handleRestart = () => {
-    setStep('type-selection')
+    setStep('landing')
     setStoryData({
+      experienceType: 'story',
       type: null,
       childName: '',
       voiceId: 'christmas_story_generator__male_elf_narrator',
@@ -94,13 +161,32 @@ function App() {
     setFirstChunkText('')
   }
 
+  const getBackStep = (): Step => {
+    if (step === 'name-input') return 'type-selection'
+    if (step === 'year-review-questionnaire') return 'landing'
+    if (step === 'wish-list-questionnaire') return 'landing'
+    if (step === 'custom-narrator') {
+      if (storyData.experienceType === 'story') return 'name-input'
+      if (storyData.experienceType === 'year-review') return 'year-review-questionnaire'
+      if (storyData.experienceType === 'wish-list') return 'wish-list-questionnaire'
+    }
+    return 'landing'
+  }
+
   return (
     <div className="app">
       <div className="app-container">
         <h1 className="app-title"><span className="app-title-content">A Christmas Story For You</span></h1>
         
+        {step === 'landing' && (
+          <LandingPage onSelectExperience={handleExperienceSelected} />
+        )}
+        
         {step === 'type-selection' && (
-          <StoryTypeSelection onSelect={handleStoryTypeSelected} />
+          <StoryTypeSelection 
+            onSelect={handleStoryTypeSelected}
+            onBack={() => setStep('landing')}
+          />
         )}
         
         {step === 'name-input' && (
@@ -110,24 +196,60 @@ function App() {
             onBack={() => setStep('type-selection')}
           />
         )}
+
+        {step === 'year-review-questionnaire' && (
+          <YearInReviewQuestionnaire
+            onSubmit={handleYearReviewSubmitted}
+            onBack={() => setStep('landing')}
+          />
+        )}
+
+        {step === 'wish-list-questionnaire' && (
+          <WishListQuestionnaire
+            onSubmit={handleWishListSubmitted}
+            onBack={() => setStep('landing')}
+          />
+        )}
         
         {step === 'custom-narrator' && (
           <CustomNarrator
-            childName={storyData.childName}
+            childName={storyData.childName || 'You'}
             onSubmit={handleCustomNarratorSubmitted}
-            onBack={() => setStep('name-input')}
+            onBack={() => setStep(getBackStep())}
           />
         )}
         
         {step === 'generating' && (
-          <StoryGeneration 
-            storyType={storyData.type!}
-            childName={storyData.childName}
-            onStoryGenerated={handleStoryGenerated}
-            onFirstChunkReady={handleFirstChunkReady}
-            customApiKey={storyData.customApiKey}
-            onError={handleStoryGenerationError}
-          />
+          <>
+            {storyData.experienceType === 'story' && (
+              <StoryGeneration 
+                storyType={storyData.type!}
+                childName={storyData.childName}
+                onStoryGenerated={handleStoryGenerated}
+                onFirstChunkReady={handleFirstChunkReady}
+                customApiKey={storyData.customApiKey}
+                onError={handleStoryGenerationError}
+              />
+            )}
+            {storyData.experienceType === 'year-review' && storyData.yearReviewAnswers && (
+              <YearInReviewGeneration
+                answers={storyData.yearReviewAnswers}
+                onStoryGenerated={handleStoryGenerated}
+                onFirstChunkReady={handleFirstChunkReady}
+                customApiKey={storyData.customApiKey}
+                onError={handleStoryGenerationError}
+              />
+            )}
+            {storyData.experienceType === 'wish-list' && storyData.wishListAnswers && (
+              <WishListGeneration
+                answers={storyData.wishListAnswers}
+                onListGenerated={handleStoryGenerated}
+                onFirstChunkReady={handleFirstChunkReady}
+                customApiKey={storyData.customApiKey}
+                onError={handleStoryGenerationError}
+              />
+            )}
+          </>
         )}
         
         {step === 'narration' && (
@@ -155,4 +277,3 @@ function App() {
 }
 
 export default App
-

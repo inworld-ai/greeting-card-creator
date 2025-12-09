@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import { createGraph, createTTSOnlyGraph, createTextOnlyGraph } from './graph.js'
+import { createGraph, createTTSOnlyGraph, createTextOnlyGraph, createYearInReviewGraph, createWishListGraph } from './graph.js'
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const wavEncoder = require('wav-encoder')
@@ -591,6 +591,332 @@ app.post('/api/generate-story', async (req, res) => {
       // Check if this is a custom API key (from request body)
       if (req.body?.apiKey) {
         errorMessage = 'Invalid authorization credentials. Please double-check your Inworld API Key. Make sure it\'s the correct Base64-encoded key copied from your Inworld workspace (API Keys → Copy the "Basic (Base64) key").'
+      } else {
+        errorMessage = 'Invalid API key. Please check your GOOGLE_API_KEY and INWORLD_API_KEY in the .env file.'
+      }
+    } else if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
+      statusCode = 429
+      errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+
+    res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
+// Year in Review generation endpoint
+app.post('/api/generate-year-review', async (req, res) => {
+  console.log('\n\n📝 ==========================================')
+  console.log('📝 YEAR IN REVIEW GENERATION ENDPOINT CALLED')
+  console.log('📝 ==========================================')
+  
+  try {
+    const { favoriteMemory, newThing, lookingForward, apiKey } = req.body
+
+    if (!favoriteMemory || !newThing || !lookingForward) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: favoriteMemory, newThing, lookingForward' 
+      })
+    }
+
+    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY
+    if (!selectedApiKey) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_API_KEY not set and no custom API key provided' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    const startTime = Date.now()
+    console.log(`📝 Generating year in review`)
+    console.log(`📝 Using ${apiKey ? 'custom' : 'default'} API key`)
+
+    const graph = createYearInReviewGraph(selectedApiKey)
+    const { outputStream } = await graph.start({
+      favoriteMemory,
+      newThing,
+      lookingForward,
+    })
+
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Transfer-Encoding', 'chunked')
+    
+    let storyText = ''
+    let firstChunkSent = false
+    let done = false
+
+    while (!done) {
+      const result = await outputStream.next()
+      
+      await result.processResponse({
+        ContentStream: async (contentStream) => {
+          for await (const chunk of contentStream) {
+            if (chunk.text) {
+              storyText += chunk.text
+              
+              if (!firstChunkSent && storyText.length >= 100) {
+                const sentenceEnd = storyText.search(/[.!?]\s+/)
+                const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
+                  ? storyText.substring(0, sentenceEnd + 1).trim()
+                  : storyText.substring(0, Math.min(200, storyText.length)).trim()
+                
+                if (firstChunk.length >= 80) {
+                  res.write(JSON.stringify({ 
+                    chunkIndex: 0, 
+                    text: firstChunk, 
+                    isFirst: true,
+                    isComplete: false 
+                  }) + '\n')
+                  firstChunkSent = true
+                }
+              }
+            }
+          }
+        },
+        default: (data) => {
+          if (data?.text) {
+            storyText += data.text
+          }
+        },
+      })
+
+      done = result.done
+    }
+
+    await graph.stop()
+
+    if (!storyText || storyText.trim().length === 0) {
+      return res.status(500).json({ error: 'No story generated' })
+    }
+
+    if (firstChunkSent) {
+      res.write(JSON.stringify({ 
+        chunkIndex: 1, 
+        text: storyText.trim(),
+        isFirst: false,
+        isComplete: true 
+      }) + '\n')
+    } else {
+      if (storyText.length >= 100) {
+        const sentenceEnd = storyText.search(/[.!?]\s+/)
+        const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
+          ? storyText.substring(0, sentenceEnd + 1).trim()
+          : storyText.substring(0, Math.min(200, storyText.length)).trim()
+        
+        if (firstChunk.length >= 80) {
+          res.write(JSON.stringify({ 
+            chunkIndex: 0, 
+            text: firstChunk, 
+            isFirst: true,
+            isComplete: false 
+          }) + '\n')
+          res.write(JSON.stringify({ 
+            chunkIndex: 1, 
+            text: storyText.trim(),
+            isFirst: false,
+            isComplete: true 
+          }) + '\n')
+        } else {
+          res.write(JSON.stringify({ 
+            chunkIndex: 0, 
+            text: storyText.trim(), 
+            isFirst: true,
+            isComplete: true 
+          }) + '\n')
+        }
+      } else {
+        res.write(JSON.stringify({ 
+          chunkIndex: 0, 
+          text: storyText.trim(), 
+          isFirst: true,
+          isComplete: true 
+        }) + '\n')
+      }
+    }
+    res.end()
+  } catch (error) {
+    console.error('❌ Error generating year in review:', error)
+    
+    let statusCode = 500
+    let errorMessage = 'Failed to generate year in review'
+
+    if (error.message?.includes('Invalid authorization') || 
+        error.message?.includes('authorization credentials') ||
+        error.message?.includes('API key') || 
+        error.message?.includes('authentication') ||
+        error.message?.includes('401')) {
+      statusCode = 401
+      if (req.body?.apiKey) {
+        errorMessage = 'Invalid authorization credentials. Please double-check your Inworld API Key.'
+      } else {
+        errorMessage = 'Invalid API key. Please check your GOOGLE_API_KEY and INWORLD_API_KEY in the .env file.'
+      }
+    } else if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
+      statusCode = 429
+      errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+
+    res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
+// Wish List generation endpoint
+app.post('/api/generate-wish-list', async (req, res) => {
+  console.log('\n\n🎁 ==========================================')
+  console.log('🎁 WISH LIST GENERATION ENDPOINT CALLED')
+  console.log('🎁 ==========================================')
+  
+  try {
+    const { dreamGift, experience, practicalNeed, apiKey } = req.body
+
+    if (!dreamGift || !experience || !practicalNeed) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: dreamGift, experience, practicalNeed' 
+      })
+    }
+
+    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY
+    if (!selectedApiKey) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_API_KEY not set and no custom API key provided' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    const startTime = Date.now()
+    console.log(`🎁 Generating wish list`)
+    console.log(`🎁 Using ${apiKey ? 'custom' : 'default'} API key`)
+
+    const graph = createWishListGraph(selectedApiKey)
+    const { outputStream } = await graph.start({
+      dreamGift,
+      experience,
+      practicalNeed,
+    })
+
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Transfer-Encoding', 'chunked')
+    
+    let listText = ''
+    let firstChunkSent = false
+    let done = false
+
+    while (!done) {
+      const result = await outputStream.next()
+      
+      await result.processResponse({
+        ContentStream: async (contentStream) => {
+          for await (const chunk of contentStream) {
+            if (chunk.text) {
+              listText += chunk.text
+              
+              if (!firstChunkSent && listText.length >= 100) {
+                const sentenceEnd = listText.search(/[.!?]\s+/)
+                const firstChunk = sentenceEnd > 0 && sentenceEnd < listText.length * 0.6 
+                  ? listText.substring(0, sentenceEnd + 1).trim()
+                  : listText.substring(0, Math.min(200, listText.length)).trim()
+                
+                if (firstChunk.length >= 80) {
+                  res.write(JSON.stringify({ 
+                    chunkIndex: 0, 
+                    text: firstChunk, 
+                    isFirst: true,
+                    isComplete: false 
+                  }) + '\n')
+                  firstChunkSent = true
+                }
+              }
+            }
+          }
+        },
+        default: (data) => {
+          if (data?.text) {
+            listText += data.text
+          }
+        },
+      })
+
+      done = result.done
+    }
+
+    await graph.stop()
+
+    if (!listText || listText.trim().length === 0) {
+      return res.status(500).json({ error: 'No wish list generated' })
+    }
+
+    if (firstChunkSent) {
+      res.write(JSON.stringify({ 
+        chunkIndex: 1, 
+        text: listText.trim(),
+        isFirst: false,
+        isComplete: true 
+      }) + '\n')
+    } else {
+      if (listText.length >= 100) {
+        const sentenceEnd = listText.search(/[.!?]\s+/)
+        const firstChunk = sentenceEnd > 0 && sentenceEnd < listText.length * 0.6 
+          ? listText.substring(0, sentenceEnd + 1).trim()
+          : listText.substring(0, Math.min(200, listText.length)).trim()
+        
+        if (firstChunk.length >= 80) {
+          res.write(JSON.stringify({ 
+            chunkIndex: 0, 
+            text: firstChunk, 
+            isFirst: true,
+            isComplete: false 
+          }) + '\n')
+          res.write(JSON.stringify({ 
+            chunkIndex: 1, 
+            text: listText.trim(),
+            isFirst: false,
+            isComplete: true 
+          }) + '\n')
+        } else {
+          res.write(JSON.stringify({ 
+            chunkIndex: 0, 
+            text: listText.trim(), 
+            isFirst: true,
+            isComplete: true 
+          }) + '\n')
+        }
+      } else {
+        res.write(JSON.stringify({ 
+          chunkIndex: 0, 
+          text: listText.trim(), 
+          isFirst: true,
+          isComplete: true 
+        }) + '\n')
+      }
+    }
+    res.end()
+  } catch (error) {
+    console.error('❌ Error generating wish list:', error)
+    
+    let statusCode = 500
+    let errorMessage = 'Failed to generate wish list'
+
+    if (error.message?.includes('Invalid authorization') || 
+        error.message?.includes('authorization credentials') ||
+        error.message?.includes('API key') || 
+        error.message?.includes('authentication') ||
+        error.message?.includes('401')) {
+      statusCode = 401
+      if (req.body?.apiKey) {
+        errorMessage = 'Invalid authorization credentials. Please double-check your Inworld API Key.'
       } else {
         errorMessage = 'Invalid API key. Please check your GOOGLE_API_KEY and INWORLD_API_KEY in the .env file.'
       }

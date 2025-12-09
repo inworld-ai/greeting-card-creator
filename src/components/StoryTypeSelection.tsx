@@ -6,6 +6,7 @@ import type { StoryType } from '../App'
 
 interface StoryTypeSelectionProps {
   onSelect: (type: StoryType) => void
+  onBack?: () => void
 }
 
 const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji: string; description: string }[] = [
@@ -14,7 +15,7 @@ const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji
   { value: 'Elf Workshop Visit', label: 'Elf Workshop Visit', emoji: '🧝', description: 'Helping the elves make toys for Christmas' },
 ]
 
-function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps) {
+function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   const [textInput, setTextInput] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -120,6 +121,18 @@ function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps) {
           ))}
         </div>
       </div>
+
+      {onBack && (
+        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+          <button
+            onClick={onBack}
+            className="btn btn-secondary"
+            style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}
+          >
+            ← Back
+          </button>
+        </div>
+      )}
     </div>
   )
 }
