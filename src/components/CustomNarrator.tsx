@@ -319,7 +319,7 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
               color: '#333',
               fontStyle: 'italic'
             }}>
-              {`"Hello, my name is ${childName}. I'm excited to share my Christmas story with you. This year has been wonderful, and I can't wait to tell you all about it. Thank you for listening!"`}
+              "Hi! I'm excited to share my Christmas creation with you. This year has been wonderful, and I can't wait to share the magic. Thank you for listening!"
             </div>
           </div>
 
