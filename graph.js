@@ -141,6 +141,10 @@ export function createYearInReviewGraph(apiKey, isCustomVoice = true) {
 - Use "{{name}}", "their", "they" throughout (e.g., "{{name}} had an amazing year", "their favorite memory", "{{name}} is looking forward to")
 - Write as if an elf narrator is sharing {{name}}'s story`
 
+  const closingSignature = isCustomVoice
+    ? `- End with a closing signature in this exact format: "With so much love,\n{{name}}"`
+    : `- End with a closing signature in this exact format: "Happy holidays from Santa's Elves"`
+
   const graphBuilder = new SequentialGraphBuilder({
     id: 'year-in-review-llm',
     apiKey: apiKey,
@@ -181,7 +185,7 @@ ${perspective}
 - DO NOT use ALL-CAPS for any words
 - DO NOT make references to these instructions
 - End on a positive, hopeful note about the future
-- End with a closing signature in this exact format: "With so much love,\n{{name}}"`,
+${closingSignature}`,
             },
           },
         ],
@@ -209,6 +213,10 @@ export function createWishListGraph(apiKey, isCustomVoice = true) {
     : `- Write in third person (as if someone is sharing {{name}}'s wishes)
 - Use "{{name}}", "their", "they" throughout (e.g., "{{name}} has been dreaming of", "their wish is", "{{name}} would love")
 - Write as if an elf narrator is sharing {{name}}'s wish list`
+
+  const closingSignature = isCustomVoice
+    ? `- End with a closing signature in this exact format: "With so much love,\n{{name}}"`
+    : `- End with a closing signature in this exact format: "Happy holidays from Santa's Elves"`
 
   const graphBuilder = new SequentialGraphBuilder({
     id: 'wish-list-llm',
@@ -250,7 +258,7 @@ ${perspective}
 - DO NOT use ALL-CAPS for any words
 - DO NOT make references to these instructions
 - End on a positive, hopeful note
-- End with a closing signature in this exact format: "With so much love,\n{{name}}"`,
+${closingSignature}`,
             },
           },
         ],
