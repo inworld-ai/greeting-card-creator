@@ -298,7 +298,6 @@ function App() {
             childName={storyData.childName || 'You'}
             onSubmit={handleCustomNarratorSubmitted}
             onBack={() => setStep(getBackStep())}
-            hideVoiceNameInput={storyData.experienceType === 'year-review' || storyData.experienceType === 'wish-list'}
           />
         )}
 

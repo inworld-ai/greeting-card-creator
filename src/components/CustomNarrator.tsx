@@ -5,10 +5,9 @@ interface CustomNarratorProps {
   childName: string
   onSubmit: (apiKey: string, voiceId: string) => void
   onBack: () => void
-  hideVoiceNameInput?: boolean // If true, auto-generate voice name instead of asking user
 }
 
-function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = false }: CustomNarratorProps) {
+function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
   const [apiKey, setApiKey] = useState('')
   const [voiceId, setVoiceId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +18,6 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState('')
   const [useVoiceClone, setUseVoiceClone] = useState(true) // Default to recording option
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -152,15 +150,8 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
       return
     }
 
-    // Auto-generate voice name if hideVoiceNameInput is true
-    const voiceName = hideVoiceNameInput 
-      ? `${childName}'s Voice` 
-      : displayName.trim()
-
-    if (!voiceName) {
-      setError('Please enter a name for your voice')
-      return
-    }
+    // Use the child's name for the voice name
+    const voiceName = `${childName}'s Voice`
 
     setIsProcessing(true)
     setError(null)
@@ -371,30 +362,14 @@ function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = fals
                 </div>
                 
                 <div style={{ marginTop: '20px' }}>
-                  {!hideVoiceNameInput && (
-                    <>
-                      <label className="voice-selection-label" style={{ marginBottom: '8px', display: 'block', textAlign: 'left' }}>
-                        Name Your Voice:
-                      </label>
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="e.g., My Storyteller Voice"
-                        className="name-input-field"
-                        style={{ width: '100%', marginBottom: '16px' }}
-                      />
-                    </>
-                  )}
-                  
                   <button
                     onClick={handleCloneVoice}
-                    disabled={isProcessing || (!hideVoiceNameInput && !displayName.trim())}
+                    disabled={isProcessing}
                     className="submit-button"
                     style={{ 
-                      marginTop: hideVoiceNameInput ? '0' : '10px',
-                      opacity: isProcessing || (!hideVoiceNameInput && !displayName.trim()) ? 0.6 : 1,
-                      cursor: isProcessing || (!hideVoiceNameInput && !displayName.trim()) ? 'not-allowed' : 'pointer'
+                      marginTop: '0',
+                      opacity: isProcessing ? 0.6 : 1,
+                      cursor: isProcessing ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {isProcessing ? '🔄 Cloning Voice...' : '✨ Clone Voice & Create Story'}
