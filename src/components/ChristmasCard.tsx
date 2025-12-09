@@ -8,7 +8,7 @@ interface ChristmasCardProps {
   childName: string
 }
 
-function ChristmasCard({ imageUrl, title, content, childName }: ChristmasCardProps) {
+function ChristmasCard({ imageUrl, title, content, childName: _childName }: ChristmasCardProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleCardClick = () => {

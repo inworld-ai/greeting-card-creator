@@ -126,7 +126,7 @@ function App() {
     setStep('image-upload')
   }
 
-  const handleImageSelected = (imageFile: File, imageUrl: string) => {
+  const handleImageSelected = (_imageFile: File, imageUrl: string) => {
     setStoryData(prev => ({ ...prev, imageUrl }))
     setStep('generating')
   }
