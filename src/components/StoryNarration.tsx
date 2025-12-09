@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
 import { shareStory } from '../services/shareService'
+import ChristmasCard from './ChristmasCard'
 import './StoryNarration.css'
 import './StoryGeneration.css'
 
@@ -69,6 +70,7 @@ interface StoryNarrationProps {
   childName: string
   voiceId: VoiceId
   storyType: StoryType
+  imageUrl?: string | null
   onRestart: () => void
   isProgressive?: boolean
   onFullStoryReady?: (fullStory: string) => void
@@ -77,7 +79,7 @@ interface StoryNarrationProps {
   isShared?: boolean
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -1096,30 +1098,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           .replace(/\n+Page\s+[12]:?\s*/gmi, '\n')
           .trim()
         
-        // Split into paragraphs for better formatting
-        const paragraphs = cleanedBody.split(/\n\n+/).filter(p => p.trim().length > 0)
+        const fullStoryText = title ? `Title: ${title}\n\n${cleanedBody}` : cleanedBody
         
         return (
-          <div className="story-text-container">
-            {title && (
-              <h2 className="story-title" style={{ 
-                fontSize: '1.8rem', 
-                fontWeight: 'bold', 
-                marginBottom: '1.5rem',
-                textAlign: 'center',
-                color: '#8b4513'
-              }}>
-                {title}
-              </h2>
-            )}
-            <div className="story-text">
-              {paragraphs.map((para, index) => (
-                <p key={index} style={{ marginBottom: '1rem', marginTop: index === 0 ? 0 : '1rem' }}>
-                  {para.trim()}
-                </p>
-              ))}
-            </div>
-          </div>
+          <ChristmasCard
+            imageUrl={imageUrl || null}
+            title={title || ''}
+            content={fullStoryText}
+            childName={childName}
+          />
         )
       })()}
 
@@ -1205,6 +1192,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                                childName,
                                voiceId,
                                storyType: _storyType,
+                               imageUrl,
                                customApiKey,
                                customVoiceId
                              })

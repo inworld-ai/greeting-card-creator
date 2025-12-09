@@ -1,0 +1,173 @@
+.christmas-card-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  perspective: 1000px;
+  padding: 2rem 1rem;
+}
+
+.christmas-card {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s ease;
+  cursor: pointer;
+}
+
+.christmas-card-container:not(.open) .christmas-card {
+  transform: rotateY(0deg);
+}
+
+.christmas-card-container.open .christmas-card {
+  transform: rotateY(180deg);
+}
+
+.card-front,
+.card-inside {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+.card-front {
+  transform: rotateY(0deg);
+}
+
+.card-inside {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-front-image {
+  width: 100%;
+  height: 70%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-front-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  height: 100%;
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.placeholder-text {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: 'Georgia', serif;
+}
+
+.card-front-text {
+  height: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+.card-front-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #212529;
+  margin: 0 0 0.5rem 0;
+  font-family: 'Georgia', serif;
+  text-align: center;
+}
+
+.card-front-hint {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0;
+  font-style: italic;
+}
+
+.card-inside-content {
+  padding: 2rem;
+  overflow-y: auto;
+  height: 100%;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+.card-inside-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212529;
+  margin: 0 0 1.5rem 0;
+  font-family: 'Georgia', serif;
+  text-align: center;
+  border-bottom: 2px solid #dc3545;
+  padding-bottom: 1rem;
+}
+
+.card-inside-story {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #212529;
+  font-family: 'Georgia', serif;
+}
+
+.story-paragraph {
+  margin-bottom: 1.5rem;
+  text-indent: 1.5rem;
+}
+
+.story-paragraph:first-child {
+  text-indent: 0;
+}
+
+@media (max-width: 768px) {
+  .christmas-card-container {
+    padding: 1rem;
+  }
+
+  .card-front-title {
+    font-size: 1.25rem;
+  }
+
+  .card-inside-content {
+    padding: 1.5rem;
+  }
+
+  .card-inside-title {
+    font-size: 1.5rem;
+  }
+
+  .card-inside-story {
+    font-size: 1rem;
+  }
+
+  .placeholder-icon {
+    font-size: 3rem;
+  }
+
+  .placeholder-text {
+    font-size: 1.25rem;
+  }
+}
+

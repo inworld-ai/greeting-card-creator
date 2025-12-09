@@ -1118,7 +1118,7 @@ app.post('/api/generate-story-audio', async (req, res) => {
 // Share story endpoint
 app.post('/api/share-story', async (req, res) => {
   try {
-    const { storyText, childName, voiceId, storyType, customApiKey, customVoiceId } = req.body
+    const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId } = req.body
 
     if (!storyText) {
       return res.status(400).json({ error: 'Missing required field: storyText' })
@@ -1133,6 +1133,7 @@ app.post('/api/share-story', async (req, res) => {
       childName,
       voiceId,
       storyType,
+      imageUrl: imageUrl || null,
       customApiKey,
       customVoiceId,
       createdAt: new Date().toISOString()

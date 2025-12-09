@@ -17,6 +17,7 @@ function SharedStory() {
     childName: string
     voiceId: VoiceId
     storyType: string | null
+    imageUrl?: string | null
     customApiKey?: string
     customVoiceId?: string
   } | null>(null)
@@ -36,6 +37,7 @@ function SharedStory() {
           childName: data.childName,
           voiceId: data.voiceId as VoiceId,
           storyType: data.storyType,
+          imageUrl: data.imageUrl,
           customApiKey: data.customApiKey,
           customVoiceId: data.customVoiceId
         })
@@ -111,6 +113,7 @@ function SharedStory() {
           childName={storyData.childName}
           voiceId={storyData.voiceId}
           storyType={storyData.storyType}
+          imageUrl={storyData.imageUrl}
           onRestart={handleRestart}
           isProgressive={false}
           customApiKey={storyData.customApiKey}

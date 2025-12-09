@@ -6,6 +6,7 @@ export interface ShareStoryData {
   childName: string
   voiceId: string
   storyType: string | null
+  imageUrl?: string | null
   customApiKey?: string
   customVoiceId?: string
 }

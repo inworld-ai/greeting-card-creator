@@ -5,6 +5,7 @@ import NameInput from './components/NameInput'
 import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
 import WishListQuestionnaire from './components/WishListQuestionnaire'
 import CustomNarrator from './components/CustomNarrator'
+import ImageUpload from './components/ImageUpload'
 import StoryGeneration from './components/StoryGeneration'
 import YearInReviewGeneration from './components/YearInReviewGeneration'
 import WishListGeneration from './components/WishListGeneration'
@@ -22,6 +23,7 @@ export interface StoryData {
   childName: string
   voiceId: VoiceId
   storyText: string
+  imageUrl?: string | null
   customApiKey?: string
   customVoiceId?: string
   // For year-review
@@ -45,6 +47,7 @@ type Step =
   | 'year-review-questionnaire'
   | 'wish-list-questionnaire'
   | 'custom-narrator' 
+  | 'image-upload'
   | 'generating' 
   | 'narration'
 
@@ -82,7 +85,7 @@ function App() {
     } else {
       setStoryData(prev => ({ ...prev, childName: name, voiceId }))
       setFirstChunkText('')
-      setStep('generating')
+      setStep('image-upload')
     }
   }
 
@@ -120,6 +123,16 @@ function App() {
       customVoiceId: voiceId 
     }))
     setFirstChunkText('')
+    setStep('image-upload')
+  }
+
+  const handleImageSelected = (imageFile: File, imageUrl: string) => {
+    setStoryData(prev => ({ ...prev, imageUrl }))
+    setStep('generating')
+  }
+
+  const handleImageSkipped = () => {
+    setStoryData(prev => ({ ...prev, imageUrl: null }))
     setStep('generating')
   }
 
@@ -156,7 +169,8 @@ function App() {
       type: null,
       childName: '',
       voiceId: 'christmas_story_generator__male_elf_narrator',
-      storyText: ''
+      storyText: '',
+      imageUrl: null
     })
     setFirstChunkText('')
   }
@@ -169,6 +183,12 @@ function App() {
       if (storyData.experienceType === 'story') return 'name-input'
       if (storyData.experienceType === 'year-review') return 'year-review-questionnaire'
       if (storyData.experienceType === 'wish-list') return 'wish-list-questionnaire'
+    }
+    if (step === 'image-upload') {
+      if (storyData.customApiKey || storyData.customVoiceId) return 'custom-narrator'
+      if (storyData.experienceType === 'story') return 'name-input'
+      if (storyData.experienceType === 'year-review') return 'custom-narrator'
+      if (storyData.experienceType === 'wish-list') return 'custom-narrator'
     }
     return 'landing'
   }
@@ -218,6 +238,14 @@ function App() {
             onBack={() => setStep(getBackStep())}
           />
         )}
+
+        {step === 'image-upload' && (
+          <ImageUpload
+            onImageSelected={handleImageSelected}
+            onSkip={handleImageSkipped}
+            onBack={() => setStep(getBackStep())}
+          />
+        )}
         
         {step === 'generating' && (
           <>
@@ -258,6 +286,7 @@ function App() {
             childName={storyData.childName}
             voiceId={storyData.voiceId}
             storyType={storyData.type}
+            imageUrl={storyData.imageUrl}
             onRestart={handleRestart}
             isProgressive={!!firstChunkText && !storyData.storyText}
             onFullStoryReady={handleStoryGenerated}

@@ -1,0 +1,126 @@
+.image-upload {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.image-upload-intro {
+  font-size: 1.1rem;
+  color: #495057;
+  text-align: center;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.image-upload-area {
+  margin-bottom: 2rem;
+}
+
+.image-upload-dropzone {
+  border: 3px dashed #dee2e6;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.image-upload-dropzone:hover {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.upload-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #212529;
+  margin: 0.5rem 0;
+  font-family: 'Georgia', serif;
+}
+
+.upload-hint {
+  font-size: 0.95rem;
+  color: #6c757d;
+  margin: 0.25rem 0;
+}
+
+.upload-requirements {
+  font-size: 0.85rem;
+  color: #adb5bd;
+  margin-top: 0.5rem;
+}
+
+.image-preview-container {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.image-preview {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 400px;
+  object-fit: contain;
+  background-color: #f8f9fa;
+}
+
+.btn-remove-image {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(220, 53, 69, 0.9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-remove-image:hover {
+  background-color: rgba(220, 53, 69, 1);
+}
+
+.image-upload-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.image-upload-actions .btn {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .image-upload {
+    padding: 1.5rem 1rem;
+  }
+
+  .image-upload-intro {
+    font-size: 1rem;
+  }
+
+  .image-upload-dropzone {
+    padding: 2rem 1.5rem;
+  }
+
+  .upload-icon {
+    font-size: 3rem;
+  }
+
+  .upload-text {
+    font-size: 1.1rem;
+  }
+}
+
