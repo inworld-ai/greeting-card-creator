@@ -1213,11 +1213,10 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                          className="share-story-button"
                          style={{ order: 2 }}
                        >
-                         {isSharing ? 'Sharing...' : 'Share Story 🎁'}
+                         {isSharing ? 'Sharing...' : 'Share 🎁'}
               </button>
                      ) : (
                        <div className="share-success" style={{ order: 2 }}>
-                         <p>Story shared! Link copied to clipboard:</p>
                          <input 
                            type="text" 
                            value={shareUrl} 
@@ -1260,7 +1259,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                    className="restart-button"
                    style={{ order: 3 }}
                  >
-                   Create Another Christmas Story
+                   Make Another Christmas Creation
                  </button>
                </div>
     </div>
