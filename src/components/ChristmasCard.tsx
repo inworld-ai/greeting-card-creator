@@ -20,7 +20,7 @@ function ChristmasCard({ imageUrl, title, content, childName: _childName }: Chri
   // Extract title from content if it starts with "Title: "
   const displayTitle = title || (content.startsWith('Title: ') 
     ? content.split('\n')[0].replace('Title: ', '')
-    : 'A Christmas Story For You')
+    : 'A Christmas Creation From You')
 
   // Remove title from content if it's in the content
   const displayContent = content.startsWith('Title: ')
