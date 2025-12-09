@@ -55,71 +55,105 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }
 
     const recognition = new SpeechRecognition()
-    recognition.continuous = false
+    recognition.continuous = true  // Keep microphone open continuously
     recognition.interimResults = false
     recognition.lang = 'en-US'
 
+    let isProcessingUserInput = false  // Flag to prevent processing duplicate results
+
     recognition.onstart = () => {
       setIsListening(true)
-      console.log('🎤 Speech recognition started')
+      console.log('🎤 Speech recognition started (continuous mode)')
     }
 
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript.trim()
-      console.log('User response:', transcript)
+      // In continuous mode, we get results as the user speaks
+      // Get the most recent result
+      const resultIndex = event.results.length - 1
+      const transcript = event.results[resultIndex][0].transcript.trim()
       
-      // Don't set isListening to false immediately - let it stay true until we start processing
-      // This prevents the UI from flickering
+      // Only process if we have a transcript and we're not already processing
+      if (transcript && !isProcessingUserInput && !isProcessing && !isComplete) {
+        isProcessingUserInput = true
+        console.log('User response:', transcript)
 
-      // Add user message to conversation history
-      setConversationHistory(prev => [...prev, { role: 'user', content: transcript }])
+        // Add user message to conversation history
+        setConversationHistory(prev => [...prev, { role: 'user', content: transcript }])
 
-      // Process the response (this will set isProcessing which will hide the listening indicator)
-      await handleUserMessage(transcript)
+        // Process the response (this will set isProcessing which will hide the listening indicator)
+        try {
+          await handleUserMessage(transcript)
+        } finally {
+          // Reset flag after processing completes
+          isProcessingUserInput = false
+        }
+      }
     }
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error)
       
-      // Only stop listening for certain errors
+      // Only stop listening for critical errors
       if (event.error === 'not-allowed') {
         setIsListening(false)
         alert("Please allow microphone access to use voice input!")
+        recognition.stop()
       } else if (event.error === 'network') {
-        // Network errors are often transient - don't stop listening immediately
-        console.log('Network error in speech recognition, will retry')
-        // Don't set isListening to false - let it retry
+        // Network errors are often transient - log but keep trying
+        console.log('Network error in speech recognition, continuing to listen')
       } else if (event.error === 'no-speech') {
-        // Don't stop listening on no-speech - user might still be speaking
+        // No-speech is normal in continuous mode - just continue listening
         console.log('No speech detected yet, continuing to listen')
       } else {
-        // For other errors, stop listening
-        setIsListening(false)
+        // For other errors, log but try to continue
+        console.log(`Speech recognition error: ${event.error}, attempting to continue`)
       }
     }
 
     recognition.onend = () => {
-      // Only stop listening if we're not processing (audio might have ended but we're still waiting for response)
-      if (!isProcessing) {
-        console.log('🎤 Speech recognition ended (not processing)')
+      // In continuous mode, onend should rarely fire unless there's an error
+      // If it does fire and we're not complete, try to restart
+      if (!isComplete && !isProcessing) {
+        console.log('🎤 Speech recognition ended unexpectedly, restarting...')
+        setTimeout(() => {
+          try {
+            recognition.start()
+          } catch (error) {
+            console.error('Error restarting recognition:', error)
+            setIsListening(false)
+          }
+        }, 500)
+      } else if (isComplete) {
+        console.log('🎤 Speech recognition ended (conversation complete)')
         setIsListening(false)
-      } else {
-        console.log('🎤 Speech recognition ended (but processing, keeping state)')
       }
     }
 
     recognitionRef.current = recognition
 
-    // Start the conversation
+    // Start the conversation and begin continuous listening
     startConversation()
+    
+    // Start continuous recognition immediately
+    setTimeout(() => {
+      try {
+        recognition.start()
+        console.log('🎤 Started continuous speech recognition')
+      } catch (error) {
+        console.error('Error starting initial recognition:', error)
+      }
+    }, 1000)  // Small delay to ensure component is fully mounted
 
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop()
+        setIsListening(false)
       }
       if (audioRef.current) {
         audioRef.current.pause()
-        URL.revokeObjectURL(audioRef.current.src)
+        if (audioRef.current.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audioRef.current.src)
+        }
         audioRef.current = null
       }
     }
@@ -235,34 +269,36 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
         audio.onended = () => {
           setIsProcessing(false)
-          // Start listening after AI finishes speaking (unless conversation is complete)
-          if (!isComplete && recognitionRef.current && !isListening) {
-            // Small delay to ensure audio cleanup is complete
-            setTimeout(() => {
-              try {
-                console.log('🎤 Starting speech recognition after audio ended')
-                recognitionRef.current?.start()
-              } catch (error) {
-                console.error('Error starting recognition:', error)
-                // If start fails, reset listening state
-                setIsListening(false)
-              }
-            }, 300)
+          // In continuous mode, recognition should already be running
+          // Just ensure it's still active
+          if (!isComplete && recognitionRef.current) {
+            if (!isListening) {
+              // If somehow recognition stopped, restart it
+              setTimeout(() => {
+                try {
+                  console.log('🎤 Restarting speech recognition after audio ended')
+                  recognitionRef.current?.start()
+                } catch (error) {
+                  console.error('Error restarting recognition:', error)
+                }
+              }, 300)
+            } else {
+              console.log('🎤 Speech recognition still active after audio ended')
+            }
           }
         }
 
         audio.onerror = (error) => {
           console.error('❌ Audio playback error:', error)
           setIsProcessing(false)
-          // If audio fails, still allow listening
+          // In continuous mode, recognition should already be running
           if (!isComplete && recognitionRef.current && !isListening) {
             setTimeout(() => {
               try {
-                console.log('🎤 Starting speech recognition after audio error')
+                console.log('🎤 Restarting speech recognition after audio error')
                 recognitionRef.current?.start()
               } catch (error) {
-                console.error('Error starting recognition:', error)
-                setIsListening(false)
+                console.error('Error restarting recognition:', error)
               }
             }, 300)
           }
@@ -272,15 +308,14 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       } catch (ttsError: any) {
         console.error('❌ Error generating TTS:', ttsError)
         setIsProcessing(false)
-        // If TTS fails, still allow listening
+        // In continuous mode, recognition should already be running
         if (!isComplete && recognitionRef.current && !isListening) {
           setTimeout(() => {
             try {
-              console.log('🎤 Starting speech recognition after TTS error')
+              console.log('🎤 Restarting speech recognition after TTS error')
               recognitionRef.current?.start()
             } catch (error) {
-              console.error('Error starting recognition:', error)
-              setIsListening(false)
+              console.error('Error restarting recognition:', error)
             }
           }, 300)
         }
