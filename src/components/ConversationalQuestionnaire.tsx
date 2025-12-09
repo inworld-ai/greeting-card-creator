@@ -428,6 +428,13 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           {isComplete ? (
             <div className="complete">
               <span>✅ Conversation Complete!</span>
+              <button
+                className="btn btn-primary continue-btn"
+                onClick={handleSubmit}
+                style={{ marginTop: '16px', display: 'block', margin: '16px auto 0' }}
+              >
+                Continue →
+              </button>
             </div>
           ) : isProcessing ? (
             <div className="processing">
