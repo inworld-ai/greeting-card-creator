@@ -701,6 +701,229 @@ Generate a single, natural, conversational question that asks about this topic. 
   }
 })
 
+// Conversational chat endpoint - maintains conversation state and handles back-and-forth dialogue
+app.post('/api/conversational-chat', async (req, res) => {
+  console.log('\n\n💬 ==========================================')
+  console.log('💬 CONVERSATIONAL CHAT ENDPOINT CALLED')
+  console.log('💬 ==========================================')
+  
+  try {
+    const { 
+      experienceType, 
+      userMessage, 
+      conversationHistory = [],
+      answeredQuestions = {}
+    } = req.body
+
+    if (!experienceType) {
+      return res.status(400).json({ 
+        error: 'Missing required field: experienceType' 
+      })
+    }
+
+    if (!process.env.INWORLD_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_API_KEY not set' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    // Create a custom graph for conversational chat
+    const {
+      RemoteLLMChatNode,
+      SequentialGraphBuilder,
+    } = require('@inworld/runtime/graph');
+
+    const graphBuilder = new SequentialGraphBuilder({
+      id: 'conversational-chat',
+      apiKey: process.env.INWORLD_API_KEY,
+      enableRemoteConfig: false,
+      nodes: [
+        new RemoteLLMChatNode({
+          provider: 'google',
+          modelName: 'gemini-2.5-flash-lite',
+          stream: true,
+          messageTemplates: [
+            {
+              role: 'system',
+              content: {
+                type: 'template',
+                template: '{{systemPrompt}}',
+              },
+            },
+            {
+              role: 'user',
+              content: {
+                type: 'template',
+                template: '{{userMessage}}',
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    const graph = graphBuilder.build()
+
+    // Define the three questions based on experience type
+    const questions = experienceType === 'year-review'
+      ? [
+          { key: 'favoriteMemory', question: "What was your favorite memory or adventure from 2025?" },
+          { key: 'newThing', question: "What's something new you tried or learned in 2025?" },
+          { key: 'lookingForward', question: "What are you most looking forward to or hoping for in 2026?" }
+        ]
+      : [
+          { key: 'dreamGift', question: "What's the one gift you've been thinking about all year, and why does it matter to you?" },
+          { key: 'experience', question: "Is there something you'd love to experience rather than receive? (like a trip, concert, or special dinner)" },
+          { key: 'practicalNeed', question: "What's something practical you actually need but wouldn't buy for yourself?" }
+        ]
+
+    // Build conversation context
+    let conversationContext = ''
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationContext = '\n\nConversation so far:\n'
+      conversationHistory.forEach((item, index) => {
+        conversationContext += `${index + 1}. ${item.role === 'assistant' ? 'You' : 'User'}: ${item.content}\n`
+      })
+    }
+
+    // Build answered questions context
+    let answeredContext = ''
+    const answeredKeys = Object.keys(answeredQuestions)
+    if (answeredKeys.length > 0) {
+      answeredContext = '\n\nQuestions already answered:\n'
+      answeredKeys.forEach(key => {
+        const question = questions.find(q => q.key === key)
+        if (question) {
+          answeredContext += `- ${question.question}: ${answeredQuestions[key]}\n`
+        }
+      })
+    }
+
+    // Determine which questions still need to be answered
+    const remainingQuestions = questions.filter(q => !answeredQuestions[q.key])
+    const nextQuestion = remainingQuestions[0]
+
+    // Build system prompt
+    const systemPrompt = `You are Olivia, a warm, friendly, and conversational AI assistant conducting a personalized interview. You're having a natural, flowing conversation with someone, not conducting a formal questionnaire.
+
+Your goal is to gather information about three topics through natural conversation:
+${questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}
+
+IMPORTANT GUIDELINES:
+- Be warm, friendly, and conversational - like talking to a friend
+- Ask questions naturally and follow up if you need clarification
+- Don't be too forceful - let the conversation flow naturally
+- If the user gives a brief answer, ask a gentle follow-up question to get more detail
+- If the user asks a question, answer it naturally and then continue with the interview
+- Once you have enough information about a topic, smoothly transition to the next question
+- Don't rush - take your time to have a real conversation
+- Keep your responses concise (1-2 sentences typically)
+- If this is the first message and no conversation has started, begin by introducing yourself warmly and asking the first question
+- If all three questions have been answered, thank them warmly and let them know the conversation is complete
+
+${answeredContext}
+
+${nextQuestion ? `Next question to ask: "${nextQuestion.question}"` : 'All questions have been answered.'}
+
+${conversationContext}`
+
+    const userPrompt = userMessage || "Hello, let's start the conversation!"
+
+    const { outputStream } = await graph.start({
+      systemPrompt: systemPrompt,
+      userMessage: userPrompt
+    })
+
+    let responseText = ''
+    let done = false
+
+    while (!done) {
+      const result = await outputStream.next()
+      
+      await result.processResponse({
+        ContentStream: async (contentStream) => {
+          for await (const chunk of contentStream) {
+            if (chunk.text) {
+              responseText += chunk.text
+            }
+          }
+        },
+        default: (data) => {
+          if (data?.text) {
+            responseText += data.text
+          }
+        },
+      })
+
+      done = result.done
+    }
+
+    await graph.stop()
+
+    if (!responseText || responseText.trim().length === 0) {
+      return res.status(500).json({ error: 'No response generated' })
+    }
+
+    const cleanResponse = responseText.trim()
+
+    // Determine if a question was answered based on the AI's response
+    // Check if the AI response indicates the user answered a question
+    let detectedAnswer = null
+    let detectedQuestionKey = null
+    
+    if (userMessage && userMessage.trim().length > 10 && nextQuestion) {
+      // Check if AI response suggests the question was answered
+      const responseLower = cleanResponse.toLowerCase()
+      
+      // Check if response acknowledges the answer or moves to next question
+      const acknowledgesAnswer = responseLower.includes('thank') || 
+                                  responseLower.includes('great') ||
+                                  responseLower.includes('wonderful') ||
+                                  responseLower.includes('that\'s') ||
+                                  responseLower.includes('i see') ||
+                                  responseLower.includes('interesting')
+      
+      const movesToNext = responseLower.includes('next') ||
+                          responseLower.includes('another') ||
+                          responseLower.includes('also') ||
+                          (answeredKeys.length > 0 && !responseLower.includes('?'))
+      
+      // If user gave a substantial response (20+ chars) and AI acknowledges or moves on, consider it answered
+      if (userMessage.length > 20 && (acknowledgesAnswer || movesToNext)) {
+        detectedAnswer = userMessage
+        detectedQuestionKey = nextQuestion.key
+      }
+    }
+
+    console.log(`✅ Generated conversational response: ${cleanResponse.substring(0, 100)}...`)
+    if (detectedAnswer) {
+      console.log(`✅ Detected answer for question: ${detectedQuestionKey}`)
+    }
+
+    return res.status(200).json({ 
+      response: cleanResponse,
+      detectedAnswer: detectedAnswer,
+      detectedQuestionKey: detectedQuestionKey
+    })
+  } catch (error) {
+    console.error('❌ Error in conversational chat:', error)
+    const statusCode = error.statusCode || 500
+    let errorMessage = 'Internal server error'
+    
+    if (error.message) {
+      errorMessage = error.message
+    }
+
+    res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
 // Year in Review generation endpoint
 app.post('/api/generate-year-review', async (req, res) => {
   console.log('\n\n📝 ==========================================')

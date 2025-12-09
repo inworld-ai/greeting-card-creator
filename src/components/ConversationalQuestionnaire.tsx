@@ -14,12 +14,18 @@ interface ConversationalQuestionnaireProps {
   onBack: () => void
 }
 
+interface ConversationMessage {
+  role: 'assistant' | 'user'
+  content: string
+}
+
 function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: ConversationalQuestionnaireProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
+  const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, string>>({})
   const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [currentQuestionText, setCurrentQuestionText] = useState('')
+  const [currentResponse, setCurrentResponse] = useState('')
+  const [isComplete, setIsComplete] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   
@@ -28,38 +34,14 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   const questions = experienceType === 'year-review'
     ? [
-        {
-          key: 'favoriteMemory',
-          question: "What was your favorite memory or adventure from 2025?",
-          prompt: "Ask the user about their favorite memory or adventure from 2025 in a warm, conversational way."
-        },
-        {
-          key: 'newThing',
-          question: "What's something new you tried or learned in 2025?",
-          prompt: "Ask the user about something new they tried or learned in 2025 in a friendly, encouraging way."
-        },
-        {
-          key: 'lookingForward',
-          question: "What are you most looking forward to or hoping for in 2026?",
-          prompt: "Ask the user what they're most looking forward to or hoping for in 2026 in an enthusiastic, positive way."
-        }
+        { key: 'favoriteMemory', question: "What was your favorite memory or adventure from 2025?" },
+        { key: 'newThing', question: "What's something new you tried or learned in 2025?" },
+        { key: 'lookingForward', question: "What are you most looking forward to or hoping for in 2026?" }
       ]
     : [
-        {
-          key: 'dreamGift',
-          question: "What's the one gift you've been thinking about all year, and why does it matter to you?",
-          prompt: "Ask the user about the one gift they've been thinking about all year and why it matters to them, in a warm, curious way."
-        },
-        {
-          key: 'experience',
-          question: "Is there something you'd love to experience rather than receive? (like a trip, concert, or special dinner)",
-          prompt: "Ask the user if there's something they'd love to experience rather than receive, like a trip, concert, or special dinner, in a friendly way."
-        },
-        {
-          key: 'practicalNeed',
-          question: "What's something practical you actually need but wouldn't buy for yourself?",
-          prompt: "Ask the user about something practical they actually need but wouldn't buy for themselves, in a gentle, understanding way."
-        }
+        { key: 'dreamGift', question: "What's the one gift you've been thinking about all year, and why does it matter to you?" },
+        { key: 'experience', question: "Is there something you'd love to experience rather than receive? (like a trip, concert, or special dinner)" },
+        { key: 'practicalNeed', question: "What's something practical you actually need but wouldn't buy for yourself?" }
       ]
 
   useEffect(() => {
@@ -83,21 +65,21 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript.trim()
       console.log('User response:', transcript)
-      
-      // Store the answer
-      const currentQuestion = questions[currentQuestionIndex]
-      setAnswers(prev => ({ ...prev, [currentQuestion.key]: transcript }))
       setIsListening(false)
 
-      // Process the response and move to next question
-      await handleResponse(transcript)
+      // Add user message to conversation history
+      setConversationHistory(prev => [...prev, { role: 'user', content: transcript }])
+
+      // Process the response
+      await handleUserMessage(transcript)
     }
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error)
       setIsListening(false)
       if (event.error === 'no-speech') {
-        alert("I didn't hear anything. Please try again!")
+        // Don't alert on no-speech, just allow user to try again
+        console.log('No speech detected, user can try again')
       } else if (event.error === 'not-allowed') {
         alert("Please allow microphone access to use voice input!")
       }
@@ -109,8 +91,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
     recognitionRef.current = recognition
 
-    // Start with the first question
-    askQuestion(0)
+    // Start the conversation
+    startConversation()
 
     return () => {
       if (recognitionRef.current) {
@@ -118,54 +100,93 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       }
       if (audioRef.current) {
         audioRef.current.pause()
+        URL.revokeObjectURL(audioRef.current.src)
         audioRef.current = null
       }
     }
   }, [])
 
-  const askQuestion = async (index: number) => {
-    if (index >= questions.length) {
-      // All questions answered
-      handleSubmit()
-      return
-    }
-
+  const startConversation = async () => {
     setIsProcessing(true)
-    const question = questions[index]
-    setCurrentQuestionIndex(index)
-    setCurrentQuestionText(question.question)
-
+    setCurrentResponse('')
+    
     try {
-      // Call backend to get conversational question
-      const response = await fetch(`${API_BASE_URL}/api/conversational-question`, {
+      await sendMessage('')
+    } catch (error) {
+      console.error('Error starting conversation:', error)
+      setIsProcessing(false)
+    }
+  }
+
+  const handleUserMessage = async (userMessage: string) => {
+    setIsProcessing(true)
+    setCurrentResponse('')
+    
+    try {
+      await sendMessage(userMessage)
+    } catch (error) {
+      console.error('Error handling user message:', error)
+      setIsProcessing(false)
+    }
+  }
+
+  const sendMessage = async (userMessage: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/conversational-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          questionPrompt: question.prompt,
-          conversationHistory: Object.entries(answers).map(([key, value]) => ({
-            question: questions.find(q => q.key === key)?.question || '',
-            answer: value
-          }))
+          experienceType,
+          userMessage,
+          conversationHistory: conversationHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          answeredQuestions
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to get conversational question')
+        throw new Error('Failed to get conversational response')
       }
 
       const data = await response.json()
-      const conversationalQuestion = data.question || question.question
+      const aiResponse = data.response || ''
 
-      // Update the question text
-      setCurrentQuestionText(conversationalQuestion)
+      // Add AI response to conversation history
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponse }])
+      setCurrentResponse(aiResponse)
 
-      // Get TTS audio for the question
+      // Check if an answer was detected and update answered questions
+      let updatedAnswers = answeredQuestions
+      if (data.detectedAnswer && data.detectedQuestionKey) {
+        updatedAnswers = {
+          ...answeredQuestions,
+          [data.detectedQuestionKey]: data.detectedAnswer
+        }
+        setAnsweredQuestions(updatedAnswers)
+      }
+
+      // Check if all questions are answered
+      const allAnswered = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
+      if (allAnswered || (aiResponse.toLowerCase().includes('thank') && aiResponse.toLowerCase().includes('complete'))) {
+        if (!isComplete) {
+          setIsComplete(true)
+          // Wait a moment, then submit
+          setTimeout(() => {
+            handleSubmit()
+          }, 2000)
+        }
+        return
+      }
+
+      // Get TTS audio for the response using Olivia voice
       const audioResponse = await fetch(`${API_BASE_URL}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: conversationalQuestion,
-          voiceId: 'christmas_story_generator__female_elf_narrator'
+          text: aiResponse,
+          voiceId: 'Olivia'
         })
       })
 
@@ -185,8 +206,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
         audio.onended = () => {
           setIsProcessing(false)
-          // Start listening after question is asked
-          if (recognitionRef.current && !isListening) {
+          // Start listening after AI finishes speaking (unless conversation is complete)
+          if (!isComplete && recognitionRef.current && !isListening) {
             setTimeout(() => {
               try {
                 recognitionRef.current?.start()
@@ -200,7 +221,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         audio.onerror = () => {
           setIsProcessing(false)
           // If audio fails, still allow listening
-          if (recognitionRef.current && !isListening) {
+          if (!isComplete && recognitionRef.current && !isListening) {
             setTimeout(() => {
               try {
                 recognitionRef.current?.start()
@@ -215,7 +236,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       } else {
         setIsProcessing(false)
         // If TTS fails, still allow listening
-        if (recognitionRef.current && !isListening) {
+        if (!isComplete && recognitionRef.current && !isListening) {
           setTimeout(() => {
             try {
               recognitionRef.current?.start()
@@ -226,31 +247,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
       }
     } catch (error) {
-      console.error('Error asking question:', error)
+      console.error('Error sending message:', error)
       setIsProcessing(false)
-      // Fallback: use the original question text
-      setCurrentQuestionText(question.question)
-      // Allow listening even if backend fails
-      if (recognitionRef.current && !isListening) {
-        setTimeout(() => {
-          try {
-            recognitionRef.current?.start()
-          } catch (error) {
-            console.error('Error starting recognition:', error)
-          }
-        }, 500)
-      }
-    }
-  }
-
-  const handleResponse = async (_transcript: string) => {
-    // Move to next question
-    const nextIndex = currentQuestionIndex + 1
-    if (nextIndex < questions.length) {
-      await askQuestion(nextIndex)
-    } else {
-      // All questions answered
-      handleSubmit()
     }
   }
 
@@ -258,21 +256,21 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     // Convert answers to the expected format
     if (experienceType === 'year-review') {
       onSubmit({
-        favoriteMemory: answers.favoriteMemory || '',
-        newThing: answers.newThing || '',
-        lookingForward: answers.lookingForward || ''
+        favoriteMemory: answeredQuestions.favoriteMemory || '',
+        newThing: answeredQuestions.newThing || '',
+        lookingForward: answeredQuestions.lookingForward || ''
       })
     } else {
       onSubmit({
-        dreamGift: answers.dreamGift || '',
-        experience: answers.experience || '',
-        practicalNeed: answers.practicalNeed || ''
+        dreamGift: answeredQuestions.dreamGift || '',
+        experience: answeredQuestions.experience || '',
+        practicalNeed: answeredQuestions.practicalNeed || ''
       })
     }
   }
 
   const handleManualStart = () => {
-    if (recognitionRef.current && !isListening && !isProcessing) {
+    if (recognitionRef.current && !isListening && !isProcessing && !isComplete) {
       try {
         recognitionRef.current.start()
       } catch (error) {
@@ -281,7 +279,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }
   }
 
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100
+  const progress = (Object.keys(answeredQuestions).length / questions.length) * 100
 
   return (
     <div className="conversational-questionnaire">
@@ -292,29 +290,40 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }}></div>
         </div>
-        <p className="progress-text">Question {currentQuestionIndex + 1} of {questions.length}</p>
+        <p className="progress-text">
+          {Object.keys(answeredQuestions).length} of {questions.length} questions answered
+        </p>
       </div>
 
       <div className="conversational-content">
         <div className="ai-avatar">🎤</div>
         
-        <div className="question-bubble">
-          {isProcessing ? (
-            <p className="question-text">Thinking...</p>
-          ) : (
-            <p className="question-text">{currentQuestionText || questions[currentQuestionIndex]?.question}</p>
+        <div className="conversation-messages">
+          {conversationHistory.map((msg, index) => (
+            <div key={index} className={`message-bubble ${msg.role === 'assistant' ? 'assistant' : 'user'}`}>
+              <p className="message-text">{msg.content}</p>
+            </div>
+          ))}
+          {currentResponse && !conversationHistory.some(msg => msg.content === currentResponse) && (
+            <div className="message-bubble assistant">
+              <p className="message-text">{currentResponse}</p>
+            </div>
           )}
         </div>
 
         <div className="listening-indicator">
-          {isListening ? (
+          {isComplete ? (
+            <div className="complete">
+              <span>✅ Conversation Complete!</span>
+            </div>
+          ) : isListening ? (
             <div className="listening-active">
               <div className="pulse-ring"></div>
               <span>🎤 Listening...</span>
             </div>
           ) : isProcessing ? (
             <div className="processing">
-              <span>⏳ Processing...</span>
+              <span>⏳ Olivia is thinking...</span>
             </div>
           ) : (
             <button
@@ -322,25 +331,10 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
               onClick={handleManualStart}
               disabled={isProcessing}
             >
-              🎤 Start Speaking
+              🎤 Speak Now
             </button>
           )}
         </div>
-
-        {Object.keys(answers).length > 0 && (
-          <div className="answers-preview">
-            <h3>Your Answers So Far:</h3>
-            {Object.entries(answers).map(([key, value]) => {
-              const question = questions.find(q => q.key === key)
-              return (
-                <div key={key} className="answer-item">
-                  <strong>{question?.question}</strong>
-                  <p>{value}</p>
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       <div className="conversational-actions">
@@ -357,4 +351,3 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 }
 
 export default ConversationalQuestionnaire
-
