@@ -166,7 +166,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       setIsProcessing(false)
       // Show error to user
       const errorMessage = error?.message || 'Failed to start conversation. Please try again.'
-      setCurrentResponse(`Error: ${errorMessage}`)
       alert(`Unable to start conversation: ${errorMessage}`)
     }
   }
