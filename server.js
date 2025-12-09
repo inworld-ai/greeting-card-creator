@@ -639,7 +639,7 @@ app.post('/api/conversational-question', async (req, res) => {
     let conversationContext = ''
     if (conversationHistory && conversationHistory.length > 0) {
       conversationContext = '\n\nPrevious conversation:\n'
-      conversationHistory.forEach((item: any, index: number) => {
+      conversationHistory.forEach((item, index) => {
         conversationContext += `${index + 1}. Question: ${item.question}\n   Answer: ${item.answer}\n\n`
       })
     }
