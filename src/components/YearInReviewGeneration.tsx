@@ -8,13 +8,14 @@ interface YearInReviewGenerationProps {
     newThing: string
     lookingForward: string
   }
+  name: string
   onStoryGenerated: (storyText: string) => void
   onFirstChunkReady?: (chunkText: string) => void
   customApiKey?: string
   onError?: () => void
 }
 
-function YearInReviewGeneration({ answers, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: YearInReviewGenerationProps) {
+function YearInReviewGeneration({ answers, name, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: YearInReviewGenerationProps) {
   useEffect(() => {
     const generate = async () => {
       try {
@@ -22,7 +23,7 @@ function YearInReviewGeneration({ answers, onStoryGenerated, onFirstChunkReady, 
           if (chunk.chunkIndex === 0 && onFirstChunkReady) {
             onFirstChunkReady(chunk.text)
           }
-        }, customApiKey)
+        }, customApiKey, name)
         
         onStoryGenerated(fullStory)
       } catch (error: any) {
@@ -54,7 +55,7 @@ function YearInReviewGeneration({ answers, onStoryGenerated, onFirstChunkReady, 
     }
 
     generate()
-  }, [answers, onStoryGenerated, onFirstChunkReady, customApiKey, onError])
+  }, [answers, name, onStoryGenerated, onFirstChunkReady, customApiKey, onError])
 
   return (
     <div className="story-generation">

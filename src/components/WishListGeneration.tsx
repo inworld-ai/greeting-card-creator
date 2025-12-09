@@ -8,13 +8,14 @@ interface WishListGenerationProps {
     experience: string
     practicalNeed: string
   }
+  name: string
   onListGenerated: (listText: string) => void
   onFirstChunkReady?: (chunkText: string) => void
   customApiKey?: string
   onError?: () => void
 }
 
-function WishListGeneration({ answers, onListGenerated, onFirstChunkReady, customApiKey, onError }: WishListGenerationProps) {
+function WishListGeneration({ answers, name, onListGenerated, onFirstChunkReady, customApiKey, onError }: WishListGenerationProps) {
   useEffect(() => {
     const generate = async () => {
       try {
@@ -22,7 +23,7 @@ function WishListGeneration({ answers, onListGenerated, onFirstChunkReady, custo
           if (chunk.chunkIndex === 0 && onFirstChunkReady) {
             onFirstChunkReady(chunk.text)
           }
-        }, customApiKey)
+        }, customApiKey, name)
         
         onListGenerated(fullList)
       } catch (error: any) {
@@ -54,7 +55,7 @@ function WishListGeneration({ answers, onListGenerated, onFirstChunkReady, custo
     }
 
     generate()
-  }, [answers, onListGenerated, onFirstChunkReady, customApiKey, onError])
+  }, [answers, name, onListGenerated, onFirstChunkReady, customApiKey, onError])
 
   return (
     <div className="story-generation">

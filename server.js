@@ -612,11 +612,11 @@ app.post('/api/generate-year-review', async (req, res) => {
   console.log('📝 ==========================================')
   
   try {
-    const { favoriteMemory, newThing, lookingForward, apiKey } = req.body
+    const { favoriteMemory, newThing, lookingForward, name, apiKey } = req.body
 
-    if (!favoriteMemory || !newThing || !lookingForward) {
+    if (!favoriteMemory || !newThing || !lookingForward || !name) {
       return res.status(400).json({ 
-        error: 'Missing required fields: favoriteMemory, newThing, lookingForward' 
+        error: 'Missing required fields: favoriteMemory, newThing, lookingForward, name' 
       })
     }
 
@@ -634,11 +634,12 @@ app.post('/api/generate-year-review', async (req, res) => {
     }
 
     const startTime = Date.now()
-    console.log(`📝 Generating year in review`)
+    console.log(`📝 Generating year in review for ${name}`)
     console.log(`📝 Using ${apiKey ? 'custom' : 'default'} API key`)
 
     const graph = createYearInReviewGraph(selectedApiKey)
     const { outputStream } = await graph.start({
+      name,
       favoriteMemory,
       newThing,
       lookingForward,
@@ -775,11 +776,11 @@ app.post('/api/generate-wish-list', async (req, res) => {
   console.log('🎁 ==========================================')
   
   try {
-    const { dreamGift, experience, practicalNeed, apiKey } = req.body
+    const { dreamGift, experience, practicalNeed, name, apiKey } = req.body
 
-    if (!dreamGift || !experience || !practicalNeed) {
+    if (!dreamGift || !experience || !practicalNeed || !name) {
       return res.status(400).json({ 
-        error: 'Missing required fields: dreamGift, experience, practicalNeed' 
+        error: 'Missing required fields: dreamGift, experience, practicalNeed, name' 
       })
     }
 
@@ -797,11 +798,12 @@ app.post('/api/generate-wish-list', async (req, res) => {
     }
 
     const startTime = Date.now()
-    console.log(`🎁 Generating wish list`)
+    console.log(`🎁 Generating wish list for ${name}`)
     console.log(`🎁 Using ${apiKey ? 'custom' : 'default'} API key`)
 
     const graph = createWishListGraph(selectedApiKey)
     const { outputStream } = await graph.start({
+      name,
       dreamGift,
       experience,
       practicalNeed,

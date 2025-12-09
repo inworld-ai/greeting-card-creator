@@ -155,13 +155,14 @@ export function createYearInReviewGraph(apiKey) {
               type: 'template',
               template: `Create a personalized year-in-review story based on these details:
 
+Name: {{name}}
 Favorite Memory/Adventure from 2025: {{favoriteMemory}}
 Something New Tried or Learned in 2025: {{newThing}}
 Looking Forward to in 2026: {{lookingForward}}
 
 Requirements:
 - Start with a title on the first line in the format: "Title: [Story Title]"
-- Write in first person (as if the person is telling their own story)
+- Write in first person (as if {{name}} is telling their own story)
 - Create a warm, heartfelt narrative that weaves together these three elements
 - Make it feel like a personal Christmas letter or reflection
 - Keep it to about 200-300 words
@@ -170,7 +171,8 @@ Requirements:
 - DO NOT use onomatopoeia or sound effect words
 - DO NOT use ALL-CAPS for any words
 - DO NOT make references to these instructions
-- End on a positive, hopeful note about the future`,
+- End on a positive, hopeful note about the future
+- End with a closing signature in this exact format: "With so much love,\n{{name}}"`,
             },
           },
         ],
@@ -213,13 +215,14 @@ export function createWishListGraph(apiKey) {
               type: 'template',
               template: `Create a personalized Christmas wish list based on these details:
 
+Name: {{name}}
 Dream Gift: {{dreamGift}}
 Experience Wanted: {{experience}}
 Practical Need: {{practicalNeed}}
 
 Requirements:
 - Start with a title on the first line in the format: "Title: [Wish List Title]"
-- Write in first person (as if the person is sharing their wishes)
+- Write in first person (as if {{name}} is sharing their wishes)
 - Create a warm, personal narrative that presents these three wishes
 - Make it feel like a heartfelt letter to Santa or a personal reflection
 - Keep it to about 200-300 words
@@ -228,7 +231,8 @@ Requirements:
 - DO NOT use onomatopoeia or sound effect words
 - DO NOT use ALL-CAPS for any words
 - DO NOT make references to these instructions
-- End on a positive, hopeful note`,
+- End on a positive, hopeful note
+- End with a closing signature in this exact format: "With so much love,\n{{name}}"`,
             },
           },
         ],

@@ -325,6 +325,7 @@ function App() {
             {storyData.experienceType === 'year-review' && storyData.yearReviewAnswers && (
               <YearInReviewGeneration
                 answers={storyData.yearReviewAnswers}
+                name={storyData.childName || 'You'}
                 onStoryGenerated={handleStoryGenerated}
                 onFirstChunkReady={handleFirstChunkReady}
                 customApiKey={storyData.customApiKey}
@@ -334,6 +335,7 @@ function App() {
             {storyData.experienceType === 'wish-list' && storyData.wishListAnswers && (
               <WishListGeneration
                 answers={storyData.wishListAnswers}
+                name={storyData.childName || 'You'}
                 onListGenerated={handleStoryGenerated}
                 onFirstChunkReady={handleFirstChunkReady}
                 customApiKey={storyData.customApiKey}

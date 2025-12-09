@@ -356,7 +356,8 @@ export async function generateYearInReview(
     lookingForward: string
   },
   onChunkGenerated: (chunk: StoryChunk) => void,
-  apiKey?: string
+  apiKey?: string,
+  name?: string
 ): Promise<string> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate-year-review`, {
@@ -365,6 +366,7 @@ export async function generateYearInReview(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        name: name || 'You',
         favoriteMemory: answers.favoriteMemory,
         newThing: answers.newThing,
         lookingForward: answers.lookingForward,
@@ -474,7 +476,8 @@ export async function generateWishList(
     practicalNeed: string
   },
   onChunkGenerated: (chunk: StoryChunk) => void,
-  apiKey?: string
+  apiKey?: string,
+  name?: string
 ): Promise<string> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate-wish-list`, {
@@ -483,6 +486,7 @@ export async function generateWishList(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        name: name || 'You',
         dreamGift: answers.dreamGift,
         experience: answers.experience,
         practicalNeed: answers.practicalNeed,
