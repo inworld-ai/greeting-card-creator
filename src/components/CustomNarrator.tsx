@@ -328,7 +328,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
                   onClick={isRecording ? stopRecording : startRecording}
                   className="submit-button"
                   style={{
-                    backgroundColor: isRecording ? '#dc3545' : '#28a745',
+                    backgroundColor: '#dc3545',
                     fontSize: '1.1rem',
                     padding: '16px 32px',
                     marginBottom: '12px'
