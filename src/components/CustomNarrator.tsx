@@ -50,7 +50,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 16000, // Lower sample rate = smaller file (16kHz is fine for voice)
+          sampleRate: 24000, // 24kHz - good quality for voice while keeping file size reasonable
         } 
       })
       
@@ -66,7 +66,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: mimeType,
-        audioBitsPerSecond: 32000, // Lower bitrate = smaller file (32kbps is still good quality for voice)
+        audioBitsPerSecond: 64000, // 64kbps - good quality for voice while keeping file size reasonable
       })
       
       mediaRecorderRef.current = mediaRecorder
