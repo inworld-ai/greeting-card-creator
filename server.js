@@ -605,6 +605,102 @@ app.post('/api/generate-story', async (req, res) => {
   }
 })
 
+// Conversational question endpoint - generates a conversational question using LLM
+app.post('/api/conversational-question', async (req, res) => {
+  console.log('\n\n💬 ==========================================')
+  console.log('💬 CONVERSATIONAL QUESTION ENDPOINT CALLED')
+  console.log('💬 ==========================================')
+  
+  try {
+    const { questionPrompt, conversationHistory } = req.body
+
+    if (!questionPrompt) {
+      return res.status(400).json({ 
+        error: 'Missing required field: questionPrompt' 
+      })
+    }
+
+    if (!process.env.INWORLD_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_API_KEY not set' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    const { createTextOnlyGraph } = require('./graph.js')
+    const graph = createTextOnlyGraph(process.env.INWORLD_API_KEY)
+
+    // Build conversation context
+    let conversationContext = ''
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationContext = '\n\nPrevious conversation:\n'
+      conversationHistory.forEach((item: any, index: number) => {
+        conversationContext += `${index + 1}. Question: ${item.question}\n   Answer: ${item.answer}\n\n`
+      })
+    }
+
+    const userPrompt = `You are a warm, friendly AI assistant conducting a conversational interview. ${questionPrompt}
+
+${conversationContext}
+
+Generate a single, natural, conversational question that asks about this topic. Make it sound like a friendly conversation, not a formal interview. Keep it to one sentence. Do not include any prefixes like "Question:" or numbering. Just return the question itself.`
+
+    const { outputStream } = await graph.start(userPrompt)
+
+    let questionText = ''
+    let done = false
+
+    while (!done) {
+      const result = await outputStream.next()
+      
+      await result.processResponse({
+        ContentStream: async (contentStream) => {
+          for await (const chunk of contentStream) {
+            if (chunk.text) {
+              questionText += chunk.text
+            }
+          }
+        },
+        default: (data) => {
+          if (data?.text) {
+            questionText += data.text
+          }
+        },
+      })
+
+      done = result.done
+    }
+
+    await graph.stop()
+
+    if (!questionText || questionText.trim().length === 0) {
+      return res.status(500).json({ error: 'No question generated' })
+    }
+
+    // Clean up the question text (remove any prefixes, extra whitespace)
+    const cleanQuestion = questionText.trim().replace(/^(Question:\s*|Q:\s*|\d+\.\s*)/i, '').trim()
+
+    console.log(`✅ Generated conversational question: ${cleanQuestion}`)
+
+    return res.status(200).json({ question: cleanQuestion })
+  } catch (error) {
+    console.error('❌ Error generating conversational question:', error)
+    const statusCode = error.statusCode || 500
+    let errorMessage = 'Internal server error'
+    
+    if (error.message) {
+      errorMessage = error.message
+    }
+
+    res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
 // Year in Review generation endpoint
 app.post('/api/generate-year-review', async (req, res) => {
   console.log('\n\n📝 ==========================================')

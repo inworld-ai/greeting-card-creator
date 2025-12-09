@@ -3,9 +3,12 @@ import './Questionnaire.css'
 
 interface WishListQuestionnaireProps {
   onSubmit: (answers: {
-    dreamGift: string
-    experience: string
-    practicalNeed: string
+    favoriteMemory?: string
+    newThing?: string
+    lookingForward?: string
+    dreamGift?: string
+    experience?: string
+    practicalNeed?: string
   }) => void
   onBack: () => void
 }
@@ -20,7 +23,10 @@ function WishListQuestionnaire({ onSubmit, onBack }: WishListQuestionnaireProps)
       onSubmit({
         dreamGift: dreamGift.trim(),
         experience: experience.trim(),
-        practicalNeed: practicalNeed.trim()
+        practicalNeed: practicalNeed.trim(),
+        favoriteMemory: undefined,
+        newThing: undefined,
+        lookingForward: undefined
       })
     }
   }

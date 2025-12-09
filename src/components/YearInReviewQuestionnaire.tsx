@@ -3,9 +3,12 @@ import './Questionnaire.css'
 
 interface YearInReviewQuestionnaireProps {
   onSubmit: (answers: {
-    favoriteMemory: string
-    newThing: string
-    lookingForward: string
+    favoriteMemory?: string
+    newThing?: string
+    lookingForward?: string
+    dreamGift?: string
+    experience?: string
+    practicalNeed?: string
   }) => void
   onBack: () => void
 }
@@ -20,7 +23,10 @@ function YearInReviewQuestionnaire({ onSubmit, onBack }: YearInReviewQuestionnai
       onSubmit({
         favoriteMemory: favoriteMemory.trim(),
         newThing: newThing.trim(),
-        lookingForward: lookingForward.trim()
+        lookingForward: lookingForward.trim(),
+        dreamGift: undefined,
+        experience: undefined,
+        practicalNeed: undefined
       })
     }
   }
