@@ -7,7 +7,7 @@ interface CustomNarratorProps {
   onBack: () => void
 }
 
-function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
+function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = false }: CustomNarratorProps) {
   const [apiKey, setApiKey] = useState('')
   const [voiceId, setVoiceId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -151,7 +151,12 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       return
     }
 
-    if (!displayName.trim()) {
+    // Auto-generate voice name if hideVoiceNameInput is true
+    const voiceName = hideVoiceNameInput 
+      ? `${childName}'s Voice` 
+      : displayName.trim()
+
+    if (!voiceName) {
       setError('Please enter a name for your voice')
       return
     }
@@ -172,7 +177,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         },
         body: JSON.stringify({
           audioData: base64Audio,
-          displayName: displayName.trim(),
+          displayName: voiceName,
           langCode: 'EN_US',
         }),
       })
@@ -351,26 +356,30 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
                 </div>
                 
                 <div style={{ marginTop: '20px' }}>
-                  <label className="voice-selection-label" style={{ marginBottom: '8px', display: 'block', textAlign: 'left' }}>
-                    Name Your Voice:
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g., My Storyteller Voice"
-                    className="name-input-field"
-                    style={{ width: '100%', marginBottom: '16px' }}
-                  />
+                  {!hideVoiceNameInput && (
+                    <>
+                      <label className="voice-selection-label" style={{ marginBottom: '8px', display: 'block', textAlign: 'left' }}>
+                        Name Your Voice:
+                      </label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="e.g., My Storyteller Voice"
+                        className="name-input-field"
+                        style={{ width: '100%', marginBottom: '16px' }}
+                      />
+                    </>
+                  )}
                   
                   <button
                     onClick={handleCloneVoice}
-                    disabled={isProcessing || !displayName.trim()}
+                    disabled={isProcessing || (!hideVoiceNameInput && !displayName.trim())}
                     className="submit-button"
                     style={{ 
-                      marginTop: '10px',
-                      opacity: isProcessing || !displayName.trim() ? 0.6 : 1,
-                      cursor: isProcessing || !displayName.trim() ? 'not-allowed' : 'pointer'
+                      marginTop: hideVoiceNameInput ? '0' : '10px',
+                      opacity: isProcessing || (!hideVoiceNameInput && !displayName.trim()) ? 0.6 : 1,
+                      cursor: isProcessing || (!hideVoiceNameInput && !displayName.trim()) ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {isProcessing ? '🔄 Cloning Voice...' : '✨ Clone Voice & Create Story'}

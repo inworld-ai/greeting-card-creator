@@ -2,6 +2,7 @@ import { useState } from 'react'
 import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
+import SimpleNameInput from './components/SimpleNameInput'
 import VoiceSelection from './components/VoiceSelection'
 import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
 import WishListQuestionnaire from './components/WishListQuestionnaire'
@@ -47,6 +48,8 @@ type Step =
   | 'name-input' 
   | 'year-review-questionnaire'
   | 'wish-list-questionnaire'
+  | 'year-review-name-input'
+  | 'wish-list-name-input'
   | 'year-review-voice-selection'
   | 'wish-list-voice-selection'
   | 'custom-narrator' 
@@ -99,10 +102,9 @@ function App() {
   }) => {
     setStoryData(prev => ({ 
       ...prev, 
-      childName: 'You', // Year in review uses "You" instead of a name
       yearReviewAnswers: answers 
     }))
-    setStep('year-review-voice-selection')
+    setStep('year-review-name-input')
   }
 
   const handleWishListSubmitted = (answers: {
@@ -112,9 +114,18 @@ function App() {
   }) => {
     setStoryData(prev => ({ 
       ...prev, 
-      childName: 'You', // Wish list uses "You" instead of a name
       wishListAnswers: answers 
     }))
+    setStep('wish-list-name-input')
+  }
+
+  const handleYearReviewNameSubmitted = (name: string) => {
+    setStoryData(prev => ({ ...prev, childName: name }))
+    setStep('year-review-voice-selection')
+  }
+
+  const handleWishListNameSubmitted = (name: string) => {
+    setStoryData(prev => ({ ...prev, childName: name }))
     setStep('wish-list-voice-selection')
   }
 
@@ -192,8 +203,10 @@ function App() {
     if (step === 'name-input') return 'type-selection'
     if (step === 'year-review-questionnaire') return 'landing'
     if (step === 'wish-list-questionnaire') return 'landing'
-    if (step === 'year-review-voice-selection') return 'year-review-questionnaire'
-    if (step === 'wish-list-voice-selection') return 'wish-list-questionnaire'
+    if (step === 'year-review-name-input') return 'year-review-questionnaire'
+    if (step === 'wish-list-name-input') return 'wish-list-questionnaire'
+    if (step === 'year-review-voice-selection') return 'year-review-name-input'
+    if (step === 'wish-list-voice-selection') return 'wish-list-name-input'
     if (step === 'custom-narrator') {
       if (storyData.experienceType === 'story') return 'name-input'
       if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
@@ -246,6 +259,24 @@ function App() {
           />
         )}
 
+        {step === 'year-review-name-input' && (
+          <SimpleNameInput
+            onSubmit={handleYearReviewNameSubmitted}
+            onBack={() => setStep('year-review-questionnaire')}
+            title="Great! Now let's personalize your year in review! 🌟"
+            prompt="What's your name?"
+          />
+        )}
+
+        {step === 'wish-list-name-input' && (
+          <SimpleNameInput
+            onSubmit={handleWishListNameSubmitted}
+            onBack={() => setStep('wish-list-questionnaire')}
+            title="Great! Now let's personalize your wish list! 🌟"
+            prompt="What's your name?"
+          />
+        )}
+
         {step === 'year-review-voice-selection' && (
           <VoiceSelection
             onSubmit={handleVoiceSelected}
@@ -267,6 +298,7 @@ function App() {
             childName={storyData.childName || 'You'}
             onSubmit={handleCustomNarratorSubmitted}
             onBack={() => setStep(getBackStep())}
+            hideVoiceNameInput={storyData.experienceType === 'year-review' || storyData.experienceType === 'wish-list'}
           />
         )}
 
