@@ -7,7 +7,6 @@ This guide will help you prepare and submit this project to Inworld's GitHub org
 The following files have been created/updated for open source:
 
 - ✅ **README.md** - Comprehensive documentation following Inworld's style
-- ✅ **LICENSE** - MIT License (matching Inworld's other projects)
 - ✅ **CONTRIBUTING.md** - Contribution guidelines
 - ✅ **.github/ISSUE_TEMPLATE/** - Bug report and feature request templates
 - ✅ **package.json** - Updated with proper metadata, keywords, and repository info
@@ -107,7 +106,6 @@ Before submitting, review:
 
 - [ ] All code is clean and well-commented
 - [ ] README.md is accurate and complete
-- [ ] LICENSE file is correct
 - [ ] No sensitive information in code or commits
 - [ ] All dependencies are properly listed
 - [ ] Build process works (`npm run build`)
