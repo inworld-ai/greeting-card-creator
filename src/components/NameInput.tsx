@@ -10,9 +10,9 @@ interface NameInputProps {
 }
 
 const VOICES: { id: VoiceId | 'custom'; label: string | JSX.Element; description: string }[] = [
+  { id: 'custom', label: <>Create Your<br />Own Narrator</>, description: '' },
   { id: 'christmas_story_generator__female_elf_narrator', label: <>Holly<br />the Elf</>, description: '' },
   { id: 'christmas_story_generator__male_elf_narrator', label: <>Clark<br />the Elf</>, description: '' },
-  { id: 'custom', label: <>Create Your<br />Own Narrator</>, description: '' },
 ]
 
 function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
