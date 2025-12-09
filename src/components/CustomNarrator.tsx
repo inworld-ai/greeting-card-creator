@@ -249,7 +249,6 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           className="voice-button"
           style={{
             backgroundColor: useVoiceClone ? '#28a745' : '#fff',
-            color: useVoiceClone ? '#fff' : '#333',
             border: `2px solid ${useVoiceClone ? '#28a745' : '#ddd'}`,
             padding: '12px 24px',
             borderRadius: '8px',
@@ -260,7 +259,11 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
             minWidth: '200px'
           }}
         >
-          <span style={{ color: useVoiceClone ? '#fff' : '#333' }}>🎙️ Record Voice Clone (Easy)</span>
+          <span style={{ 
+            color: useVoiceClone ? '#ffffff' : '#333333',
+            display: 'inline-block',
+            width: '100%'
+          }}>🎙️ Record Voice Clone (Easy)</span>
         </button>
         <button
           onClick={() => {
@@ -270,7 +273,6 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           className="voice-button"
           style={{
             backgroundColor: !useVoiceClone ? '#28a745' : '#fff',
-            color: !useVoiceClone ? '#fff' : '#333',
             border: `2px solid ${!useVoiceClone ? '#28a745' : '#ddd'}`,
             padding: '12px 24px',
             borderRadius: '8px',
@@ -281,7 +283,11 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
             minWidth: '200px'
           }}
         >
-          <span style={{ color: !useVoiceClone ? '#fff' : '#333' }}>🔑 Use Existing Voice (Advanced)</span>
+          <span style={{ 
+            color: !useVoiceClone ? '#ffffff' : '#333333',
+            display: 'inline-block',
+            width: '100%'
+          }}>🔑 Use Existing Voice (Advanced)</span>
         </button>
       </div>
 
