@@ -13,10 +13,11 @@
 }
 
 .voice-button {
-  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-  border: 2px solid #dee2e6;
-  border-radius: 12px;
-  padding: 1.5rem;
+  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+  color: #fff8f0;
+  border: 3px solid #0f5132;
+  border-radius: 4px;
+  padding: 18px 20px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
@@ -25,30 +26,55 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.voice-button:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #dc3545;
+.voice-button:not(.selected):hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: #228b22;
+  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
+}
+
+.voice-button.selected:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: #32cd32;
+  background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);
 }
 
 .voice-button.selected {
-  border-color: #dc3545;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
+  border-color: #228b22;
+  border-width: 3px;
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .voice-button:active {
-  transform: translateY(-2px);
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .voice-label {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #212529;
-  font-family: 'Georgia', serif;
+  color: #fff8f0;
+  font-family: 'Cinzel', serif;
   line-height: 1.4;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .voice-description {
