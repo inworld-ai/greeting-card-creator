@@ -979,13 +979,45 @@ ${conversationContext}`
       
       // More aggressive detection: if AI moves to next question OR user has given 2+ responses, mark as answered
       if (userMessage.length > 10 && (movesToNext || (acknowledgesAndWraps && userResponseCount >= 2))) {
+        // Determine which question was actually answered
+        // If AI moved to next question, the answer is for the PREVIOUS question (nextQuestion)
+        // But we need to verify this is correct by checking the conversation flow
+        let questionToAnswer = nextQuestion
+        
+        // If AI moved to next question, check what the new question is
+        if (movesToNext) {
+          // Find the new question Olivia just asked
+          const newQuestionIndex = conversationHistory.findIndex((msg, idx) => 
+            idx === conversationHistory.length - 1 && // Last message (the current AI response)
+            msg.role === 'assistant'
+          )
+          
+          if (newQuestionIndex >= 0) {
+            const newQuestionText = conversationHistory[newQuestionIndex].content.toLowerCase()
+            // Find which question this matches
+            const matchingQuestion = questions.find(q => 
+              !answeredQuestions[q.key] && // Not already answered
+              newQuestionText.includes(q.question.substring(0, 20).toLowerCase())
+            )
+            
+            if (matchingQuestion && matchingQuestion.key !== nextQuestion.key) {
+              // Olivia moved to a different question, so the answer is for nextQuestion
+              questionToAnswer = nextQuestion
+              console.log(`🔍 AI moved to new question "${matchingQuestion.key}", so answer is for "${nextQuestion.key}"`)
+            } else {
+              // Couldn't determine new question, use nextQuestion
+              questionToAnswer = nextQuestion
+            }
+          }
+        }
+        
         // Collect all user responses about this topic
         const topicResponses = []
         if (questionFirstAskedIndex >= 0) {
           const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
             idx > questionFirstAskedIndex &&
             msg.role === 'assistant' &&
-            questions.some(q => q.key !== nextQuestion.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
+            questions.some(q => q.key !== questionToAnswer.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
           )
           const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
           conversationHistory
@@ -996,7 +1028,7 @@ ${conversationContext}`
         topicResponses.push(userMessage)
         
         detectedAnswer = topicResponses.join(' ')
-        detectedQuestionKey = nextQuestion.key
+        detectedQuestionKey = questionToAnswer.key
         console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount} responses (movesToNext: ${movesToNext})`)
       }
     }

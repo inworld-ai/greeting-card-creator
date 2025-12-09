@@ -289,11 +289,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                     }
                   }
                 })
+                // Re-check if all are answered after extraction
+                const allAnsweredAfterExtraction = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
+                if (allAnsweredAfterExtraction) {
+                  console.log('✅ All questions answered after extraction!')
+                }
               }
               
               setIsComplete(true)
               console.log('✅ All questions answered! Completing conversation...')
               console.log('📊 Final answers:', updatedAnswers)
+              console.log(`📊 Final progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
               // Don't auto-submit - show Continue button instead
             }
           }
