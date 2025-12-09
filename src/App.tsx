@@ -133,7 +133,12 @@ function App() {
     if (voiceId === 'custom') {
       setStep('custom-narrator')
     } else {
-      setStoryData(prev => ({ ...prev, voiceId }))
+      setStoryData(prev => ({ 
+        ...prev, 
+        voiceId,
+        customVoiceId: undefined, // Clear custom voice when preset is selected
+        customApiKey: undefined   // Clear custom API key when preset is selected
+      }))
       setFirstChunkText('')
       setStep('image-upload')
     }
