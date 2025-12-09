@@ -211,7 +211,7 @@ function App() {
   return (
     <div className="app">
       <div className="app-container">
-        <h1 className="app-title"><span className="app-title-content">A Christmas Story For You</span></h1>
+        <h1 className="app-title"><span className="app-title-content">A Christmas Creation From You</span></h1>
         
         {step === 'landing' && (
           <LandingPage onSelectExperience={handleExperienceSelected} />
