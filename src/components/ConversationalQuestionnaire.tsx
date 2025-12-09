@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { synthesizeSpeech } from '../services/ttsService'
 import './ConversationalQuestionnaire.css'
 
 interface ConversationalQuestionnaireProps {
@@ -196,25 +197,20 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       }
 
       // Get TTS audio for the response using Olivia voice
-      const audioResponse = await fetch(`${API_BASE_URL}/api/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: aiResponse,
-          voiceId: 'Olivia'
+      // Use the ttsService which handles the WAV chunk parsing correctly
+      try {
+        const audio = await synthesizeSpeech(aiResponse, {
+          voiceId: 'Olivia',
+          apiKey: undefined // Use default API key
         })
-      })
-
-      if (audioResponse.ok) {
-        // Create audio element and play
-        const audioBlob = await audioResponse.blob()
-        const audioUrl = URL.createObjectURL(audioBlob)
-        const audio = new Audio(audioUrl)
         
         // Clean up previous audio
         if (audioRef.current) {
           audioRef.current.pause()
-          URL.revokeObjectURL(audioRef.current.src)
+          // Only revoke URL if it's a blob URL
+          if (audioRef.current.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audioRef.current.src)
+          }
         }
         
         audioRef.current = audio
@@ -233,7 +229,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           }
         }
 
-        audio.onerror = () => {
+        audio.onerror = (error) => {
+          console.error('❌ Audio playback error:', error)
           setIsProcessing(false)
           // If audio fails, still allow listening
           if (!isComplete && recognitionRef.current && !isListening) {
@@ -248,7 +245,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
 
         await audio.play()
-      } else {
+      } catch (ttsError: any) {
+        console.error('❌ Error generating TTS:', ttsError)
         setIsProcessing(false)
         // If TTS fails, still allow listening
         if (!isComplete && recognitionRef.current && !isListening) {
