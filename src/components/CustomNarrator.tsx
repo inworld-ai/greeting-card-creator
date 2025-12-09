@@ -45,9 +45,28 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000, // Lower sample rate = smaller file (16kHz is fine for voice)
+        } 
+      })
+      
+      // Try to use a more compressed format, fallback to webm
+      let mimeType = 'audio/webm;codecs=opus'
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus'
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm'
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus'
+      }
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: mimeType,
+        audioBitsPerSecond: 32000, // Lower bitrate = smaller file (32kbps is still good quality for voice)
       })
       
       mediaRecorderRef.current = mediaRecorder
@@ -114,6 +133,8 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
   const convertAudioToBase64 = async (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
+      // Use the original compressed WebM/Opus format (already optimized)
+      // Converting to WAV would make it larger, so we keep the original
       const reader = new FileReader()
       reader.onloadend = () => {
         const base64 = (reader.result as string).split(',')[1] // Remove data:audio/webm;base64, prefix
