@@ -345,7 +345,7 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
         body: JSON.stringify({
           text: cleanedText,
           voiceId: options.voiceId,
-          apiKey: options.apiKey,
+          ...(options.apiKey && { apiKey: options.apiKey }), // Only include apiKey if provided
         }),
       })
 
@@ -380,7 +380,7 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
           body: JSON.stringify({
             text: chunks[i],
             voiceId: options.voiceId,
-            apiKey: options.apiKey,
+            ...(options.apiKey && { apiKey: options.apiKey }), // Only include apiKey if provided
           }),
         })
 

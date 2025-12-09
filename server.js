@@ -18,6 +18,108 @@ app.use(express.json())
 // In-memory storage for shared stories (in production, use a database)
 const sharedStories = new Map()
 
+// Inworld Voice Clone API endpoint
+app.post('/api/clone-voice', async (req, res) => {
+  try {
+    const { audioData, displayName, transcription, langCode = 'EN_US' } = req.body
+
+    if (!audioData) {
+      return res.status(400).json({ 
+        error: 'Missing required field: audioData (base64-encoded audio)' 
+      })
+    }
+
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ 
+        error: 'Missing required field: displayName' 
+      })
+    }
+
+    // Use Portal API key for voice cloning, or fall back to standard API key if Portal key not set
+    // If Unleash flags are enabled for the workspace, the standard API key may work
+    const portalApiKey = process.env.INWORLD_PORTAL_API_KEY || process.env.INWORLD_API_KEY
+    if (!portalApiKey) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_PORTAL_API_KEY or INWORLD_API_KEY not set. Voice cloning requires an API key with Portal access.' 
+      })
+    }
+    
+    const usingStandardKey = !process.env.INWORLD_PORTAL_API_KEY && process.env.INWORLD_API_KEY
+    if (usingStandardKey) {
+      console.log('⚠️ Using INWORLD_API_KEY for voice cloning (Portal key not set). Ensure Unleash flags are enabled for Portal API access.')
+    }
+
+    // Use the christmas_story_generator workspace
+    const workspace = 'christmas_story_generator'
+    const parent = `workspaces/${workspace}`
+
+    console.log(`🎤 Voice clone request - Display name: "${displayName}", Lang: ${langCode}, Workspace: ${workspace}`)
+
+    // Call Inworld Voice Clone API
+    const cloneResponse = await fetch(`https://api.inworld.ai/voices/v1/${parent}/voices:clone`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${portalApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        displayName: displayName.trim(),
+        langCode: langCode,
+        voiceSamples: [
+          {
+            audioData: audioData, // Already base64-encoded from frontend
+            transcription: transcription || undefined,
+          }
+        ],
+        audioProcessingConfig: {
+          removeBackgroundNoise: true,
+        },
+      }),
+    })
+
+    if (!cloneResponse.ok) {
+      const errorData = await cloneResponse.json().catch(() => ({}))
+      const errorMessage = errorData.error?.message || errorData.message || `HTTP ${cloneResponse.status}: ${cloneResponse.statusText}`
+      
+      console.error(`❌ Voice clone failed: ${errorMessage}`)
+      
+      if (cloneResponse.status === 401) {
+        return res.status(401).json({ 
+          error: 'Invalid Portal API key. Please check INWORLD_PORTAL_API_KEY in server configuration.' 
+        })
+      } else if (cloneResponse.status === 403) {
+        return res.status(403).json({ 
+          error: 'Access denied. Voice cloning requires preview access. Please contact support@inworld.ai.' 
+        })
+      } else {
+        return res.status(cloneResponse.status).json({ 
+          error: `Voice cloning failed: ${errorMessage}` 
+        })
+      }
+    }
+
+    const cloneData = await cloneResponse.json()
+    
+    console.log(`✅ Voice cloned successfully - Voice ID: ${cloneData.voice?.voiceId}, Name: ${cloneData.voice?.name}`)
+
+    // Return the voiceId and validation results
+    res.json({
+      voiceId: cloneData.voice?.voiceId,
+      voiceName: cloneData.voice?.name,
+      displayName: cloneData.voice?.displayName,
+      warnings: cloneData.audioSamplesValidated?.[0]?.warnings || [],
+      errors: cloneData.audioSamplesValidated?.[0]?.errors || [],
+      transcription: cloneData.audioSamplesValidated?.[0]?.transcription,
+    })
+
+  } catch (error) {
+    console.error('❌ Error cloning voice:', error)
+    res.status(500).json({ 
+      error: `Server error: ${error.message || 'Failed to clone voice'}. Make sure the backend server is running and INWORLD_PORTAL_API_KEY is set.` 
+    })
+  }
+})
+
 // Inworld TTS endpoint using Runtime (for progressive chunks)
 app.post('/api/tts', async (req, res) => {
   // Declare variables outside try block so they're accessible in catch
@@ -740,4 +842,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📖 Story generation endpoint: http://localhost:${PORT}/api/generate-story`)
   console.log(`🎵 TTS endpoint: http://localhost:${PORT}/api/tts`)
+  console.log(`🎤 Voice clone endpoint: http://localhost:${PORT}/api/clone-voice`)
 })

@@ -465,7 +465,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       let firstWavChunkReady = false
       const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
         voiceId: customVoiceId || voiceId,
-        apiKey: customApiKey,
+        apiKey: customApiKey || undefined, // Only pass if provided (voice clones don't need user API key)
         onAllChunksCreated: (allChunks) => {
           // Track all WAV chunks from this text chunk
           allChunks.forEach(chunk => {
@@ -583,7 +583,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         const audioPromises = remainingChunks.map((chunk, chunkIndex) => {
           return synthesizeSpeech(chunk, { 
             voiceId: customVoiceId || voiceId, 
-            apiKey: customApiKey,
+            apiKey: customApiKey || undefined, // Only pass if provided (voice clones don't need user API key)
             onAllChunksCreated: (allChunks) => {
               // Track all WAV chunks from this text chunk
               allChunks.forEach(wavChunk => {

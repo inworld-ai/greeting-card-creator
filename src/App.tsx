@@ -46,7 +46,14 @@ function App() {
   }
 
   const handleCustomNarratorSubmitted = (apiKey: string, voiceId: string) => {
-    setStoryData(prev => ({ ...prev, voiceId, customApiKey: apiKey, customVoiceId: voiceId }))
+    // If apiKey is empty, it means voice was cloned via API (no user API key needed)
+    // If apiKey is provided, it's the manual entry flow
+    setStoryData(prev => ({ 
+      ...prev, 
+      voiceId, 
+      customApiKey: apiKey || undefined, // Only set if provided
+      customVoiceId: voiceId 
+    }))
     setFirstChunkText('') // Reset first chunk
     setStep('generating')
   }
