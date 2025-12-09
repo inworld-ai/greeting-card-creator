@@ -5,6 +5,7 @@ interface CustomNarratorProps {
   childName: string
   onSubmit: (apiKey: string, voiceId: string) => void
   onBack: () => void
+  hideVoiceNameInput?: boolean // If true, auto-generate voice name instead of asking user
 }
 
 function CustomNarrator({ childName, onSubmit, onBack, hideVoiceNameInput = false }: CustomNarratorProps) {
