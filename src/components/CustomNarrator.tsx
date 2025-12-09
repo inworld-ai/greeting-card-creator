@@ -256,7 +256,8 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
             fontSize: '0.95rem',
             fontWeight: '600',
             transition: 'all 0.2s',
-            minWidth: '200px'
+            minWidth: '200px',
+            color: 'transparent'
           }}
         >
           <span style={{ 
@@ -280,7 +281,8 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
             fontSize: '0.95rem',
             fontWeight: '600',
             transition: 'all 0.2s',
-            minWidth: '200px'
+            minWidth: '200px',
+            color: 'transparent'
           }}
         >
           <span style={{ 
@@ -297,9 +299,9 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           <div style={{ 
             marginTop: '10px', 
             padding: '18px', 
-            backgroundColor: '#f0f8ff', 
+            backgroundColor: '#fff5f5', 
             borderRadius: '8px',
-            border: '1px solid #b3d9ff',
+            border: '1px solid #f0d0d0',
             marginBottom: '20px'
           }}>
             <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#555', margin: '0 0 12px 0' }}>
