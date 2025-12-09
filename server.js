@@ -925,12 +925,20 @@ ${conversationContext}`
                         responseLower.includes('particular') ||
                         (responseLower.includes('?') && !responseLower.includes('next') && !responseLower.includes('another'))
       
-      // Check if AI is moving to the next topic
+      // Check if AI is moving to the next topic - be more aggressive in detection
       const movesToNext = responseLower.includes('next') ||
                           responseLower.includes('another') ||
                           responseLower.includes('also') ||
                           responseLower.includes('what\'s something new') ||
                           responseLower.includes('what are you looking forward') ||
+                          responseLower.includes('anything new') ||
+                          responseLower.includes('something new') ||
+                          responseLower.includes('tried or learned') ||
+                          responseLower.includes('looking forward') ||
+                          responseLower.includes('hoping for') ||
+                          responseLower.includes('one gift') ||
+                          responseLower.includes('something you\'d love') ||
+                          responseLower.includes('something practical') ||
                           (answeredKeys.length > 0 && !isFollowUp && !responseLower.includes('?'))
       
       // Check if AI is acknowledging and wrapping up the current topic
@@ -938,34 +946,58 @@ ${conversationContext}`
                                     responseLower.includes('great') ||
                                     responseLower.includes('wonderful') ||
                                     responseLower.includes('lovely') ||
-                                    responseLower.includes('sounds')) &&
+                                    responseLower.includes('sounds') ||
+                                    responseLower.includes('perfect') ||
+                                    responseLower.includes('amazing')) &&
                                    !isFollowUp
       
-      // If user gave a substantial response AND AI is moving on (not asking follow-up), consider it answered
-      // OR if user has given multiple responses about the same topic, consider it answered
-      const userResponseCount = conversationHistory.filter(msg => 
-        msg.role === 'user' && 
-        conversationHistory.some(m => m.role === 'assistant' && m.content.includes(nextQuestion.question.substring(0, 20)))
-      ).length
+      // Count user responses about the current topic
+      // Find when the current question was first asked
+      const questionFirstAskedIndex = conversationHistory.findIndex(msg => 
+        msg.role === 'assistant' && 
+        msg.content.toLowerCase().includes(nextQuestion.question.substring(0, 20).toLowerCase())
+      )
       
-      if (userMessage.length > 15 && (movesToNext || (acknowledgesAndWraps && userResponseCount >= 2))) {
+      let userResponseCount = 0
+      if (questionFirstAskedIndex >= 0) {
+        // Count user responses after this question was asked, but before next question
+        const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
+          idx > questionFirstAskedIndex &&
+          msg.role === 'assistant' &&
+          questions.some(q => q.key !== nextQuestion.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
+        )
+        
+        const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
+        userResponseCount = conversationHistory
+          .slice(questionFirstAskedIndex + 1, endIndex)
+          .filter(msg => msg.role === 'user').length
+      }
+      // Add current response
+      userResponseCount += 1
+      
+      console.log(`🔍 Detection check: userMessage length=${userMessage.length}, movesToNext=${movesToNext}, isFollowUp=${isFollowUp}, userResponseCount=${userResponseCount}, acknowledgesAndWraps=${acknowledgesAndWraps}`)
+      
+      // More aggressive detection: if AI moves to next question OR user has given 2+ responses, mark as answered
+      if (userMessage.length > 10 && (movesToNext || (acknowledgesAndWraps && userResponseCount >= 2))) {
         // Collect all user responses about this topic
-        const topicResponses = conversationHistory
-          .filter((msg, idx) => {
-            // Get responses that came after the question was asked
-            const questionAsked = conversationHistory.some((m, i) => 
-              i < idx && 
-              m.role === 'assistant' && 
-              m.content.toLowerCase().includes(nextQuestion.question.substring(0, 20).toLowerCase())
-            )
-            return msg.role === 'user' && questionAsked
-          })
-          .map(msg => msg.content)
-          .concat(userMessage)
+        const topicResponses = []
+        if (questionFirstAskedIndex >= 0) {
+          const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
+            idx > questionFirstAskedIndex &&
+            msg.role === 'assistant' &&
+            questions.some(q => q.key !== nextQuestion.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
+          )
+          const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
+          conversationHistory
+            .slice(questionFirstAskedIndex + 1, endIndex)
+            .filter(msg => msg.role === 'user')
+            .forEach(msg => topicResponses.push(msg.content))
+        }
+        topicResponses.push(userMessage)
         
         detectedAnswer = topicResponses.join(' ')
         detectedQuestionKey = nextQuestion.key
-        console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount + 1} responses`)
+        console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount} responses (movesToNext: ${movesToNext})`)
       }
     }
 

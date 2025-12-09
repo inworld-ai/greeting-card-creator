@@ -237,6 +237,9 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             }
             console.log(`✅ Answer detected for ${data.detectedQuestionKey}: ${data.detectedAnswer.substring(0, 50)}...`)
             console.log(`📊 Progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
+            console.log(`📊 Updated answeredQuestions keys:`, Object.keys(updatedAnswers))
+          } else {
+            console.log(`⚠️ No answer detected. detectedAnswer: ${data.detectedAnswer}, detectedQuestionKey: ${data.detectedQuestionKey}`)
           }
 
           // Check if all questions are answered
