@@ -1071,15 +1071,32 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
                                responseLower.includes('would you') ||
                                responseLower.includes('special about') ||
                                responseLower.includes('funny about') ||
-                               responseLower.includes('joke with')
+                               responseLower.includes('joke with') ||
+                               responseLower.includes('regarding') ||
+                               responseLower.includes('about that')
+      
+      const hasWrapUpPhrase = responseLower.includes('all set') && 
+                              (responseLower.includes('compile my notes') || responseLower.includes('create your greeting card'))
       
       if (containsQuestion) {
         console.log('⚠️ All questions answered but response contains a question - forcing wrap-up message')
-        cleanResponse = `All set! I'll create your greeting card for ${recipientName} now.`
-      } else if (!responseLower.includes('all set') && !responseLower.includes('i\'ll create your greeting card')) {
+        // Extract a brief reaction if present, then add wrap-up
+        const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
+        if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
+          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+        } else {
+          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+        }
+      } else if (!hasWrapUpPhrase) {
         // If it doesn't contain the wrap-up phrase, add it
         console.log('⚠️ All questions answered but response missing wrap-up phrase - adding it')
-        cleanResponse = `All set! I'll create your greeting card for ${recipientName} now.`
+        // Extract a brief reaction if present, then add wrap-up
+        const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
+        if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
+          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+        } else {
+          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+        }
       }
     }
 
