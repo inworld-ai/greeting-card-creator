@@ -1019,7 +1019,12 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
     let detectedAnswer = null
     let detectedQuestionKey = null
     
-    if (userMessage && userMessage.trim().length > 10 && nextQuestion) {
+    // For greeting cards, also check if we're wrapping up (both questions might be answered)
+    const isWrappingUp = experienceType === 'greeting-card' && 
+                        cleanResponse.toLowerCase().includes('i\'ll take your answers') &&
+                        cleanResponse.toLowerCase().includes('greeting card')
+    
+    if (userMessage && userMessage.trim().length > 10 && (nextQuestion || isWrappingUp)) {
       const responseLower = cleanResponse.toLowerCase()
       const userMessageLower = userMessage.toLowerCase()
       
