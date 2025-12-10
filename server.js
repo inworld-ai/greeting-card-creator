@@ -2071,6 +2071,8 @@ Write a warm, humorous greeting card message (2-3 short paragraphs max) that:
 - Is appropriate for a greeting card (not too long)
 - Ends with a warm closing from ${senderName}
 
+CRITICAL LENGTH REQUIREMENT: The message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
+
 IMPORTANT: Do NOT include "With love," or any signature line - the signature will be added separately. Just end with a warm closing like "Happy holidays!" or "Merry Christmas!" or similar, followed by the sender's name (${senderName}).
 
 Make it feel genuine and fun, like something a friend would write.`
@@ -2101,7 +2103,26 @@ Make it feel genuine and fun, like something a friend would write.`
     }
 
     const data = await response.json()
-    const cardMessage = data.content[0].text.trim()
+    let cardMessage = data.content[0].text.trim()
+
+    // Enforce 700 character limit - truncate if necessary
+    if (cardMessage.length > 700) {
+      console.log(`⚠️ Message exceeded 700 characters (${cardMessage.length} chars), truncating...`)
+      // Try to truncate at a sentence boundary if possible
+      const truncated = cardMessage.substring(0, 697)
+      const lastPeriod = truncated.lastIndexOf('.')
+      const lastExclamation = truncated.lastIndexOf('!')
+      const lastQuestion = truncated.lastIndexOf('?')
+      const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion)
+      
+      if (lastSentenceEnd > 600) {
+        // If we found a sentence end reasonably close to the limit, use it
+        cardMessage = truncated.substring(0, lastSentenceEnd + 1)
+      } else {
+        // Otherwise just truncate at 697 and add ellipsis
+        cardMessage = truncated + '...'
+      }
+    }
 
     console.log(`✅ Generated greeting card message (${cardMessage.length} chars)`)
     
@@ -2148,6 +2169,8 @@ Requirements:
 - Keep it the same length (2-3 short paragraphs)
 - End with a warm closing appropriate for an elf narrator (e.g., "Happy holidays from Santa's Elves!" or similar)
 
+CRITICAL LENGTH REQUIREMENT: The rewritten message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
+
 Make it feel like a magical message from the North Pole!`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -2176,7 +2199,26 @@ Make it feel like a magical message from the North Pole!`
     }
 
     const data = await response.json()
-    const rewrittenMessage = data.content[0].text.trim()
+    let rewrittenMessage = data.content[0].text.trim()
+
+    // Enforce 700 character limit - truncate if necessary
+    if (rewrittenMessage.length > 700) {
+      console.log(`⚠️ Rewritten message exceeded 700 characters (${rewrittenMessage.length} chars), truncating...`)
+      // Try to truncate at a sentence boundary if possible
+      const truncated = rewrittenMessage.substring(0, 697)
+      const lastPeriod = truncated.lastIndexOf('.')
+      const lastExclamation = truncated.lastIndexOf('!')
+      const lastQuestion = truncated.lastIndexOf('?')
+      const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion)
+      
+      if (lastSentenceEnd > 600) {
+        // If we found a sentence end reasonably close to the limit, use it
+        rewrittenMessage = truncated.substring(0, lastSentenceEnd + 1)
+      } else {
+        // Otherwise just truncate at 697 and add ellipsis
+        rewrittenMessage = truncated + '...'
+      }
+    }
 
     console.log(`✅ Rewritten greeting card message for elf narrator (${rewrittenMessage.length} chars)`)
     
