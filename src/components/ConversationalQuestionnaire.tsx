@@ -48,8 +48,8 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
       ]
     : experienceType === 'greeting-card'
     ? [
-        { key: 'specialAboutThem', question: "What's something special about them that you love?" },
-        { key: 'funnyStory', question: "What's something funny about them or a story that you love to joke with them about?" }
+        { key: 'specialAboutThem', question: recipientName ? `What's something special about ${recipientName} that you love?` : "What's something special about them that you love?" },
+        { key: 'funnyStory', question: recipientName ? `What's something funny about ${recipientName} or a story that you love to joke with ${recipientName} about?` : "What's something funny about them or a story that you love to joke with them about?" }
       ]
     : [
         { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
