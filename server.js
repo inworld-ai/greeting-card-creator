@@ -812,18 +812,52 @@ app.post('/api/conversational-chat', async (req, res) => {
     // Determine the experience name for the prompt
     const experienceName = experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'
 
+    // Check which questions have already been ASKED (not just answered) in conversation history
+    const askedQuestions = new Set()
+    if (conversationHistory && conversationHistory.length > 0) {
+      questions.forEach(q => {
+        // Check if this question appears in any assistant message
+        const questionAsked = conversationHistory.some(msg => {
+          if (msg.role === 'assistant') {
+            const msgLower = msg.content.toLowerCase()
+            const questionStart = q.question.substring(0, 30).toLowerCase()
+            // Check if the question text appears in the assistant message
+            if (msgLower.includes(questionStart)) {
+              // Make sure it's not matching another question
+              const otherQuestions = questions.filter(otherQ => otherQ.key !== q.key)
+              return !otherQuestions.some(otherQ => msgLower.includes(otherQ.question.substring(0, 20).toLowerCase()))
+            }
+          }
+          return false
+        })
+        if (questionAsked) {
+          askedQuestions.add(q.key)
+        }
+      })
+    }
+
+    // Build explicit list of questions that have been asked
+    const askedQuestionsList = Array.from(askedQuestions).map(key => {
+      const q = questions.find(q => q.key === key)
+      return q ? q.question : null
+    }).filter(Boolean)
+
     // Build system prompt
     const systemPrompt = `You are Olivia, a warm, friendly, and conversational AI assistant conducting a personalized interview. You're having a natural, flowing conversation with someone, not conducting a formal questionnaire.
 
 Your goal is to gather information about three topics through natural conversation:
 ${questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}
 
-CRITICAL RULES - FOLLOW THESE STRICTLY:
-- You may ask ONE follow-up question per topic MAXIMUM - no exceptions
-- After asking the initial question and receiving a response, you may ask ONE follow-up if needed
-- After the follow-up response, you MUST immediately move on to the next topic - do NOT ask another follow-up
-- If you've already asked a follow-up about a topic, you MUST move to the next topic in your next response
-- Do NOT ask multiple follow-ups about the same topic - this is strictly forbidden
+CRITICAL RULES - FOLLOW THESE STRICTLY - NO EXCEPTIONS:
+1. You may ask ONE follow-up question per topic MAXIMUM - no exceptions
+2. After asking the initial question and receiving a response, you may ask ONE follow-up if needed
+3. After the follow-up response, you MUST immediately move on to the next topic - do NOT ask another follow-up
+4. If you've already asked a follow-up about a topic, you MUST move to the next topic in your next response
+5. Do NOT ask multiple follow-ups about the same topic - this is strictly forbidden
+6. DO NOT REPEAT QUESTIONS - If a question has already been asked in the conversation, you MUST NOT ask it again
+7. If you see a question in the "Questions already asked" list below, you MUST NOT ask it again - move to the next question instead
+
+${askedQuestionsList.length > 0 ? `\nQUESTIONS ALREADY ASKED (DO NOT ASK THESE AGAIN):\n${askedQuestionsList.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n` : ''}
 
 IMPORTANT GUIDELINES:
 - Be warm, friendly, and conversational - like talking to a friend
@@ -838,11 +872,11 @@ IMPORTANT GUIDELINES:
 
 ${answeredContext}
 
-${nextQuestion ? `IMPORTANT: The next question to ask is: "${nextQuestion.question}". You have NOT asked this question yet. If you have already asked this question in the conversation history above, you MUST move on to the next topic or wrap up.` : 'All questions have been answered.'}
+${nextQuestion ? `\nNEXT QUESTION TO ASK: "${nextQuestion.question}"\n\nIMPORTANT: This is the question you should ask NEXT. You have NOT asked this question yet. If you see this question in the "Questions already asked" list above, DO NOT ask it - there is an error, move to the next topic instead.` : '\nAll questions have been answered. Wrap up the conversation.\n'}
 
 ${conversationContext}
 
-CRITICAL: Review the conversation history above. If you have already asked a question, do NOT ask it again. Move on to the next question or wrap up if all questions are answered.`
+FINAL REMINDER: Review the conversation history above. If you have already asked a question (check the "Questions already asked" list), do NOT ask it again. Move on to the next question or wrap up if all questions are answered.`
 
     // For the first message, use a default greeting prompt
     const userPrompt = userMessage || "Hello, let's start the conversation!"

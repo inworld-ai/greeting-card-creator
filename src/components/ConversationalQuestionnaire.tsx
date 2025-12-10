@@ -750,7 +750,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
       <div className="conversational-content">
         <div className="olivia-blob-container">
-          <div className={`olivia-blob ${isProcessing ? 'processing' : isListening ? 'listening' : isComplete ? 'complete' : 'idle'}`}>
+          <div className={`olivia-blob ${isComplete ? 'complete' : isProcessing ? 'processing' : isListening ? 'listening' : hasStarted ? 'processing' : 'idle'}`}>
             <div className="blob-inner"></div>
             <div className="blob-pulse"></div>
             {isComplete && (
