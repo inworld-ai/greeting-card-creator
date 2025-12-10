@@ -469,23 +469,31 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         if (lastChunk) {
           lastChunk.onended = () => {
             setIsProcessing(false)
-            // Restart speech recognition after ALL chunks have finished
+            // CRITICAL: Wait longer before restarting to ensure audio is fully stopped
+            // and speakers are quiet to prevent feedback loop
             if (!isComplete && recognitionRef.current) {
               setTimeout(() => {
-                try {
-                  console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done)')
-                  recognitionRef.current?.start()
-                  setIsListening(true)
-                } catch (error: any) {
-                  if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
-                    console.log('🎤 Recognition already running')
+                // Double-check we're still not processing (audio might have restarted)
+                if (!isProcessing && !isComplete && recognitionRef.current) {
+                  try {
+                    console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
+                    // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
                     setIsListening(true)
-                  } else {
-                    console.error('Error restarting recognition:', error)
-                    setIsListening(false)
+                    recognitionRef.current?.start()
+                    // onstart handler will also set isListening to true, but set it here too for immediate effect
+                  } catch (error: any) {
+                    if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                      console.log('🎤 Recognition already running - setting listening to true')
+                      setIsListening(true)
+                    } else {
+                      console.error('Error restarting recognition:', error)
+                      setIsListening(false)
+                    }
                   }
+                } else {
+                  console.log('🔇 Not restarting recognition - still processing or complete')
                 }
-              }, 500)  // Longer delay to ensure all audio is fully stopped
+              }, 2000)  // 2 second delay to ensure audio is fully stopped and speakers are quiet
             }
           }
         } else {
@@ -495,20 +503,27 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             setIsProcessing(false)
             if (!isComplete && recognitionRef.current) {
               setTimeout(() => {
-                try {
-                  console.log('🎤 Restarting speech recognition after Olivia finished speaking (fallback)')
-                  recognitionRef.current?.start()
-                  setIsListening(true)
-                } catch (error: any) {
-                  if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
-                    console.log('🎤 Recognition already running')
+                // Double-check we're still not processing
+                if (!isProcessing && !isComplete && recognitionRef.current) {
+                  try {
+                    console.log('🎤 Restarting speech recognition after Olivia finished speaking (fallback, waited 2.5s)')
+                    // Set listening to true BEFORE starting
                     setIsListening(true)
-                  } else {
-                    console.error('Error restarting recognition:', error)
-                    setIsListening(false)
+                    recognitionRef.current?.start()
+                    // onstart handler will also set isListening to true
+                  } catch (error: any) {
+                    if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                      console.log('🎤 Recognition already running - setting listening to true')
+                      setIsListening(true)
+                    } else {
+                      console.error('Error restarting recognition:', error)
+                      setIsListening(false)
+                    }
                   }
+                } else {
+                  console.log('🔇 Not restarting recognition - still processing or complete')
                 }
-              }, 1000)  // Longer delay for fallback
+              }, 2500)  // Even longer delay for fallback
             }
           }
         }
