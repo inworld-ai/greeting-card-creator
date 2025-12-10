@@ -993,6 +993,22 @@ FINAL REMINDER: Review the conversation history above. If you have already asked
                                     responseLower.includes('amazing')) &&
                                    !isFollowUp
       
+      // Check if user message looks like a preset option (complete, detailed answer)
+      const looksLikePreset = userMessage.length > 20 && 
+                              (userMessage.includes('laptop') || 
+                               userMessage.includes('tablet') ||
+                               userMessage.includes('camera') ||
+                               userMessage.includes('subscription') ||
+                               userMessage.includes('getaway') ||
+                               userMessage.includes('concert') ||
+                               userMessage.includes('cooking class') ||
+                               userMessage.includes('wine tasting') ||
+                               userMessage.includes('shoes') ||
+                               userMessage.includes('boots') ||
+                               userMessage.includes('coffee maker') ||
+                               userMessage.includes('appliance') ||
+                               userMessage.includes('organizer'))
+      
       // Count user responses about the current topic
       // Find when the current question was first asked
       const questionFirstAskedIndex = conversationHistory.findIndex(msg => 
@@ -1017,10 +1033,10 @@ FINAL REMINDER: Review the conversation history above. If you have already asked
       // Add current response
       userResponseCount += 1
       
-      console.log(`🔍 Detection check: userMessage length=${userMessage.length}, movesToNext=${movesToNext}, isFollowUp=${isFollowUp}, userResponseCount=${userResponseCount}, acknowledgesAndWraps=${acknowledgesAndWraps}`)
+      console.log(`🔍 Detection check: userMessage length=${userMessage.length}, looksLikePreset=${looksLikePreset}, movesToNext=${movesToNext}, isFollowUp=${isFollowUp}, userResponseCount=${userResponseCount}, acknowledgesAndWraps=${acknowledgesAndWraps}`)
       
-      // More aggressive detection: if AI moves to next question OR user has given 2+ responses, mark as answered
-      if (userMessage.length > 10 && (movesToNext || (acknowledgesAndWraps && userResponseCount >= 2))) {
+      // More aggressive detection: if AI moves to next question OR user has given 2+ responses OR it looks like a preset, mark as answered
+      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= 2))) {
         // Determine which question was actually answered
         // The answer is for nextQuestion (the question that was being asked before Olivia moved on)
         let questionToAnswer = nextQuestion

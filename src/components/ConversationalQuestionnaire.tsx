@@ -27,6 +27,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [hasStarted, setHasStarted] = useState(false) // Track if conversation has started
+  const [clickedPresets, setClickedPresets] = useState<Set<string>>(new Set()) // Track which presets have been clicked
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const isTTSInProgressRef = useRef(false)  // Prevent multiple simultaneous TTS requests
@@ -106,10 +107,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   // Handle preset option click
   const handlePresetClick = async (presetText: string) => {
-    if (isProcessing || isTTSInProgressRef.current) {
-      return // Don't allow clicks while processing
+    if (isProcessing || isTTSInProgressRef.current || clickedPresets.has(presetText)) {
+      return // Don't allow clicks while processing or if already clicked
     }
     console.log('🎯 Preset option clicked:', presetText)
+    setClickedPresets(prev => new Set(prev).add(presetText)) // Mark as clicked
     await handleUserMessage(presetText)
   }
 
