@@ -1088,19 +1088,19 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
       
       // Count user responses about the current topic
       // Find when the current question was first asked
-      const questionFirstAskedIndex = conversationHistory.findIndex(msg => 
+      const questionFirstAskedIndex = nextQuestion ? conversationHistory.findIndex(msg => 
         msg.role === 'assistant' && 
         msg.content.toLowerCase().includes(nextQuestion.question.substring(0, 20).toLowerCase())
-      )
+      ) : -1
       
       let userResponseCount = 0
       if (questionFirstAskedIndex >= 0) {
         // Count user responses after this question was asked, but before next question
-        const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
+        const nextQuestionIndex = nextQuestion ? conversationHistory.findIndex((msg, idx) => 
           idx > questionFirstAskedIndex &&
           msg.role === 'assistant' &&
           questions.some(q => q.key !== nextQuestion.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
-        )
+        ) : -1
         
         const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
         userResponseCount = conversationHistory
