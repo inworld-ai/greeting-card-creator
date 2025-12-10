@@ -224,6 +224,9 @@ function App() {
     // Show image upload for Year In Review and Christmas Story
     if (storyData.experienceType === 'year-review' || storyData.experienceType === 'story') {
       setStep('image-upload')
+    } else if (storyData.experienceType === 'greeting-card') {
+      // For greeting cards, go directly to narration since the card is already generated
+      setStep('narration')
     } else {
       setStep('generating')
     }
