@@ -30,7 +30,36 @@ function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkR
           }
         }, customApiKey)
         
-        onStoryGenerated(fullStory)
+        // Generate image after story is generated
+        let generatedImageUrl: string | null = null
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+          const imageResponse = await fetch(`${API_BASE_URL}/api/generate-story-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              storyType,
+              childName,
+              storyText: fullStory,
+              uploadedImageUrl: uploadedImageUrl || null
+            })
+          })
+          
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            generatedImageUrl = imageData.imageUrl || null
+            console.log('✅ Story image generated:', generatedImageUrl ? 'Success' : 'Failed')
+          } else {
+            console.error('❌ Failed to generate story image:', imageResponse.status)
+          }
+        } catch (imageError) {
+          console.error('❌ Error generating story image:', imageError)
+          // Don't fail the whole story generation if image generation fails
+        }
+        
+        onStoryGenerated(fullStory, generatedImageUrl)
       } catch (error: any) {
         console.error('Error generating story:', error)
         const errorMessage = error?.message || error?.toString() || 'Unknown error'
