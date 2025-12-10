@@ -341,6 +341,12 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
   }
 
   const handleUserMessage = async (userMessage: string) => {
+    // Don't process messages if conversation is complete
+    if (isComplete) {
+      console.log('🛑 Conversation is complete, not processing user message')
+      return
+    }
+    
     // CRITICAL: Prevent multiple simultaneous requests - use refs to avoid stale closure
     if (isTTSInProgressRef.current || isProcessingRef.current) {
       console.log('⚠️ Already processing, ignoring duplicate user message', {
@@ -656,10 +662,14 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
                 const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
                 if (!isProcessingRef.current && !isComplete && !isTTSInProgressRef.current && recognitionRef.current && !anyAudioPlaying) {
                   try {
-                    console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
-                    // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
-                    setIsListening(true)
-                    recognitionRef.current?.start()
+                    if (!isComplete) {
+                      console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
+                      // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
+                      setIsListening(true)
+                      recognitionRef.current?.start()
+                    } else {
+                      console.log('🛑 Conversation is complete, not restarting recognition')
+                    }
                     // onstart handler will also set isListening to true, but set it here too for immediate effect
                   } catch (error: any) {
                     if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
@@ -690,10 +700,14 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
                 // Double-check we're still not processing
                 if (!isProcessing && !isComplete && recognitionRef.current) {
                   try {
-                    console.log('🎤 Restarting speech recognition after Olivia finished speaking (fallback, waited 2.5s)')
-                    // Set listening to true BEFORE starting
-                    setIsListening(true)
-                    recognitionRef.current?.start()
+                    if (!isComplete) {
+                      console.log('🎤 Restarting speech recognition after Olivia finished speaking (fallback, waited 2.5s)')
+                      // Set listening to true BEFORE starting
+                      setIsListening(true)
+                      recognitionRef.current?.start()
+                    } else {
+                      console.log('🛑 Conversation is complete, not restarting recognition')
+                    }
                     // onstart handler will also set isListening to true
                   } catch (error: any) {
                     if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
