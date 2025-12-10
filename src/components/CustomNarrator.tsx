@@ -233,67 +233,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         Create your own narrator for the story about <strong>{childName}</strong>! 🎤
       </p>
       
-      {/* Toggle between voice clone and manual entry */}
-      <div style={{ 
-        marginTop: '20px', 
-        marginBottom: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        alignItems: 'center'
-      }}>
-        <button
-          onClick={() => {
-            setUseVoiceClone(true)
-            setError(null)
-          }}
-          className="voice-button"
-          style={{
-            backgroundColor: useVoiceClone ? '#28a745' : '#fff',
-            border: `2px solid ${useVoiceClone ? '#28a745' : '#ddd'}`,
-            padding: '12px 24px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.95rem',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            minWidth: '200px',
-            color: 'transparent'
-          }}
-        >
-          <span style={{ 
-            color: useVoiceClone ? '#ffffff' : '#333333',
-            display: 'inline-block',
-            width: '100%'
-          }}>🎙️ Record Voice Clone (Easy)</span>
-        </button>
-        <button
-          onClick={() => {
-            setUseVoiceClone(false)
-            setError(null)
-          }}
-          className="voice-button"
-          style={{
-            backgroundColor: !useVoiceClone ? '#28a745' : '#fff',
-            border: `2px solid ${!useVoiceClone ? '#28a745' : '#ddd'}`,
-            padding: '12px 24px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.95rem',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            minWidth: '200px',
-            color: 'transparent'
-          }}
-        >
-          <span style={{ 
-            color: !useVoiceClone ? '#ffffff' : '#ffffff',
-            display: 'inline-block',
-            width: '100%'
-          }}>🔑 Use Existing Voice (Advanced)</span>
-        </button>
-      </div>
-
+      {/* Voice Clone Recording Only */}
       {useVoiceClone ? (
         // Voice Clone Flow
         <div>

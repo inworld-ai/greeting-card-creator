@@ -280,10 +280,21 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }, 1000)  // Small delay to ensure component is fully mounted
 
     return () => {
+      // CRITICAL: Stop recognition and clean up when component unmounts
+      console.log('🛑 ConversationalQuestionnaire unmounting - stopping recognition and cleaning up')
       if (recognitionRef.current) {
-        recognitionRef.current.stop()
-        setIsListening(false)
+        try {
+          recognitionRef.current.stop()
+          recognitionRef.current = null
+        } catch (error) {
+          console.error('Error stopping recognition on unmount:', error)
+        }
       }
+      setIsListening(false)
+      isProcessingRef.current = false
+      isTTSInProgressRef.current = false
+      
+      // Stop and clean up all audio
       if (audioRef.current) {
         audioRef.current.pause()
         if (audioRef.current.src.startsWith('blob:')) {
@@ -291,6 +302,15 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
         audioRef.current = null
       }
+      
+      // Clean up all audio chunks
+      allAudioChunksRef.current.forEach(chunk => {
+        chunk.pause()
+        if (chunk.src.startsWith('blob:')) {
+          URL.revokeObjectURL(chunk.src)
+        }
+      })
+      allAudioChunksRef.current = []
     }
   }, [])
 
