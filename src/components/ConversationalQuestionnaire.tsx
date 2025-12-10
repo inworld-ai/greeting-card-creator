@@ -70,7 +70,28 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   // Get the current question being asked
   const remainingQuestions = questions.filter(q => !answeredQuestions[q.key])
   const currentQuestion = remainingQuestions[0]
-  const currentPresets = currentQuestion && experienceType === 'wish-list' ? presetOptions[currentQuestion.key] : null
+  
+  // Only show presets for the initial question, not for follow-ups
+  // Check if this question has already been asked in the conversation (indicating a follow-up)
+  const isFollowUp = currentQuestion && conversationHistory.some(msg => {
+    if (msg.role === 'assistant') {
+      const msgLower = msg.content.toLowerCase()
+      const questionStart = currentQuestion.question.substring(0, 30).toLowerCase()
+      // Check if the question text appears in an assistant message
+      if (msgLower.includes(questionStart)) {
+        // Make sure it's not matching another question
+        const otherQuestions = questions.filter(q => q.key !== currentQuestion.key)
+        return !otherQuestions.some(q => msgLower.includes(q.question.substring(0, 20).toLowerCase()))
+      }
+    }
+    return false
+  })
+  
+  // Show presets only if:
+  // 1. It's a wish-list experience
+  // 2. There's a current question
+  // 3. It's NOT a follow-up (question hasn't been asked yet)
+  const currentPresets = currentQuestion && experienceType === 'wish-list' && !isFollowUp ? presetOptions[currentQuestion.key] : null
 
   // Handle preset option click
   const handlePresetClick = async (presetText: string) => {

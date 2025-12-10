@@ -856,6 +856,7 @@ CRITICAL RULES - FOLLOW THESE STRICTLY - NO EXCEPTIONS:
 5. Do NOT ask multiple follow-ups about the same topic - this is strictly forbidden
 6. DO NOT REPEAT QUESTIONS - If a question has already been asked in the conversation, you MUST NOT ask it again
 7. If you see a question in the "Questions already asked" list below, you MUST NOT ask it again - move to the next question instead
+8. If the user gives a detailed or complete answer (especially if they selected a preset option), you may skip the follow-up and move directly to the next question
 
 ${askedQuestionsList.length > 0 ? `\nQUESTIONS ALREADY ASKED (DO NOT ASK THESE AGAIN):\n${askedQuestionsList.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n` : ''}
 
