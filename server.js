@@ -12,7 +12,18 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // Middleware
-app.use(cors())
+// CORS configuration - allow requests from Vercel frontend
+app.use(cors({
+  origin: [
+    'https://christmas-personalized-storyteller.vercel.app',
+    'https://christmas-personalized-storyteller-gjgi38e7e.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
 app.use(express.json({ limit: '10mb' })) // Increase limit for audio uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
