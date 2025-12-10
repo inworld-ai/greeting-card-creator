@@ -51,10 +51,6 @@ function GreetingCard({ frontImageUrl, message, senderName, recipientName, isOpe
               </p>
             ))}
           </div>
-          <div className="greeting-card-signature">
-            <p>With love,</p>
-            <p className="greeting-card-sender-name">{senderName}</p>
-          </div>
         </div>
       </div>
     </div>

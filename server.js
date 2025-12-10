@@ -2048,6 +2048,8 @@ Write a warm, humorous greeting card message (2-3 short paragraphs max) that:
 - Is appropriate for a greeting card (not too long)
 - Ends with a warm closing from ${senderName}
 
+IMPORTANT: Do NOT include "With love," or any signature line - the signature will be added separately. Just end with a warm closing like "Happy holidays!" or "Merry Christmas!" or similar, followed by the sender's name (${senderName}).
+
 Make it feel genuine and fun, like something a friend would write.`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {

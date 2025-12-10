@@ -48,29 +48,32 @@ function GreetingCardGeneration({
         const messageData = await messageResponse.json()
         const cardMessage = messageData.cardMessage
 
-        // Step 2: Generate card image
-        setStatus('Creating your card image...')
-        const imageResponse = await fetch(`${API_BASE_URL}/api/generate-greeting-card-image`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientName,
-            specialAboutThem,
-            funnyStory,
-            uploadedImageUrl
+        // Step 2: Use uploaded image if available, otherwise generate card image
+        let finalImageUrl = uploadedImageUrl || null
+        
+        if (!uploadedImageUrl) {
+          setStatus('Creating your card image...')
+          const imageResponse = await fetch(`${API_BASE_URL}/api/generate-greeting-card-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipientName,
+              specialAboutThem,
+              funnyStory,
+              uploadedImageUrl: null
+            })
           })
-        })
 
-        let generatedImageUrl = null
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json()
-          generatedImageUrl = imageData.imageUrl
-        } else {
-          console.warn('Image generation failed, continuing without image')
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            finalImageUrl = imageData.imageUrl
+          } else {
+            console.warn('Image generation failed, continuing without image')
+          }
         }
 
         // Callback with results
-        onCardGenerated(cardMessage, generatedImageUrl)
+        onCardGenerated(cardMessage, finalImageUrl)
       } catch (err: any) {
         console.error('Error generating greeting card:', err)
         setError(err.message || 'Failed to generate greeting card')
@@ -85,7 +88,7 @@ function GreetingCardGeneration({
     <div className="story-generation">
       <div className="generation-status">
         <div className="loading-spinner"></div>
-        <p className="status-text">{status}</p>
+        <p className="status-text" style={{ fontSize: '2rem', fontWeight: '600' }}>{status}</p>
       </div>
       {error && (
         <div className="error-message" style={{ color: '#f5576c', marginTop: '20px' }}>

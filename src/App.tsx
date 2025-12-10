@@ -455,7 +455,7 @@ function App() {
         {step === 'greeting-card-display' && storyData.greetingCardData && (
           <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
             <GreetingCard
-              frontImageUrl={storyData.greetingCardData.generatedImageUrl || storyData.imageUrl || null}
+              frontImageUrl={storyData.imageUrl || storyData.greetingCardData.generatedImageUrl || null}
               message={storyData.greetingCardData.cardMessage || ''}
               senderName={storyData.greetingCardData.senderName}
               recipientName={storyData.greetingCardData.recipientName}
