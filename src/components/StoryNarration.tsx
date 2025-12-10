@@ -1118,8 +1118,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               : 'Start Narration 🧝'}
         </button>
         
-        {/* For greeting cards, Share and Make Another buttons go below the text */}
-        {experienceType !== 'greeting-card' && !isShared && (
+        {/* For greeting cards and stories, Share and Make Another buttons go below the text */}
+        {experienceType !== 'greeting-card' && experienceType !== 'story' && !isShared && (
           <>
             {!shareUrl ? (
               <button 
@@ -1186,11 +1186,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             {shareError && (
               <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                 {shareError}
-        </div>
+          </div>
       )}
           </>
         )}
-        {experienceType !== 'greeting-card' && (
+        {experienceType !== 'greeting-card' && experienceType !== 'story' && (
           <button 
             onClick={() => {
               // Use browser refresh to ensure all audio stops completely
@@ -1210,7 +1210,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           {error}
         </div>
       )}
-
+      
       {needsUserInteraction && audioRef.current && (
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <button 
@@ -1258,9 +1258,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         
         const fullStoryText = title ? `Title: ${title}\n\n${cleanedBody}` : cleanedBody
         
-        // Only show ChristmasCard for Year In Review
-        if (experienceType === 'year-review') {
-          return (
+        // Show ChristmasCard for Year In Review and Story (with cover image)
+        if (experienceType === 'year-review' || experienceType === 'story') {
+        return (
             <ChristmasCard
               imageUrl={imageUrl || null}
               title={title || ''}
@@ -1269,7 +1269,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             />
           )
         } else {
-          // For story and wish-list, show content directly without card
+          // For wish-list, show content directly without card
           return (
             <div className="story-content-direct">
               {title && <h1 className="story-direct-title">{title}</h1>}
@@ -1280,11 +1280,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   </p>
                 ))}
               </div>
-            </div>
-          )
+          </div>
+        )
         }
       })()}
-      
+
       {/* For greeting cards, show Share and Make Another buttons below the text */}
       {experienceType === 'greeting-card' && (
         <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '30px' }}>
@@ -1322,7 +1322,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   className="share-story-button"
                 >
                   {isSharing ? 'Sharing...' : 'Share Story 🎁'}
-                </button>
+              </button>
               ) : (
                 <div className="share-success">
                   <input 
@@ -1348,13 +1348,13 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                     className="copy-link-button"
                   >
                     {isLinkCopied ? 'Copied!' : 'Copy Link'}
-                  </button>
+              </button>
                 </div>
               )}
               {shareError && (
                 <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                   {shareError}
-                </div>
+          </div>
               )}
             </>
           )}
