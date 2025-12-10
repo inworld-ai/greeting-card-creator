@@ -26,6 +26,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false) // Track if conversation has started
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const isTTSInProgressRef = useRef(false)  // Prevent multiple simultaneous TTS requests
@@ -231,6 +232,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     // Setting it here causes sendMessage to return early because it checks isProcessingRef.current
     try {
       console.log('🎤 Starting conversation...')
+      setHasStarted(true) // Mark conversation as started
       await sendMessage('')
     } catch (error: any) {
       console.error('❌ Error starting conversation:', error)
@@ -777,6 +779,12 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           ) : isListening ? (
             <div className="listening-text">
               <span>Listening...</span>
+            </div>
+          ) : hasStarted ? (
+            // If conversation has started but we're not listening/processing, show a brief "waiting" state
+            // This prevents the "Start Conversation" button from appearing mid-conversation
+            <div className="processing-text">
+              <span>Olivia is thinking...</span>
             </div>
           ) : (
             <button

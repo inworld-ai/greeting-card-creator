@@ -838,9 +838,11 @@ IMPORTANT GUIDELINES:
 
 ${answeredContext}
 
-${nextQuestion ? `Next question to ask: "${nextQuestion.question}"` : 'All questions have been answered.'}
+${nextQuestion ? `IMPORTANT: The next question to ask is: "${nextQuestion.question}". You have NOT asked this question yet. If you have already asked this question in the conversation history above, you MUST move on to the next topic or wrap up.` : 'All questions have been answered.'}
 
-${conversationContext}`
+${conversationContext}
+
+CRITICAL: Review the conversation history above. If you have already asked a question, do NOT ask it again. Move on to the next question or wrap up if all questions are answered.`
 
     // For the first message, use a default greeting prompt
     const userPrompt = userMessage || "Hello, let's start the conversation!"
