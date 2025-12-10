@@ -4,13 +4,12 @@ import './GreetingCard.css'
 interface GreetingCardProps {
   frontImageUrl: string | null
   message: string
-  senderName: string
   recipientName: string
   isOpen?: boolean
   onOpen?: () => void
 }
 
-function GreetingCard({ frontImageUrl, message, senderName, recipientName, isOpen: initialIsOpen = false, onOpen }: GreetingCardProps) {
+function GreetingCard({ frontImageUrl, message, recipientName, isOpen: initialIsOpen = false, onOpen }: GreetingCardProps) {
   const [isOpen, setIsOpen] = useState(initialIsOpen)
 
   const handleOpen = () => {

@@ -457,7 +457,6 @@ function App() {
             <GreetingCard
               frontImageUrl={storyData.imageUrl || storyData.greetingCardData.generatedImageUrl || null}
               message={storyData.greetingCardData.cardMessage || ''}
-              senderName={storyData.greetingCardData.senderName}
               recipientName={storyData.greetingCardData.recipientName}
               isOpen={true}
               onOpen={() => {}}
