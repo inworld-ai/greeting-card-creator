@@ -880,7 +880,9 @@ ${answeredContext}
 
 ${conversationContext}
 
-Final note: Be yourself - warm, curious, and genuinely interested. This should feel like chatting with a friend, not filling out a form. If you've already asked a question, don't repeat it. Move forward naturally.`
+Final note: Be yourself - warm, curious, and genuinely interested. This should feel like chatting with a friend, not filling out a form. If you've already asked a question, don't repeat it. Move forward naturally.
+
+If all three questions have been answered, wrap up warmly and say: "Thank you so much for sharing! I'll take your answers and create your ${experienceName} now." Make sure to include the exact phrase "I'll take your answers and create your ${experienceName} now" in your closing message.`
 
 ${answeredContext}
 
