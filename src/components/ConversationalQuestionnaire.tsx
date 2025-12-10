@@ -32,6 +32,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
   const [hasStarted, setHasStarted] = useState(false) // Track if conversation has started
   const [clickedPresets, setClickedPresets] = useState<Set<string>>(new Set()) // Track which presets have been clicked
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const answeredQuestionsRef = useRef<Record<string, string>>({}) // Track current answered questions to avoid stale closures
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const isTTSInProgressRef = useRef(false)  // Prevent multiple simultaneous TTS requests
   const allAudioChunksRef = useRef<HTMLAudioElement[]>([])  // Track all audio chunks
@@ -381,8 +382,9 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
     
     // Send message with updated history - await it to prevent race conditions
     // sendMessage will set isProcessing and isTTSInProgress flags internally
+    // Use ref to get the most current answeredQuestions to avoid stale closure
     try {
-      await sendMessage(userMessage, updatedHistory, answeredQuestions)
+      await sendMessage(userMessage, updatedHistory, answeredQuestionsRef.current)
     } catch (error: any) {
       console.error('Error sending message:', error)
       isTTSInProgressRef.current = false
