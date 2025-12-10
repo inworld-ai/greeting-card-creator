@@ -962,7 +962,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
             // If conversation has started but we're not listening/processing, show a brief "waiting" state
             // This prevents the "Start Conversation" button from appearing mid-conversation
             <div className="processing-text">
-              <span>Olivia is thinking...</span>
+              <span>{experienceType === 'greeting-card' ? 'Please listen...' : 'Olivia is thinking...'}</span>
             </div>
           ) : (
             <button

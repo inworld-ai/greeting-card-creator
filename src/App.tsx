@@ -16,7 +16,7 @@ import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
 import GreetingCardNames from './components/GreetingCardNames'
 import GreetingCardGeneration from './components/GreetingCardGeneration'
-import GreetingCard from './components/GreetingCard'
+import GreetingCardDisplay from './components/GreetingCardDisplay'
 import './App.css'
 
 export type StoryType = string | null
@@ -65,6 +65,7 @@ type Step =
   | 'greeting-card-questionnaire-voice'
   | 'greeting-card-generating'
   | 'greeting-card-display'
+  | 'greeting-card-rewriting'
   | 'greeting-card-voice-selection'
   | 'year-review-questionnaire-type'
   | 'year-review-questionnaire'
@@ -301,6 +302,15 @@ function App() {
                            voiceId === 'christmas_story_generator__male_elf_narrator'
       
       if (isElfNarrator && storyData.greetingCardData?.cardMessage) {
+        // Show rewriting progress page
+        setStoryData(prev => ({ 
+          ...prev, 
+          voiceId,
+          customVoiceId: undefined,
+          customApiKey: undefined
+        }))
+        setStep('greeting-card-rewriting')
+        
         try {
           const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://inworld-christmas-story-production.up.railway.app'
           const rewriteResponse = await fetch(`${API_BASE_URL}/api/rewrite-greeting-card-for-elf`, {
@@ -328,15 +338,18 @@ function App() {
           console.error('Error rewriting message for elf narrator:', error)
           // Continue with original message if rewrite fails
         }
+        
+        // Move to narration after rewrite completes
+        setStep('narration')
+      } else {
+        setStoryData(prev => ({ 
+          ...prev, 
+          voiceId,
+          customVoiceId: undefined,
+          customApiKey: undefined
+        }))
+        setStep('narration')
       }
-      
-      setStoryData(prev => ({ 
-        ...prev, 
-        voiceId,
-        customVoiceId: undefined,
-        customApiKey: undefined
-      }))
-      setStep('narration')
     }
   }
 
@@ -491,50 +504,13 @@ function App() {
         )}
 
         {step === 'greeting-card-display' && storyData.greetingCardData && (
-          <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.8rem', color: '#333' }}>
-              Rough Draft
-            </h2>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {/* Cover Image */}
-              {(storyData.imageUrl || storyData.greetingCardData.generatedImageUrl) && (
-                <div style={{ flex: '0 0 auto', maxWidth: '300px' }}>
-                  <img 
-                    src={storyData.imageUrl || storyData.greetingCardData.generatedImageUrl || ''} 
-                    alt="Greeting card cover" 
-                    style={{ width: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-                  />
-                </div>
-              )}
-              {/* Card Message */}
-              <div style={{ flex: '1 1 400px', minWidth: '300px' }}>
-                <GreetingCard
-                  frontImageUrl={null}
-                  message={storyData.greetingCardData.cardMessage || ''}
-                  recipientName={storyData.greetingCardData.recipientName}
-                  isOpen={true}
-                  onOpen={() => {}}
-                  showFullText={true}
-                />
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                className="btn btn-primary"
-                onClick={() => setStep('greeting-card-voice-selection')}
-                style={{ fontSize: '1.2rem', padding: '12px 24px' }}
-              >
-                Add Narration →
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setStep('greeting-card-names')}
-                style={{ fontSize: '1.2rem', padding: '12px 24px' }}
-              >
-                Start Over
-              </button>
-            </div>
-          </div>
+          <GreetingCardDisplay
+            coverImageUrl={storyData.imageUrl || storyData.greetingCardData.generatedImageUrl || null}
+            message={storyData.greetingCardData.cardMessage || ''}
+            recipientName={storyData.greetingCardData.recipientName}
+            onAddNarration={() => setStep('greeting-card-voice-selection')}
+            onStartOver={() => setStep('greeting-card-names')}
+          />
         )}
 
         {step === 'greeting-card-voice-selection' && (
