@@ -131,19 +131,18 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
     recognition.onend = () => {
       // In continuous mode, onend should rarely fire unless there's an error
-      // CRITICAL: Do NOT restart if we're processing (Olivia is speaking)
-      // Also, don't restart immediately - wait a bit to ensure audio has stopped
-      if (!isComplete && !isProcessing) {
+      // CRITICAL: Do NOT restart if we're processing (Olivia is speaking) OR TTS is in progress
+      if (!isComplete && !isProcessing && !isTTSInProgressRef.current) {
         console.log('🎤 Speech recognition ended unexpectedly, checking if we should restart...')
         // Only restart if we're not processing and recognition ref exists
         if (recognitionRef.current) {
           setTimeout(() => {
             try {
-              // Triple-check we're still not processing before restarting
-              // This prevents restarting while audio is still playing
-              if (!isProcessing && !isComplete && recognitionRef.current) {
+              // Triple-check: not processing, not complete, TTS not in progress, and no audio playing
+              if (!isProcessing && !isComplete && !isTTSInProgressRef.current && recognitionRef.current) {
                 // Check if audio is still playing
-                if (audioRef.current && !audioRef.current.paused && !audioRef.current.ended) {
+                const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
+                if (anyAudioPlaying || (audioRef.current && !audioRef.current.paused && !audioRef.current.ended)) {
                   console.log('🔇 Not restarting recognition - audio is still playing')
                   setIsListening(false)
                   return
@@ -153,7 +152,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                 console.log('🎤 Restarted speech recognition after unexpected end - mic should be active')
                 // onstart will also set isListening to true, but set it here too
               } else {
-                console.log('🔇 Not restarting recognition - processing or complete')
+                console.log('🔇 Not restarting recognition - processing, complete, or TTS in progress', {
+                  isProcessing,
+                  isComplete,
+                  isTTSInProgress: isTTSInProgressRef.current
+                })
                 setIsListening(false)
               }
             } catch (error: any) {
@@ -170,7 +173,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       } else if (isComplete) {
         console.log('🎤 Speech recognition ended (conversation complete)')
         setIsListening(false)
-      } else if (isProcessing) {
+      } else if (isProcessing || isTTSInProgressRef.current) {
         console.log('🔇 Speech recognition ended while processing (expected - Olivia is speaking)')
         setIsListening(false)
       }
