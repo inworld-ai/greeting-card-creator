@@ -1122,7 +1122,17 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
         // Determine which question was actually answered
         // CRITICAL: If Olivia moved to the next question, the answer is for the PREVIOUS question
         // Otherwise, find which question was most recently asked
-        let questionToAnswer = nextQuestion // Default fallback
+        // If wrapping up and nextQuestion is undefined, find the last unanswered question
+        let questionToAnswer = nextQuestion || (isWrappingUpInResponse && remainingQuestions.length > 0 ? remainingQuestions[remainingQuestions.length - 1] : null) // Default fallback
+        
+        // If still no question found, try to find any unanswered question
+        if (!questionToAnswer && remainingQuestions.length > 0) {
+          questionToAnswer = remainingQuestions[remainingQuestions.length - 1]
+        }
+        
+        if (!questionToAnswer) {
+          console.log('⚠️ Could not determine which question to answer, skipping detection')
+        } else {
         
         if (movesToNext) {
           // Olivia moved to the next question, so the user's answer was for the PREVIOUS question
