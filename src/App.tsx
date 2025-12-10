@@ -513,6 +513,17 @@ function App() {
           />
         )}
 
+        {step === 'greeting-card-rewriting' && (
+          <div className="story-generation">
+            <div className="generation-status">
+              <div className="loading-spinner"></div>
+              <p className="status-text" style={{ fontSize: '2rem', fontWeight: '600' }}>
+                The elves are rewriting...
+              </p>
+            </div>
+          </div>
+        )}
+
         {step === 'greeting-card-voice-selection' && (
           <VoiceSelection
             onSubmit={handleGreetingCardVoiceSelected}
