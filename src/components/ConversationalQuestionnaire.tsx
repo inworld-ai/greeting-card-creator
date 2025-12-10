@@ -511,6 +511,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
                               (aiResponse.toLowerCase().includes('thank') && 
                                (aiResponse.toLowerCase().includes('year in review') || 
                                 aiResponse.toLowerCase().includes('wish list') ||
+                                aiResponse.toLowerCase().includes('greeting card') ||
                                 aiResponse.toLowerCase().includes('create')))
           
           if (allAnswered || isWrappingUp) {

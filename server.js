@@ -1046,6 +1046,13 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
                           responseLower.includes('one gift') ||
                           responseLower.includes('something you\'d love') ||
                           responseLower.includes('something practical') ||
+                          // Greeting card specific phrases
+                          (experienceType === 'greeting-card' && (
+                            responseLower.includes('funny') && responseLower.includes('story') ||
+                            responseLower.includes('joke') ||
+                            responseLower.includes('something funny about') ||
+                            (responseLower.includes('special') && responseLower.includes('about') && answeredKeys.includes('specialAboutThem'))
+                          )) ||
                           (answeredKeys.length > 0 && !isFollowUp && !responseLower.includes('?'))
       
       // Check if AI is acknowledging and wrapping up the current topic
@@ -1101,7 +1108,9 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
       console.log(`🔍 Detection check: userMessage length=${userMessage.length}, looksLikePreset=${looksLikePreset}, movesToNext=${movesToNext}, isFollowUp=${isFollowUp}, userResponseCount=${userResponseCount}, acknowledgesAndWraps=${acknowledgesAndWraps}`)
       
       // More aggressive detection: if AI moves to next question OR user has given 2+ responses OR it looks like a preset, mark as answered
-      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= 2))) {
+      // For greeting cards, be more lenient - accept answer after 1-2 responses
+      const minResponsesForGreetingCard = experienceType === 'greeting-card' ? 1 : 2
+      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= minResponsesForGreetingCard))) {
         // Determine which question was actually answered
         // CRITICAL: If Olivia moved to the next question, the answer is for the PREVIOUS question
         // Otherwise, find which question was most recently asked
