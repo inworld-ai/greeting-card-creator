@@ -1214,42 +1214,42 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
               if (questionToAnswer !== nextQuestion) break // Found it, stop looking
             }
           }
-        }
-        
-        // Collect all user responses about this topic
-        const topicResponses = []
-        // Find when this specific question was first asked (not just any question)
-        const specificQuestionIndex = conversationHistory.findIndex(msg => {
-          if (msg.role !== 'assistant') return false
-          const msgLower = msg.content.toLowerCase()
-          const questionStart = questionToAnswer.question.substring(0, 25).toLowerCase()
-          if (msgLower.includes(questionStart)) {
-            // Make sure it doesn't match other questions
-            const otherQuestions = questions.filter(q => q.key !== questionToAnswer.key)
-            return !otherQuestions.some(q => msgLower.includes(q.question.substring(0, 20).toLowerCase()))
+          
+          // Collect all user responses about this topic
+          const topicResponses = []
+          // Find when this specific question was first asked (not just any question)
+          const specificQuestionIndex = conversationHistory.findIndex(msg => {
+            if (msg.role !== 'assistant') return false
+            const msgLower = msg.content.toLowerCase()
+            const questionStart = questionToAnswer.question.substring(0, 25).toLowerCase()
+            if (msgLower.includes(questionStart)) {
+              // Make sure it doesn't match other questions
+              const otherQuestions = questions.filter(q => q.key !== questionToAnswer.key)
+              return !otherQuestions.some(q => msgLower.includes(q.question.substring(0, 20).toLowerCase()))
+            }
+            return false
+          })
+          
+          if (specificQuestionIndex >= 0) {
+            // Find when the next question was asked (to stop collecting responses)
+            const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
+              idx > specificQuestionIndex &&
+              msg.role === 'assistant' &&
+              questions.some(q => q.key !== questionToAnswer.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
+            )
+            const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
+            conversationHistory
+              .slice(specificQuestionIndex + 1, endIndex)
+              .filter(msg => msg.role === 'user')
+              .forEach(msg => topicResponses.push(msg.content))
           }
-          return false
-        })
-        
-        if (specificQuestionIndex >= 0) {
-          // Find when the next question was asked (to stop collecting responses)
-          const nextQuestionIndex = conversationHistory.findIndex((msg, idx) => 
-            idx > specificQuestionIndex &&
-            msg.role === 'assistant' &&
-            questions.some(q => q.key !== questionToAnswer.key && msg.content.toLowerCase().includes(q.question.substring(0, 20).toLowerCase()))
-          )
-          const endIndex = nextQuestionIndex >= 0 ? nextQuestionIndex : conversationHistory.length
-          conversationHistory
-            .slice(specificQuestionIndex + 1, endIndex)
-            .filter(msg => msg.role === 'user')
-            .forEach(msg => topicResponses.push(msg.content))
+          topicResponses.push(userMessage)
+          
+          detectedAnswer = topicResponses.join(' ')
+          detectedQuestionKey = questionToAnswer.key
+          console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount} responses (movesToNext: ${movesToNext}, isWrappingUp: ${isWrappingUpInResponse})`)
+          console.log(`📝 Answer text: ${detectedAnswer.substring(0, 100)}...`)
         }
-        topicResponses.push(userMessage)
-        
-        detectedAnswer = topicResponses.join(' ')
-        detectedQuestionKey = questionToAnswer.key
-        console.log(`✅ Detected answer for ${detectedQuestionKey} after ${userResponseCount} responses (movesToNext: ${movesToNext})`)
-        console.log(`📝 Answer text: ${detectedAnswer.substring(0, 100)}...`)
       }
     }
 
