@@ -4,6 +4,7 @@ import './ConversationalQuestionnaire.css'
 
 interface ConversationalQuestionnaireProps {
   experienceType: 'year-review' | 'wish-list' | 'greeting-card'
+  recipientName?: string // For greeting-card: the name of the person the card is for
   onSubmit: (answers: {
     favoriteMemory?: string
     newThing?: string
@@ -22,7 +23,7 @@ interface ConversationMessage {
   content: string
 }
 
-function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: ConversationalQuestionnaireProps) {
+function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, onBack }: ConversationalQuestionnaireProps) {
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
   const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, string>>({})
   const [isListening, setIsListening] = useState(false)
@@ -430,6 +431,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         body: JSON.stringify({
           experienceType,
           userMessage,
+          recipientName: experienceType === 'greeting-card' ? recipientName : undefined,
           conversationHistory: currentHistory.map(msg => ({
             role: msg.role,
             content: msg.content

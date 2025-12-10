@@ -433,9 +433,10 @@ function App() {
           />
         )}
 
-        {step === 'greeting-card-questionnaire-voice' && (
+        {step === 'greeting-card-questionnaire-voice' && storyData.greetingCardData && (
           <ConversationalQuestionnaire
             experienceType="greeting-card"
+            recipientName={storyData.greetingCardData.recipientName}
             onSubmit={handleGreetingCardQuestionnaireSubmitted}
             onBack={() => setStep('greeting-card-photo')}
           />

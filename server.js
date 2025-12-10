@@ -722,6 +722,7 @@ app.post('/api/conversational-chat', async (req, res) => {
     const { 
       experienceType, 
       userMessage, 
+      recipientName,
       conversationHistory = [],
       answeredQuestions = {}
     } = req.body
