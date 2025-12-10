@@ -747,11 +747,37 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleSubmit = () => {
-    // Stop recognition if still running
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop()
-      setIsListening(false)
+    // CRITICAL: Stop recognition immediately when submitting
+    console.log('🛑 Submitting answers - stopping recognition and cleaning up')
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+        recognitionRef.current = null
+      } catch (error) {
+        console.error('Error stopping recognition on submit:', error)
+      }
     }
+    setIsListening(false)
+    isProcessingRef.current = false
+    isTTSInProgressRef.current = false
+    
+    // Stop and clean up all audio
+    if (audioRef.current) {
+      audioRef.current.pause()
+      if (audioRef.current.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src)
+      }
+      audioRef.current = null
+    }
+    
+    // Clean up all audio chunks
+    allAudioChunksRef.current.forEach(chunk => {
+      chunk.pause()
+      if (chunk.src.startsWith('blob:')) {
+        URL.revokeObjectURL(chunk.src)
+      }
+    })
+    allAudioChunksRef.current = []
     
     // If conversation is complete, extract any missing answers from conversation history
     let finalAnswers = { ...answeredQuestions }

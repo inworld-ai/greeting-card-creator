@@ -18,7 +18,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [useVoiceClone, setUseVoiceClone] = useState(true) // Default to recording option
+  const useVoiceClone = true // Always use voice clone recording
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
