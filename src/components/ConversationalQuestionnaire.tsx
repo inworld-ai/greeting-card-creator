@@ -66,9 +66,16 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }
 
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
-      // Don't process results if we're processing (Olivia is speaking)
+      // CRITICAL: Don't process results if we're processing (Olivia is speaking)
+      // This is a safety check to prevent feedback loop
       if (isProcessing) {
-        console.log('🔇 Ignoring speech recognition result while Olivia is speaking')
+        console.log('🔇 IGNORING speech recognition result - Olivia is speaking (isProcessing=true)')
+        return
+      }
+      
+      // Also check isListening state as an additional safeguard
+      if (!isListening) {
+        console.log('🔇 IGNORING speech recognition result - mic is muted (isListening=false)')
         return
       }
       
@@ -77,10 +84,10 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       const resultIndex = event.results.length - 1
       const transcript = event.results[resultIndex][0].transcript.trim()
       
-      // Only process if we have a transcript and we're not already processing
-      if (transcript && !isProcessingUserInput && !isProcessing && !isComplete) {
+      // Only process if we have a transcript and all conditions are met
+      if (transcript && !isProcessingUserInput && !isProcessing && !isComplete && isListening) {
         isProcessingUserInput = true
-        console.log('User response:', transcript)
+        console.log('✅ User response (mic is active):', transcript)
 
         // Process the response with the updated conversation history
         try {
@@ -88,6 +95,10 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         } finally {
           // Reset flag after processing completes
           isProcessingUserInput = false
+        }
+      } else {
+        if (transcript) {
+          console.log('🔇 Ignored transcript (conditions not met):', transcript.substring(0, 50))
         }
       }
     }
@@ -275,15 +286,26 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         throw new Error('No response received from backend')
       }
 
-      // Stop speech recognition immediately when we receive AI response (before audio generation)
-      if (recognitionRef.current && isListening) {
+      // CRITICAL: Stop speech recognition IMMEDIATELY when we receive AI response
+      // Stop REGARDLESS of isListening state - we must be aggressive here to prevent feedback
+      if (recognitionRef.current) {
         try {
           recognitionRef.current.stop()
           setIsListening(false)
-          console.log('🔇 Stopped speech recognition when AI response received')
-        } catch (error) {
-          console.error('Error stopping recognition:', error)
+          console.log('🔇 STOPPED speech recognition when AI response received (preventing feedback)')
+        } catch (error: any) {
+          // Even if there's an error, set listening to false
+          setIsListening(false)
+          if (error.name !== 'InvalidStateError') {
+            console.error('Error stopping recognition:', error)
+          } else {
+            console.log('🔇 Recognition was already stopped (good)')
+          }
         }
+      } else {
+        // If recognitionRef is null, still set listening to false as a safeguard
+        setIsListening(false)
+        console.log('🔇 Recognition ref is null, setting listening to false')
       }
 
       // Update conversation history and answered questions together
