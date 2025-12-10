@@ -222,9 +222,16 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleUserMessage = async (userMessage: string) => {
+    // CRITICAL: Prevent multiple simultaneous requests
+    if (isTTSInProgressRef.current || isProcessing) {
+      console.log('⚠️ Already processing, ignoring duplicate user message')
+      return
+    }
+    
     // CRITICAL: Set processing to true FIRST, then stop recognition
     // This ensures onresult handler will ignore any pending results
     setIsProcessing(true)
+    isTTSInProgressRef.current = true
     
     // Stop speech recognition immediately when user message is being processed
     // This prevents any additional speech from being captured while we process
@@ -249,6 +256,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       // Send message with updated history using functional update
       sendMessage(userMessage, updatedHistory, answeredQuestions).catch((error: any) => {
         console.error('Error sending message:', error)
+        isTTSInProgressRef.current = false
         setIsProcessing(false)
         // Restart recognition on error
         if (!isComplete && recognitionRef.current) {
@@ -269,11 +277,14 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const sendMessage = async (userMessage: string, currentHistory: ConversationMessage[] = conversationHistory, currentAnswers: Record<string, string> = answeredQuestions) => {
-    // Prevent multiple simultaneous TTS requests
+    // Prevent multiple simultaneous requests - this should already be checked in handleUserMessage, but double-check here
     if (isTTSInProgressRef.current) {
       console.log('⚠️ TTS already in progress, ignoring duplicate request')
       return
     }
+    
+    // Set flag BEFORE making the request to prevent race conditions
+    isTTSInProgressRef.current = true
     
     try {
       console.log('📤 Sending message to backend:', { 
