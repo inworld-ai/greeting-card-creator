@@ -329,7 +329,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
     try {
       console.log('🎤 Starting conversation...')
       setHasStarted(true) // Mark conversation as started
-      await sendMessage('')
+      await sendMessage('', [], answeredQuestionsRef.current)
     } catch (error: any) {
       console.error('❌ Error starting conversation:', error)
       setIsProcessing(false)
@@ -509,6 +509,8 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
               ...prevAnswers,
               [data.detectedQuestionKey]: data.detectedAnswer
             }
+            // Update ref to keep it in sync
+            answeredQuestionsRef.current = updatedAnswers
             console.log(`✅ Answer detected for ${data.detectedQuestionKey}: ${data.detectedAnswer.substring(0, 50)}...`)
             console.log(`📊 Progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
             console.log(`📊 Updated answeredQuestions keys:`, Object.keys(updatedAnswers))
@@ -561,6 +563,8 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
                       
                       if (userResponses.trim()) {
                         updatedAnswers[q.key] = userResponses.trim()
+                        // Update ref to keep it in sync
+                        answeredQuestionsRef.current = updatedAnswers
                         console.log(`✅ Extracted answer for ${q.key}: ${userResponses.substring(0, 50)}...`)
                       }
                     }
