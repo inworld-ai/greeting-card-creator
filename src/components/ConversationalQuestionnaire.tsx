@@ -296,6 +296,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         throw new Error('No response received from backend')
       }
 
+      // CRITICAL: Set isProcessing to true FIRST, then stop recognition
+      // This prevents the onend handler from restarting recognition too early
+      setIsProcessing(true)
+      console.log('🔄 Set isProcessing=true (Olivia will be speaking soon)')
+
       // CRITICAL: Stop speech recognition IMMEDIATELY when we receive AI response
       // Stop REGARDLESS of isListening state - we must be aggressive here to prevent feedback
       if (recognitionRef.current) {
