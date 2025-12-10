@@ -17,12 +17,15 @@ app.use(cors({
   origin: [
     'https://christmas-personalized-storyteller.vercel.app',
     'https://christmas-personalized-storyteller-gjgi38e7e.vercel.app',
+    /^https:\/\/christmas-personalized-storyteller.*\.vercel\.app$/, // Match all Vercel preview deployments
     'http://localhost:5173',
     'http://localhost:3000'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }))
 app.use(express.json({ limit: '10mb' })) // Increase limit for audio uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
