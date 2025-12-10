@@ -5,6 +5,7 @@ import './ConversationalQuestionnaire.css'
 interface ConversationalQuestionnaireProps {
   experienceType: 'year-review' | 'wish-list' | 'greeting-card'
   recipientName?: string // For greeting-card: the name of the person the card is for
+  relationship?: string // For greeting-card: the relationship between sender and recipient
   onSubmit: (answers: {
     favoriteMemory?: string
     newThing?: string
@@ -23,7 +24,7 @@ interface ConversationMessage {
   content: string
 }
 
-function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, onBack }: ConversationalQuestionnaireProps) {
+function ConversationalQuestionnaire({ experienceType, recipientName, relationship, onSubmit, onBack }: ConversationalQuestionnaireProps) {
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
   const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, string>>({})
   const [isListening, setIsListening] = useState(false)
@@ -446,6 +447,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
           experienceType,
           userMessage,
           recipientName: experienceType === 'greeting-card' ? recipientName : undefined,
+          relationship: experienceType === 'greeting-card' ? relationship : undefined,
           conversationHistory: currentHistory.map(msg => ({
             role: msg.role,
             content: msg.content

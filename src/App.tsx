@@ -437,6 +437,7 @@ function App() {
           <ConversationalQuestionnaire
             experienceType="greeting-card"
             recipientName={storyData.greetingCardData.recipientName}
+            relationship={storyData.greetingCardData.relationship}
             onSubmit={handleGreetingCardQuestionnaireSubmitted}
             onBack={() => setStep('greeting-card-photo')}
           />
