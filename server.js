@@ -1098,13 +1098,12 @@ Respond in JSON format:
 
     // Fallback to pattern matching if Claude didn't detect anything
     if (!detectedAnswer) {
-    
-    // For greeting cards, also check if we're wrapping up (both questions might be answered)
-    const isWrappingUp = experienceType === 'greeting-card' && 
-                        cleanResponse.toLowerCase().includes('i\'ll take your answers') &&
-                        cleanResponse.toLowerCase().includes('greeting card')
-    
-    if (userMessage && userMessage.trim().length > 10 && (nextQuestion || isWrappingUp)) {
+      // For greeting cards, also check if we're wrapping up (both questions might be answered)
+      const isWrappingUp = experienceType === 'greeting-card' && 
+                          cleanResponse.toLowerCase().includes('i\'ll take your answers') &&
+                          cleanResponse.toLowerCase().includes('greeting card')
+      
+      if (userMessage && userMessage.trim().length > 10 && (nextQuestion || isWrappingUp)) {
       const responseLower = cleanResponse.toLowerCase()
       const userMessageLower = userMessage.toLowerCase()
       
