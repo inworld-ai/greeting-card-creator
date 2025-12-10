@@ -83,7 +83,7 @@ function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
           disabled={!name.trim() || !voiceId}
           className="submit-button"
         >
-          Create My Christmas Story
+          Continue
         </button>
       </div>
     </div>

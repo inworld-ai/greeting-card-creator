@@ -33,9 +33,27 @@ function ImageUpload({ onImageSelected, onSkip, onBack }: ImageUploadProps) {
     }
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedFile && previewUrl) {
-      onImageSelected(selectedFile, previewUrl)
+      // Convert blob URL to data URL for sharing compatibility
+      try {
+        const response = await fetch(previewUrl)
+        const blob = await response.blob()
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string
+          onImageSelected(selectedFile, dataUrl)
+        }
+        reader.onerror = () => {
+          // Fallback to blob URL if conversion fails
+          onImageSelected(selectedFile, previewUrl)
+        }
+        reader.readAsDataURL(blob)
+      } catch (error) {
+        console.error('Error converting image to data URL:', error)
+        // Fallback to blob URL if conversion fails
+        onImageSelected(selectedFile, previewUrl)
+      }
     }
   }
 
