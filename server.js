@@ -926,7 +926,7 @@ HOW TO BE MORE HUMAN:
 - Use casual language - contractions, natural phrases, real reactions
 - Don't sound scripted or robotic - be spontaneous and genuine
 
-${nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
+${allQuestionsAnswered ? `\n\n🎯 ALL QUESTIONS HAVE BEEN ANSWERED! You MUST wrap up now. Say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
 
 ${answeredContext}
 
