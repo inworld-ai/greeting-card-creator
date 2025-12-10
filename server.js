@@ -1133,8 +1133,8 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
         if (!questionToAnswer) {
           console.log('⚠️ Could not determine which question to answer, skipping detection')
         } else {
-        
-        if (movesToNext) {
+          
+          if (movesToNext) {
           // Olivia moved to the next question, so the user's answer was for the PREVIOUS question
           // Find which question Olivia just asked in the CURRENT response
           const matchingNewQuestion = questions.find(q => {
