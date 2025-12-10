@@ -826,8 +826,37 @@ app.post('/api/conversational-chat', async (req, res) => {
     }
 
     // Determine which questions still need to be answered
-    const remainingQuestions = questions.filter(q => !answeredQuestions[q.key])
+    // Check both answeredQuestions object AND conversation history to detect all answers
+    const allAnsweredKeys = new Set(Object.keys(answeredQuestions))
+    
+    // Also check conversation history for answers that might not be in answeredQuestions yet
+    if (conversationHistory && conversationHistory.length > 0 && userMessage && userMessage.trim().length > 5) {
+      // Check if the user's message answers any remaining questions
+      questions.forEach(q => {
+        if (!allAnsweredKeys.has(q.key)) {
+          // Check if this question was asked and the user responded
+          const questionIndex = conversationHistory.findIndex(msg => 
+            msg.role === 'assistant' && 
+            msg.content.toLowerCase().includes(q.question.substring(0, 30).toLowerCase())
+          )
+          if (questionIndex >= 0) {
+            // Check if there's a user response after this question
+            const hasUserResponse = conversationHistory.slice(questionIndex + 1).some(msg => msg.role === 'user')
+            if (hasUserResponse) {
+              // This question was likely answered, add it to the set
+              allAnsweredKeys.add(q.key)
+              console.log(`✅ Detected answer for ${q.key} from conversation history`)
+            }
+          }
+        }
+      })
+    }
+    
+    const remainingQuestions = questions.filter(q => !allAnsweredKeys.has(q.key))
     const nextQuestion = remainingQuestions[0]
+    const allQuestionsAnswered = remainingQuestions.length === 0
+    
+    console.log(`📊 Questions status: ${allAnsweredKeys.size}/${questions.length} answered, remaining: ${remainingQuestions.length}, allAnswered: ${allQuestionsAnswered}`)
 
     // Determine the experience name for the prompt
     const experienceName = experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'
@@ -1114,7 +1143,18 @@ Respond in JSON format:
                           cleanResponse.toLowerCase().includes('i\'ll take your answers') &&
                           cleanResponse.toLowerCase().includes('greeting card')
       
-      if (userMessage && userMessage.trim().length > 10 && (nextQuestion || isWrappingUp)) {
+      // If all questions are answered, we should have detected it, but check again
+      if (allQuestionsAnswered && !detectedAnswer) {
+        // All questions are answered but we didn't detect it - mark the last question as answered
+        const lastQuestion = questions[questions.length - 1]
+        if (lastQuestion && !allAnsweredKeys.has(lastQuestion.key)) {
+          detectedAnswer = userMessage
+          detectedQuestionKey = lastQuestion.key
+          console.log(`✅ All questions answered - marking last question "${lastQuestion.key}" as answered`)
+        }
+      }
+      
+      if (userMessage && userMessage.trim().length > 10 && (nextQuestion || isWrappingUp || allQuestionsAnswered)) {
       const responseLower = cleanResponse.toLowerCase()
       const userMessageLower = userMessage.toLowerCase()
       
