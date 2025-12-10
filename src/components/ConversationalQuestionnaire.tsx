@@ -66,6 +66,12 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }
 
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
+      // Don't process results if we're processing (Olivia is speaking)
+      if (isProcessing) {
+        console.log('🔇 Ignoring speech recognition result while Olivia is speaking')
+        return
+      }
+      
       // In continuous mode, we get results as the user speaks
       // Get the most recent result
       const resultIndex = event.results.length - 1
@@ -247,6 +253,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         throw new Error('No response received from backend')
       }
 
+      // Stop speech recognition immediately when we receive AI response (before audio generation)
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop()
+          setIsListening(false)
+          console.log('🔇 Stopped speech recognition when AI response received')
+        } catch (error) {
+          console.error('Error stopping recognition:', error)
+        }
+      }
+
       // Update conversation history and answered questions together
       setConversationHistory(prev => {
         const updatedHistory: ConversationMessage[] = [...prev, { role: 'assistant' as const, content: aiResponse }]
@@ -378,25 +395,55 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
           }
         }
 
-        audio.onended = () => {
-          setIsProcessing(false)
-          // Restart speech recognition after Olivia finishes speaking
-          if (!isComplete && recognitionRef.current) {
-            setTimeout(() => {
-              try {
-                console.log('🎤 Restarting speech recognition after Olivia finished speaking')
-                recognitionRef.current?.start()
-                setIsListening(true)
-              } catch (error: any) {
-                if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
-                  console.log('🎤 Recognition already running')
+        // Track if this is the last chunk
+        const allChunks = (audio as any).__allChunks as HTMLAudioElement[] | undefined
+        const lastChunk = (audio as any).__lastChunk as HTMLAudioElement | undefined
+        
+        // Set up handler on the LAST chunk only
+        if (lastChunk) {
+          lastChunk.onended = () => {
+            setIsProcessing(false)
+            // Restart speech recognition after ALL chunks have finished
+            if (!isComplete && recognitionRef.current) {
+              setTimeout(() => {
+                try {
+                  console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done)')
+                  recognitionRef.current?.start()
                   setIsListening(true)
-                } else {
-                  console.error('Error restarting recognition:', error)
-                  setIsListening(false)
+                } catch (error: any) {
+                  if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                    console.log('🎤 Recognition already running')
+                    setIsListening(true)
+                  } else {
+                    console.error('Error restarting recognition:', error)
+                    setIsListening(false)
+                  }
                 }
-              }
-            }, 300)  // Small delay to ensure audio is fully stopped
+              }, 500)  // Longer delay to ensure all audio is fully stopped
+            }
+          }
+        } else {
+          // Fallback: if we can't find the last chunk, use the first audio's ended event
+          // But only restart after a longer delay to ensure all chunks are done
+          audio.onended = () => {
+            setIsProcessing(false)
+            if (!isComplete && recognitionRef.current) {
+              setTimeout(() => {
+                try {
+                  console.log('🎤 Restarting speech recognition after Olivia finished speaking (fallback)')
+                  recognitionRef.current?.start()
+                  setIsListening(true)
+                } catch (error: any) {
+                  if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                    console.log('🎤 Recognition already running')
+                    setIsListening(true)
+                  } else {
+                    console.error('Error restarting recognition:', error)
+                    setIsListening(false)
+                  }
+                }
+              }, 1000)  // Longer delay for fallback
+            }
           }
         }
 
