@@ -396,7 +396,6 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
 
         // Track if this is the last chunk
-        const allChunks = (audio as any).__allChunks as HTMLAudioElement[] | undefined
         const lastChunk = (audio as any).__lastChunk as HTMLAudioElement | undefined
         
         // Set up handler on the LAST chunk only
