@@ -1039,10 +1039,42 @@ FINAL REMINDER: Review the conversation history above. If you have already asked
       // More aggressive detection: if AI moves to next question OR user has given 2+ responses OR it looks like a preset, mark as answered
       if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= 2))) {
         // Determine which question was actually answered
-        // The answer is for nextQuestion (the question that was being asked before Olivia moved on)
-        let questionToAnswer = nextQuestion
+        // CRITICAL: Find which question was MOST RECENTLY asked in the conversation history
+        // This is more reliable than using nextQuestion which may be stale
+        let questionToAnswer = nextQuestion // Default fallback
         
-        // If AI moved to next question, verify which question Olivia just asked
+        // Find the most recent assistant message that contains a question
+        const recentAssistantMessages = conversationHistory
+          .slice()
+          .reverse()
+          .filter(msg => msg.role === 'assistant')
+        
+        for (const msg of recentAssistantMessages) {
+          const msgLower = msg.content.toLowerCase()
+          // Check each question to see if it was asked in this message
+          for (const q of questions) {
+            if (answeredQuestions[q.key]) continue // Skip already answered questions
+            
+            const questionStart = q.question.substring(0, 30).toLowerCase()
+            if (msgLower.includes(questionStart)) {
+              // Make sure it doesn't match other questions
+              const otherQuestions = questions.filter(otherQ => otherQ.key !== q.key)
+              const isOtherQuestion = otherQuestions.some(otherQ => 
+                msgLower.includes(otherQ.question.substring(0, 20).toLowerCase())
+              )
+              
+              if (!isOtherQuestion) {
+                // This is the question that was most recently asked
+                questionToAnswer = q
+                console.log(`🔍 Found most recently asked question: "${q.key}" in conversation history`)
+                break
+              }
+            }
+          }
+          if (questionToAnswer !== nextQuestion) break // Found it, stop looking
+        }
+        
+        // If AI moved to next question, verify which question Olivia just asked in the current response
         if (movesToNext) {
           // The current AI response (cleanResponse) contains the new question
           // Find which question this matches
@@ -1052,14 +1084,11 @@ FINAL REMINDER: Review the conversation history above. If you have already asked
             return cleanResponse.toLowerCase().includes(questionStart)
           })
           
-          if (matchingNewQuestion && matchingNewQuestion.key !== nextQuestion.key) {
-            // Olivia moved to a different question, so the answer is for nextQuestion (the one before)
-            questionToAnswer = nextQuestion
-            console.log(`🔍 AI moved from "${nextQuestion.key}" to "${matchingNewQuestion.key}", so answer is for "${nextQuestion.key}"`)
+          if (matchingNewQuestion && matchingNewQuestion.key !== questionToAnswer.key) {
+            // Olivia moved to a different question, so the answer is for the question that was asked before
+            console.log(`🔍 AI moved from "${questionToAnswer.key}" to "${matchingNewQuestion.key}", so answer is for "${questionToAnswer.key}"`)
           } else {
-            // Use nextQuestion as the answer target
-            questionToAnswer = nextQuestion
-            console.log(`🔍 Using nextQuestion "${nextQuestion.key}" as answer target`)
+            console.log(`🔍 Using detected question "${questionToAnswer.key}" as answer target`)
           }
         }
         
