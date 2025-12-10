@@ -401,6 +401,12 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
   }
 
   const sendMessage = async (userMessage: string, currentHistory: ConversationMessage[] = conversationHistory, currentAnswers: Record<string, string> = answeredQuestions) => {
+    // Don't send messages if conversation is complete
+    if (isComplete) {
+      console.log('🛑 Conversation is complete, not sending message')
+      return { response: '', detectedAnswer: null, detectedQuestionKey: null }
+    }
+    
     // Prevent multiple simultaneous requests - this should already be checked in handleUserMessage, but double-check here
     // CRITICAL: Check BOTH flags to prevent any race conditions
     if (isTTSInProgressRef.current || isProcessingRef.current) {
@@ -506,7 +512,9 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
           const allAnswered = questions.every(q => (updatedAnswers as Record<string, string>)[q.key])
           
           // Check if Olivia is wrapping up the conversation
-          const isWrappingUp = aiResponse.toLowerCase().includes('i\'ll take your answers') ||
+          const isWrappingUp = aiResponse.toLowerCase().includes('all set') ||
+                              aiResponse.toLowerCase().includes('i\'ll create your greeting card') ||
+                              aiResponse.toLowerCase().includes('i\'ll take your answers') ||
                               aiResponse.toLowerCase().includes('create your') ||
                               (aiResponse.toLowerCase().includes('thank') && 
                                (aiResponse.toLowerCase().includes('year in review') || 

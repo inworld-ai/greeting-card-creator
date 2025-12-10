@@ -13,7 +13,7 @@ interface StoryGenerationProps {
   onError?: () => void // Callback to handle errors (e.g., navigate back)
 }
 
-function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: StoryGenerationProps) {
+function StoryGeneration({ storyType, childName, uploadedImageUrl, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: StoryGenerationProps) {
   useEffect(() => {
     // Log what we're about to send
     console.log('StoryGeneration - About to generate story progressively:', { storyType, childName })
