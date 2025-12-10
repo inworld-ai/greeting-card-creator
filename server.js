@@ -926,7 +926,7 @@ HOW TO BE MORE HUMAN:
 - Use casual language - contractions, natural phrases, real reactions
 - Don't sound scripted or robotic - be spontaneous and genuine
 
-${allQuestionsAnswered ? `\n\n🎯 ALL QUESTIONS HAVE BEEN ANSWERED! You MUST wrap up now. Say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
+${allQuestionsAnswered ? `\n\n🚨🚨🚨 CRITICAL: ALL QUESTIONS HAVE BEEN ANSWERED! 🚨🚨🚨\n\nYou MUST say EXACTLY this: "All set! I'll create your greeting card for ${recipientName} now."\n\nDO NOT ask any questions.\nDO NOT ask about anything else.\nDO NOT repeat any questions.\n\nYour ONLY response should be: "All set! I'll create your greeting card for ${recipientName} now."\n\nAfter saying this exact phrase, the conversation is OVER. Do not respond to anything else.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll create your greeting card for ${recipientName} now." Make sure to include the exact phrase "All set! I'll create your greeting card for ${recipientName} now" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
 
 ${answeredContext}
 
@@ -1044,7 +1044,30 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
       return res.status(500).json({ error: 'No response generated from AI' })
     }
 
-    const cleanResponse = responseText.trim()
+    let cleanResponse = responseText.trim()
+    
+    // CRITICAL: If all questions are answered but the response contains a question, force the wrap-up message
+    if (allQuestionsAnswered && recipientName) {
+      const responseLower = cleanResponse.toLowerCase()
+      const containsQuestion = responseLower.includes('?') || 
+                               responseLower.includes('what') ||
+                               responseLower.includes('tell me') ||
+                               responseLower.includes('can you') ||
+                               responseLower.includes('do you') ||
+                               responseLower.includes('would you') ||
+                               responseLower.includes('special about') ||
+                               responseLower.includes('funny about') ||
+                               responseLower.includes('joke with')
+      
+      if (containsQuestion) {
+        console.log('⚠️ All questions answered but response contains a question - forcing wrap-up message')
+        cleanResponse = `All set! I'll create your greeting card for ${recipientName} now.`
+      } else if (!responseLower.includes('all set') && !responseLower.includes('i\'ll create your greeting card')) {
+        // If it doesn't contain the wrap-up phrase, add it
+        console.log('⚠️ All questions answered but response missing wrap-up phrase - adding it')
+        cleanResponse = `All set! I'll create your greeting card for ${recipientName} now.`
+      }
+    }
 
     // Use Claude to analyze the conversation and determine if we should progress
     // This is more reliable than pattern matching
