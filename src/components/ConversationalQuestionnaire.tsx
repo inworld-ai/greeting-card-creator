@@ -227,9 +227,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }, [])
 
   const startConversation = async () => {
-    setIsProcessing(true)
-    isProcessingRef.current = true
-    
+    // Don't set isProcessing here - sendMessage will set it when it starts processing
+    // Setting it here causes sendMessage to return early because it checks isProcessingRef.current
     try {
       console.log('🎤 Starting conversation...')
       await sendMessage('')
@@ -237,6 +236,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       console.error('❌ Error starting conversation:', error)
       setIsProcessing(false)
       isProcessingRef.current = false
+      isTTSInProgressRef.current = false
       // Show error to user
       const errorMessage = error?.message || 'Failed to start conversation. Please try again.'
       alert(`Unable to start conversation: ${errorMessage}`)
