@@ -173,6 +173,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const handleUserMessage = async (userMessage: string) => {
     setIsProcessing(true)
     
+    // Stop speech recognition when user message is being processed
+    if (recognitionRef.current && isListening) {
+      try {
+        recognitionRef.current.stop()
+        setIsListening(false)
+        console.log('🔇 Stopped speech recognition while processing user message')
+      } catch (error) {
+        console.error('Error stopping recognition:', error)
+      }
+    }
+    
     // Update conversation history first, then send with updated history
     setConversationHistory(prev => {
       const updatedHistory: ConversationMessage[] = [...prev, { role: 'user' as const, content: userMessage }]
@@ -180,6 +191,19 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       sendMessage(userMessage, updatedHistory, answeredQuestions).catch((error: any) => {
         console.error('Error sending message:', error)
         setIsProcessing(false)
+        // Restart recognition on error
+        if (!isComplete && recognitionRef.current) {
+          setTimeout(() => {
+            try {
+              recognitionRef.current?.start()
+              setIsListening(true)
+            } catch (err: any) {
+              if (err.name !== 'InvalidStateError') {
+                console.error('Error restarting recognition after error:', err)
+              }
+            }
+          }, 300)
+        }
       })
       return updatedHistory
     })
