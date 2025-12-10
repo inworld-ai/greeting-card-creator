@@ -311,6 +311,17 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         return updatedHistory
       })
 
+      // Stop speech recognition while Olivia is speaking to prevent feedback
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop()
+          setIsListening(false)
+          console.log('🔇 Stopped speech recognition while Olivia is speaking')
+        } catch (error) {
+          console.error('Error stopping recognition:', error)
+        }
+      }
+
       // Get TTS audio for the response using Olivia voice
       // Use the ttsService which handles the WAV chunk parsing correctly
       try {
@@ -330,42 +341,56 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         
         audioRef.current = audio
 
+        // Stop recognition when audio starts playing (additional safety)
+        audio.onplay = () => {
+          if (recognitionRef.current && isListening) {
+            try {
+              recognitionRef.current.stop()
+              setIsListening(false)
+              console.log('🔇 Stopped speech recognition when audio started playing')
+            } catch (error) {
+              console.error('Error stopping recognition on play:', error)
+            }
+          }
+        }
+
         audio.onended = () => {
           setIsProcessing(false)
-          // In continuous mode, recognition should already be running
-          // Just ensure it's still active
+          // Restart speech recognition after Olivia finishes speaking
           if (!isComplete && recognitionRef.current) {
-            if (!isListening) {
-              // If somehow recognition stopped, restart it
-              setTimeout(() => {
-                try {
-                  console.log('🎤 Restarting speech recognition after audio ended')
-                  recognitionRef.current?.start()
-                } catch (error) {
+            setTimeout(() => {
+              try {
+                console.log('🎤 Restarting speech recognition after Olivia finished speaking')
+                recognitionRef.current?.start()
+                setIsListening(true)
+              } catch (error: any) {
+                if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                  console.log('🎤 Recognition already running')
+                  setIsListening(true)
+                } else {
                   console.error('Error restarting recognition:', error)
+                  setIsListening(false)
                 }
-              }, 300)
-            } else {
-              console.log('🎤 Speech recognition still active after audio ended')
-            }
+              }
+            }, 300)  // Small delay to ensure audio is fully stopped
           }
         }
 
         audio.onerror = (error) => {
           console.error('❌ Audio playback error:', error)
           setIsProcessing(false)
-          // In continuous mode, recognition should already be running
-          // Don't try to restart if it's already running
-          if (!isComplete && recognitionRef.current && !isListening) {
+          // Restart recognition after audio error
+          if (!isComplete && recognitionRef.current) {
             setTimeout(() => {
               try {
-                // Check if recognition is already running before starting
                 recognitionRef.current?.start()
-              } catch (error: any) {
-                if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
-                  console.log('🎤 Recognition already running, ignoring restart attempt')
+                setIsListening(true)
+              } catch (err: any) {
+                if (err.name === 'InvalidStateError' && err.message.includes('already started')) {
+                  console.log('🎤 Recognition already running')
+                  setIsListening(true)
                 } else {
-                  console.error('Error restarting recognition:', error)
+                  console.error('Error restarting recognition after audio error:', err)
                 }
               }
             }, 300)
