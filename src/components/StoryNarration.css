@@ -4,6 +4,35 @@
   gap: 30px;
 }
 
+.story-content-direct {
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.story-direct-title {
+  font-size: 2.5rem;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-weight: 700;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+}
+
+.story-direct-body {
+  line-height: 1.8;
+  color: #333;
+}
+
+.story-direct-body .story-paragraph {
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  text-align: left;
+  text-indent: 0;
+}
+
 .narration-title {
   color: #0f5132;
   font-size: 2.2rem;

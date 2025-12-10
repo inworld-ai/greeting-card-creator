@@ -77,9 +77,10 @@ interface StoryNarrationProps {
   customApiKey?: string
   customVoiceId?: string
   isShared?: boolean
+  experienceType?: 'story' | 'year-review' | 'wish-list'
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story' }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -1100,14 +1101,31 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         
         const fullStoryText = title ? `Title: ${title}\n\n${cleanedBody}` : cleanedBody
         
-        return (
-          <ChristmasCard
-            imageUrl={imageUrl || null}
-            title={title || ''}
-            content={fullStoryText}
-            childName={childName}
-          />
-        )
+        // Only show ChristmasCard for Year In Review
+        if (experienceType === 'year-review') {
+          return (
+            <ChristmasCard
+              imageUrl={imageUrl || null}
+              title={title || ''}
+              content={fullStoryText}
+              childName={childName}
+            />
+          )
+        } else {
+          // For story and wish-list, show content directly without card
+          return (
+            <div className="story-content-direct">
+              {title && <h1 className="story-direct-title">{title}</h1>}
+              <div className="story-direct-body">
+                {cleanedBody.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="story-paragraph">
+                    {paragraph.trim()}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )
+        }
       })()}
 
       {error && (

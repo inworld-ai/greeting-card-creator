@@ -485,6 +485,7 @@ function App() {
             onFullStoryReady={handleStoryGenerated}
             customApiKey={storyData.customApiKey}
             customVoiceId={storyData.customVoiceId}
+            experienceType={storyData.experienceType}
           />
         )}
       </div>
