@@ -253,14 +253,9 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       return
     }
     
-    // CRITICAL: Set processing to true FIRST, then stop recognition
-    // This ensures onresult handler will ignore any pending results
-    setIsProcessing(true)
-    isProcessingRef.current = true
-    isTTSInProgressRef.current = true
-    
     // Stop speech recognition immediately when user message is being processed
     // This prevents any additional speech from being captured while we process
+    // Don't set isProcessing here - sendMessage will set it when it starts processing
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
@@ -282,6 +277,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     setConversationHistory(updatedHistory)
     
     // Send message with updated history - await it to prevent race conditions
+    // sendMessage will set isProcessing and isTTSInProgress flags internally
     try {
       await sendMessage(userMessage, updatedHistory, answeredQuestions)
     } catch (error: any) {
