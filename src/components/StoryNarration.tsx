@@ -1090,6 +1090,144 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     <div className="story-narration">
       {/* REMOVED: "Almost ready!" message - story page shows immediately */}
       
+      {/* Start Narration button at the top */}
+      <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
+        {/* Start Story button - more prominent, comes first */}
+        <button 
+          onClick={async () => {
+            // Only start if audio is not playing
+            if (!isAudioPlaying && !isGeneratingAudio) {
+              await handleStartNarration(storyText)
+            }
+          }} 
+          disabled={isGeneratingAudio || isAudioPlaying}
+          className="restart-story-button"
+          style={{
+            fontSize: '1.3rem',
+            padding: '18px 36px',
+            fontWeight: '700',
+            order: 1,
+            opacity: (isGeneratingAudio || isAudioPlaying) ? 0.6 : 1,
+            cursor: (isGeneratingAudio || isAudioPlaying) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {isGeneratingAudio 
+            ? 'Starting Narration...' 
+            : hasStartedNarration 
+              ? 'Restart Story 🧝' 
+              : 'Start Narration 🧝'}
+        </button>
+        
+        {!isShared && (
+          <>
+            {!shareUrl ? (
+              <button 
+                onClick={async () => {
+                  setIsSharing(true)
+                  setShareError(null)
+                  try {
+                    const result = await shareStory({
+                      storyText,
+                      childName,
+                      voiceId,
+                      storyType: _storyType,
+                      imageUrl,
+                      customApiKey,
+                      customVoiceId
+                    })
+                      setShareUrl(result.shareUrl)
+                      // Copy to clipboard
+                      try {
+                        await navigator.clipboard.writeText(result.shareUrl)
+                      } catch (e) {
+                        console.warn('Failed to copy to clipboard:', e)
+                      }
+                  } catch (err: any) {
+                    setShareError(err.message || 'Failed to share story')
+                  } finally {
+                    setIsSharing(false)
+                  }
+                }}
+                disabled={isSharing}
+                className="share-story-button"
+                style={{ order: 2 }}
+              >
+                {isSharing ? 'Sharing...' : 'Share Story 🎁'}
+              </button>
+            ) : (
+              <div className="share-success" style={{ order: 2 }}>
+                <input 
+                  type="text" 
+                  value={shareUrl} 
+                  readOnly 
+                  className="share-url-input"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <button 
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(shareUrl)
+                      setIsLinkCopied(true)
+                      // Reset after 2 seconds
+                      setTimeout(() => {
+                        setIsLinkCopied(false)
+                      }, 2000)
+                    } catch (e) {
+                      console.warn('Failed to copy to clipboard:', e)
+                    }
+                  }}
+                  className="copy-link-button"
+                >
+                  {isLinkCopied ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {error && (
+        <div className="error-message" style={{ color: '#f5576c', marginBottom: '16px', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+
+      {needsUserInteraction && audioRef.current && (
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <button 
+            onClick={async () => {
+              try {
+                if (audioRef.current) {
+                  await audioRef.current.play()
+                  setNeedsUserInteraction(false)
+                  setHasStartedNarration(true) // Mark that narration has started
+                  console.log('🎵 Audio started after user interaction')
+                }
+              } catch (err: any) {
+                console.error('Error playing audio after user interaction:', err)
+                setError('Error starting audio. Please try again.')
+              }
+            }}
+            className="play-button"
+            style={{ 
+              padding: '16px 32px',
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              background: 'linear-gradient(135deg, #228b22 0%, #0f5132 100%)',
+              color: '#fff8f0',
+              border: '2px solid #0f5132',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontFamily: "'Cinzel', serif",
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+          >
+            ▶️ Start Story Narration
+          </button>
+        </div>
+      )}
+      
       {(() => {
         const [title, storyBody] = extractTitleAndStory(storyText)
         const cleanedBody = cleanStoryTextForDisplay(storyBody)
@@ -1190,11 +1328,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                      cursor: (isGeneratingAudio || isAudioPlaying) ? 'not-allowed' : 'pointer'
                    }}
                  >
-                   {isGeneratingAudio 
-                     ? 'Waking the Elf...' 
-                     : hasStartedNarration 
-                       ? 'Restart Story 🧝' 
-                       : 'Start Narration 🧝'}
+                  {isGeneratingAudio 
+                    ? 'Starting Narration...' 
+                    : hasStartedNarration 
+                      ? 'Restart Story 🧝' 
+                      : 'Start Narration 🧝'}
               </button>
                  
                  {!isShared && (
