@@ -1266,48 +1266,6 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         }
       })()}
 
-      {error && (
-        <div className="error-message" style={{ color: '#f5576c', marginBottom: '16px', textAlign: 'center' }}>
-          {error}
-        </div>
-      )}
-
-      {needsUserInteraction && audioRef.current && (
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <button 
-            onClick={async () => {
-              try {
-                if (audioRef.current) {
-                  await audioRef.current.play()
-                  setNeedsUserInteraction(false)
-                  setHasStartedNarration(true) // Mark that narration has started
-                  console.log('🎵 Audio started after user interaction')
-                }
-              } catch (err: any) {
-                console.error('Error playing audio after user interaction:', err)
-                setError('Error starting audio. Please try again.')
-              }
-            }}
-            className="play-button"
-            style={{ 
-              padding: '16px 32px',
-              fontSize: '1.2rem',
-              fontWeight: '600',
-              background: 'linear-gradient(135deg, #228b22 0%, #0f5132 100%)',
-              color: '#fff8f0',
-              border: '2px solid #0f5132',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontFamily: "'Cinzel', serif",
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-          >
-            ▶️ Start Story Narration
-              </button>
-        </div>
-      )}
-
              <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
                  {/* Start Story button - more prominent, comes first */}
                  <button 
