@@ -770,12 +770,17 @@ app.post('/api/conversational-chat', async (req, res) => {
 
     const graph = graphBuilder.build()
 
-    // Define the three questions based on experience type
+    // Define the questions based on experience type
     const questions = experienceType === 'year-review'
       ? [
           { key: 'favoriteMemory', question: "What was your favorite memory or adventure from 2025?" },
           { key: 'newThing', question: "What's something new you tried or learned in 2025?" },
           { key: 'lookingForward', question: "What are you most looking forward to or hoping for in 2026?" }
+        ]
+      : experienceType === 'greeting-card'
+      ? [
+          { key: 'specialAboutThem', question: "What's something special about them that you love?" },
+          { key: 'funnyStory', question: "What's something funny about them or a story that you love to joke with them about?" }
         ]
       : [
           { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
@@ -1765,6 +1770,193 @@ app.get('/api/story/:id', async (req, res) => {
   } catch (error) {
     console.error('Error retrieving story:', error)
     res.status(500).json({ error: 'Failed to retrieve story' })
+  }
+})
+
+// Greeting card message generation using Claude Sonnet 4.5
+app.post('/api/generate-greeting-card-message', async (req, res) => {
+  console.log('\n\n💌 ==========================================')
+  console.log('💌 GREETING CARD MESSAGE GENERATION ENDPOINT CALLED')
+  console.log('💌 ==========================================')
+  
+  try {
+    const { senderName, recipientName, specialAboutThem, funnyStory } = req.body
+
+    if (!senderName || !recipientName || !specialAboutThem || !funnyStory) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: senderName, recipientName, specialAboutThem, funnyStory' 
+      })
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: ANTHROPIC_API_KEY not set' 
+      })
+    }
+
+    const prompt = `Create a short, fun, and comical personalized greeting card message. 
+
+Sender: ${senderName}
+Recipient: ${recipientName}
+What's special about them: ${specialAboutThem}
+Funny story/joke: ${funnyStory}
+
+Write a warm, humorous greeting card message (2-3 short paragraphs max) that:
+- Is fun and comical in tone
+- References the special thing about them
+- Includes the funny story or joke in a lighthearted way
+- Feels personal and heartfelt
+- Is appropriate for a greeting card (not too long)
+- Ends with a warm closing from ${senderName}
+
+Make it feel genuine and fun, like something a friend would write.`
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Claude API error:', errorText)
+      throw new Error(`Claude API error: ${response.status} ${errorText}`)
+    }
+
+    const data = await response.json()
+    const cardMessage = data.content[0].text.trim()
+
+    console.log(`✅ Generated greeting card message (${cardMessage.length} chars)`)
+    
+    return res.status(200).json({ cardMessage })
+  } catch (error) {
+    console.error('❌ Error generating greeting card message:', error)
+    const statusCode = error.statusCode || 500
+    const errorMessage = error.message || 'Failed to generate greeting card message'
+    return res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
+// Greeting card image generation using Google Nano Banana (Gemini 2.5 Flash Image)
+app.post('/api/generate-greeting-card-image', async (req, res) => {
+  console.log('\n\n🎨 ==========================================')
+  console.log('🎨 GREETING CARD IMAGE GENERATION ENDPOINT CALLED')
+  console.log('🎨 ==========================================')
+  
+  try {
+    const { recipientName, specialAboutThem, funnyStory, uploadedImageUrl } = req.body
+
+    if (!recipientName || !specialAboutThem || !funnyStory) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: recipientName, specialAboutThem, funnyStory' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    // Build image prompt based on details
+    let imagePrompt = `A fun, comical, personalized Christmas greeting card illustration featuring ${recipientName}. `
+    imagePrompt += `The image should reflect: ${specialAboutThem}. `
+    imagePrompt += `Include elements that reference: ${funnyStory}. `
+    imagePrompt += `Style: cheerful, festive, humorous, cartoon-like, suitable for a greeting card. `
+    imagePrompt += `Christmas theme with warm colors.`
+
+    // Prepare request body - if uploadedImageUrl is provided, use image editing mode
+    let requestBody
+    if (uploadedImageUrl) {
+      // Image editing mode: convert uploaded image to base64
+      // Note: uploadedImageUrl might be a data URL or blob URL, we'll need to handle it
+      // For now, we'll use text-to-image, but this can be enhanced to support image editing
+      requestBody = {
+        contents: [{
+          parts: [
+            { text: imagePrompt }
+          ]
+        }]
+      }
+    } else {
+      // Text-to-image mode
+      requestBody = {
+        contents: [{
+          parts: [
+            { text: imagePrompt }
+          ]
+        }]
+      }
+    }
+
+    // Use Google's Gemini 2.5 Flash Image API (Nano Banana)
+    // Reference: https://ai.google.dev/gemini-api/docs/image-generation
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Google Gemini Image API error:', errorText)
+      return res.status(200).json({ 
+        imageUrl: null,
+        error: 'Image generation temporarily unavailable'
+      })
+    }
+
+    const data = await response.json()
+    
+    // Extract image from response
+    // The response contains parts with inlineData (base64 encoded image)
+    let imageUrl = null
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          // Convert base64 to data URL
+          const mimeType = part.inlineData.mimeType || 'image/png'
+          imageUrl = `data:${mimeType};base64,${part.inlineData.data}`
+          break
+        }
+      }
+    }
+
+    if (!imageUrl) {
+      console.warn('⚠️ No image data found in response')
+      return res.status(200).json({ 
+        imageUrl: null,
+        error: 'No image generated'
+      })
+    }
+
+    console.log(`✅ Generated greeting card image (${imageUrl.length} chars data URL)`)
+    
+    return res.status(200).json({ imageUrl })
+  } catch (error) {
+    console.error('❌ Error generating greeting card image:', error)
+    return res.status(200).json({ 
+      imageUrl: null,
+      error: error.message || 'Failed to generate image'
+    })
   }
 })
 

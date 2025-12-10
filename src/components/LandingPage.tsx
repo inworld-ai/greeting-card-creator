@@ -1,7 +1,7 @@
 import './LandingPage.css'
 
 interface LandingPageProps {
-  onSelectExperience: (experience: 'story' | 'year-review' | 'wish-list') => void
+  onSelectExperience: (experience: 'story' | 'greeting-card') => void
 }
 
 function LandingPage({ onSelectExperience }: LandingPageProps) {
@@ -21,23 +21,12 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
 
         <div 
           className="landing-option"
-          onClick={() => onSelectExperience('year-review')}
+          onClick={() => onSelectExperience('greeting-card')}
         >
-          <div className="landing-option-icon">📝</div>
-          <h2 className="landing-option-title">Year in Review</h2>
+          <div className="landing-option-icon">💌</div>
+          <h2 className="landing-option-title">Personalized Greeting Card</h2>
           <p className="landing-option-description">
-            Share your favorite memories from 2025 and hear your voice tell your story
-          </p>
-        </div>
-
-        <div 
-          className="landing-option"
-          onClick={() => onSelectExperience('wish-list')}
-        >
-          <div className="landing-option-icon">🎁</div>
-          <h2 className="landing-option-title">Christmas Wish List</h2>
-          <p className="landing-option-description">
-            Tell us what you want for Christmas and hear your voice read your wish list
+            Create a fun, comical personalized greeting card with AI-generated image and message
           </p>
         </div>
       </div>

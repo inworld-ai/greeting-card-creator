@@ -77,7 +77,7 @@ interface StoryNarrationProps {
   customApiKey?: string
   customVoiceId?: string
   isShared?: boolean
-  experienceType?: 'story' | 'year-review' | 'wish-list'
+  experienceType?: 'story' | 'year-review' | 'wish-list' | 'greeting-card'
 }
 
 function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story' }: StoryNarrationProps) {

@@ -14,10 +14,13 @@ import StoryGeneration from './components/StoryGeneration'
 import YearInReviewGeneration from './components/YearInReviewGeneration'
 import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
+import GreetingCardNames from './components/GreetingCardNames'
+import GreetingCardGeneration from './components/GreetingCardGeneration'
+import GreetingCard from './components/GreetingCard'
 import './App.css'
 
 export type StoryType = string | null
-export type ExperienceType = 'story' | 'year-review' | 'wish-list'
+export type ExperienceType = 'story' | 'greeting-card' | 'year-review' | 'wish-list'
 
 export type VoiceId = 'christmas_story_generator__male_elf_narrator' | 'christmas_story_generator__female_elf_narrator' | string
 
@@ -30,13 +33,21 @@ export interface StoryData {
   imageUrl?: string | null
   customApiKey?: string
   customVoiceId?: string
-  // For year-review
+  // For greeting-card
+  greetingCardData?: {
+    senderName: string
+    recipientName: string
+    specialAboutThem: string
+    funnyStory: string
+    cardMessage?: string
+    generatedImageUrl?: string | null
+  }
+  // Legacy support for year-review and wish-list (kept for backward compatibility)
   yearReviewAnswers?: {
     favoriteMemory: string
     newThing: string
     lookingForward: string
   }
-  // For wish-list
   wishListAnswers?: {
     dreamGift: string
     experience: string
@@ -48,6 +59,12 @@ type Step =
   | 'landing' 
   | 'type-selection' 
   | 'name-input' 
+  | 'greeting-card-names'
+  | 'greeting-card-photo'
+  | 'greeting-card-questionnaire-voice'
+  | 'greeting-card-generating'
+  | 'greeting-card-display'
+  | 'greeting-card-voice-selection'
   | 'year-review-questionnaire-type'
   | 'year-review-questionnaire'
   | 'year-review-questionnaire-voice'
@@ -78,10 +95,8 @@ function App() {
     setStoryData(prev => ({ ...prev, experienceType: experience }))
     if (experience === 'story') {
       setStep('type-selection')
-    } else if (experience === 'year-review') {
-      setStep('year-review-questionnaire-type')
-    } else if (experience === 'wish-list') {
-      setStep('wish-list-questionnaire-type')
+    } else if (experience === 'greeting-card') {
+      setStep('greeting-card-names')
     }
   }
 
@@ -216,12 +231,83 @@ function App() {
 
   const handleImageSelected = (_imageFile: File, imageUrl: string) => {
     setStoryData(prev => ({ ...prev, imageUrl }))
-    setStep('generating')
+    if (storyData.experienceType === 'greeting-card') {
+      setStep('greeting-card-questionnaire-voice')
+    } else {
+      setStep('generating')
+    }
   }
 
   const handleImageSkipped = () => {
     setStoryData(prev => ({ ...prev, imageUrl: null }))
-    setStep('generating')
+    if (storyData.experienceType === 'greeting-card') {
+      setStep('greeting-card-questionnaire-voice')
+    } else {
+      setStep('generating')
+    }
+  }
+
+  const handleGreetingCardNamesSubmitted = (senderName: string, recipientName: string) => {
+    setStoryData(prev => ({
+      ...prev,
+      greetingCardData: {
+        senderName,
+        recipientName,
+        specialAboutThem: '',
+        funnyStory: ''
+      }
+    }))
+    setStep('greeting-card-photo')
+  }
+
+  const handleGreetingCardQuestionnaireSubmitted = (answers: {
+    specialAboutThem?: string
+    funnyStory?: string
+  }) => {
+    if (!answers.specialAboutThem || !answers.funnyStory) {
+      alert('Please answer all questions before continuing.')
+      return
+    }
+    setStoryData(prev => ({
+      ...prev,
+      greetingCardData: {
+        ...prev.greetingCardData!,
+        specialAboutThem: answers.specialAboutThem!,
+        funnyStory: answers.funnyStory!
+      }
+    }))
+    setStep('greeting-card-generating')
+  }
+
+  const handleGreetingCardGenerated = (cardMessage: string, generatedImageUrl: string | null) => {
+    setStoryData(prev => ({
+      ...prev,
+      greetingCardData: {
+        ...prev.greetingCardData!,
+        cardMessage,
+        generatedImageUrl
+      },
+      storyText: cardMessage // Store in storyText for narration
+    }))
+    setStep('greeting-card-display')
+  }
+
+  const handleGreetingCardVoiceSelected = (voiceId: VoiceId | 'custom') => {
+    if (voiceId === 'custom') {
+      setStep('custom-narrator')
+    } else {
+      setStoryData(prev => ({ 
+        ...prev, 
+        voiceId,
+        customVoiceId: undefined,
+        customApiKey: undefined
+      }))
+      setStep('narration')
+    }
+  }
+
+  const handleGreetingCardGenerationError = () => {
+    setStep('greeting-card-questionnaire-voice')
   }
 
   const handleStoryGenerationError = () => {
@@ -329,6 +415,71 @@ function App() {
             storyType={storyData.type!} 
             onSubmit={handleNameSubmitted}
             onBack={() => setStep('type-selection')}
+          />
+        )}
+
+        {step === 'greeting-card-names' && (
+          <GreetingCardNames
+            onSubmit={handleGreetingCardNamesSubmitted}
+            onBack={() => setStep('landing')}
+          />
+        )}
+
+        {step === 'greeting-card-photo' && (
+          <ImageUpload
+            onImageSelected={handleImageSelected}
+            onSkip={handleImageSkipped}
+            onBack={() => setStep('greeting-card-names')}
+          />
+        )}
+
+        {step === 'greeting-card-questionnaire-voice' && (
+          <ConversationalQuestionnaire
+            experienceType="greeting-card"
+            onSubmit={handleGreetingCardQuestionnaireSubmitted}
+            onBack={() => setStep('greeting-card-photo')}
+          />
+        )}
+
+        {step === 'greeting-card-generating' && storyData.greetingCardData && (
+          <GreetingCardGeneration
+            senderName={storyData.greetingCardData.senderName}
+            recipientName={storyData.greetingCardData.recipientName}
+            specialAboutThem={storyData.greetingCardData.specialAboutThem}
+            funnyStory={storyData.greetingCardData.funnyStory}
+            uploadedImageUrl={storyData.imageUrl || null}
+            onCardGenerated={handleGreetingCardGenerated}
+            onError={handleGreetingCardGenerationError}
+          />
+        )}
+
+        {step === 'greeting-card-display' && storyData.greetingCardData && (
+          <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+            <GreetingCard
+              frontImageUrl={storyData.greetingCardData.generatedImageUrl || storyData.imageUrl || null}
+              message={storyData.greetingCardData.cardMessage || ''}
+              senderName={storyData.greetingCardData.senderName}
+              recipientName={storyData.greetingCardData.recipientName}
+              isOpen={true}
+              onOpen={() => {}}
+            />
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => setStep('greeting-card-voice-selection')}
+                style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+              >
+                Add Narration →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'greeting-card-voice-selection' && (
+          <VoiceSelection
+            onSubmit={handleGreetingCardVoiceSelected}
+            onBack={() => setStep('greeting-card-display')}
+            title="Choose a narrator voice for your greeting card!"
           />
         )}
 

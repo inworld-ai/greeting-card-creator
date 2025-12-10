@@ -3,7 +3,7 @@ import { synthesizeSpeech } from '../services/ttsService'
 import './ConversationalQuestionnaire.css'
 
 interface ConversationalQuestionnaireProps {
-  experienceType: 'year-review' | 'wish-list'
+  experienceType: 'year-review' | 'wish-list' | 'greeting-card'
   onSubmit: (answers: {
     favoriteMemory?: string
     newThing?: string
@@ -11,6 +11,8 @@ interface ConversationalQuestionnaireProps {
     dreamGift?: string
     experience?: string
     practicalNeed?: string
+    specialAboutThem?: string
+    funnyStory?: string
   }) => void
   onBack: () => void
 }
@@ -43,8 +45,13 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         { key: 'newThing', question: "What's something new you tried or learned in 2025?" },
         { key: 'lookingForward', question: "What are you most looking forward to or hoping for in 2026?" }
       ]
+    : experienceType === 'greeting-card'
+    ? [
+        { key: 'specialAboutThem', question: "What's something special about them that you love?" },
+        { key: 'funnyStory', question: "What's something funny about them or a story that you love to joke with them about?" }
+      ]
     : [
-        { key: 'dreamGift', question: "What's the one gift you've been thinking about all year, and why does it matter to you?" },
+        { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
         { key: 'experience', question: "Is there something you'd love to experience rather than receive? (like a trip, concert, or special dinner)" },
         { key: 'practicalNeed', question: "What's something practical you actually need but wouldn't buy for yourself?" }
       ]
@@ -820,6 +827,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         favoriteMemory: finalAnswers.favoriteMemory || 'Not specified',
         newThing: finalAnswers.newThing || 'Not specified',
         lookingForward: finalAnswers.lookingForward || 'Not specified'
+      })
+    } else if (experienceType === 'greeting-card') {
+      onSubmit({
+        specialAboutThem: finalAnswers.specialAboutThem || 'Not specified',
+        funnyStory: finalAnswers.funnyStory || 'Not specified'
       })
     } else {
       onSubmit({

@@ -1,0 +1,83 @@
+import { useState } from 'react'
+import './NameInput.css'
+
+interface GreetingCardNamesProps {
+  onSubmit: (senderName: string, recipientName: string) => void
+  onBack: () => void
+}
+
+function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
+  const [senderName, setSenderName] = useState('')
+  const [recipientName, setRecipientName] = useState('')
+
+  const handleSubmit = () => {
+    if (!senderName.trim() || !recipientName.trim()) {
+      alert('Please enter both your name and the recipient\'s name')
+      return
+    }
+    onSubmit(senderName.trim(), recipientName.trim())
+  }
+
+  return (
+    <div className="name-input">
+      <p className="prompt-text">
+        Let's create a personalized greeting card! 💌
+      </p>
+      
+      <div style={{ marginTop: '20px' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+          What's your name?
+        </label>
+        <input
+          type="text"
+          value={senderName}
+          onChange={(e) => setSenderName(e.target.value)}
+          placeholder="Your name"
+          className="name-input-field"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSubmit()
+            }
+          }}
+        />
+      </div>
+
+      <div style={{ marginTop: '20px' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+          Who is this card for?
+        </label>
+        <input
+          type="text"
+          value={recipientName}
+          onChange={(e) => setRecipientName(e.target.value)}
+          placeholder="Recipient's name"
+          className="name-input-field"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSubmit()
+            }
+          }}
+        />
+      </div>
+
+      <div className="name-input-actions">
+        <button 
+          className="btn btn-secondary"
+          onClick={onBack}
+        >
+          ← Back
+        </button>
+        <button 
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={!senderName.trim() || !recipientName.trim()}
+        >
+          Continue →
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default GreetingCardNames
+

@@ -1,0 +1,147 @@
+.greeting-card-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 500px;
+  margin: 2rem 0;
+  perspective: 1000px;
+}
+
+.greeting-card {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: 400px;
+  transform-style: preserve-3d;
+  transition: transform 0.8s ease;
+  cursor: pointer;
+}
+
+.greeting-card.open {
+  transform: rotateY(180deg);
+  cursor: default;
+}
+
+.greeting-card-front,
+.greeting-card-inside {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.greeting-card-front {
+  background: linear-gradient(135deg, #fff 0%, #f8f8f8 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.greeting-card-inside {
+  background: #fff;
+  transform: rotateY(180deg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+.greeting-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.greeting-card-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+}
+
+.greeting-card-placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.greeting-card-placeholder p {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.greeting-card-open-hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.greeting-card-message {
+  flex: 1;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.greeting-card-paragraph {
+  margin-bottom: 1rem;
+}
+
+.greeting-card-signature {
+  text-align: right;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.greeting-card-signature p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.greeting-card-sender-name {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #333 !important;
+}
+
+@media (max-width: 768px) {
+  .greeting-card {
+    height: 300px;
+  }
+  
+  .greeting-card-inside {
+    padding: 1.5rem;
+  }
+  
+  .greeting-card-message {
+    font-size: 1rem;
+  }
+}
+
