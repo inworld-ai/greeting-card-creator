@@ -1331,6 +1331,7 @@ Respond in JSON format:
           console.log(`📝 Answer text: ${detectedAnswer.substring(0, 100)}...`)
         }
       }
+      }
     }
 
     console.log(`✅ Generated conversational response: ${cleanResponse.substring(0, 100)}...`)
