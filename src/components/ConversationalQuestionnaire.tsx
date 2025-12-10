@@ -114,19 +114,33 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
     recognition.onend = () => {
       // In continuous mode, onend should rarely fire unless there's an error
-      // If it does fire and we're not complete, try to restart
+      // CRITICAL: Do NOT restart if we're processing (Olivia is speaking)
       if (!isComplete && !isProcessing) {
-        console.log('🎤 Speech recognition ended unexpectedly, restarting...')
-        setTimeout(() => {
-          try {
-            recognition.start()
-          } catch (error) {
-            console.error('Error restarting recognition:', error)
-            setIsListening(false)
-          }
-        }, 500)
+        console.log('🎤 Speech recognition ended unexpectedly, checking if we should restart...')
+        // Only restart if we're not processing and recognition ref exists
+        if (recognitionRef.current) {
+          setTimeout(() => {
+            try {
+              // Double-check we're still not processing before restarting
+              if (!isProcessing && !isComplete) {
+                recognition.start()
+                console.log('🎤 Restarted speech recognition after unexpected end')
+              } else {
+                console.log('🔇 Not restarting recognition - processing or complete')
+              }
+            } catch (error: any) {
+              if (error.name !== 'InvalidStateError') {
+                console.error('Error restarting recognition:', error)
+              }
+              setIsListening(false)
+            }
+          }, 500)
+        }
       } else if (isComplete) {
         console.log('🎤 Speech recognition ended (conversation complete)')
+        setIsListening(false)
+      } else if (isProcessing) {
+        console.log('🔇 Speech recognition ended while processing (expected - Olivia is speaking)')
         setIsListening(false)
       }
     }
@@ -177,17 +191,25 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleUserMessage = async (userMessage: string) => {
+    // CRITICAL: Set processing to true FIRST, then stop recognition
+    // This ensures onresult handler will ignore any pending results
     setIsProcessing(true)
     
-    // Stop speech recognition when user message is being processed
-    if (recognitionRef.current && isListening) {
+    // Stop speech recognition immediately when user message is being processed
+    // This prevents any additional speech from being captured while we process
+    if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
         setIsListening(false)
-        console.log('🔇 Stopped speech recognition while processing user message')
-      } catch (error) {
-        console.error('Error stopping recognition:', error)
+        console.log('🔇 STOPPED speech recognition while processing user message')
+      } catch (error: any) {
+        setIsListening(false)
+        if (error.name !== 'InvalidStateError') {
+          console.error('Error stopping recognition:', error)
+        }
       }
+    } else {
+      setIsListening(false)
     }
     
     // Update conversation history first, then send with updated history
