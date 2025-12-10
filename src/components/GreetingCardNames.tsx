@@ -69,7 +69,7 @@ function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
           type="text"
           value={relationship}
           onChange={(e) => setRelationship(e.target.value)}
-          placeholder="e.g., friend, family member, colleague"
+          placeholder="e.g., wife, best friend, grandmother"
           className="name-input-field"
           onKeyPress={(e) => {
             if (e.key === 'Enter') {
