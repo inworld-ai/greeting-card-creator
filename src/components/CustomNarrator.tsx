@@ -207,24 +207,8 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
   const handleSubmit = () => {
     setError(null)
-    
-    if (useVoiceClone) {
-      handleCloneVoice()
-      return
-    }
-    
-    // Original flow: manual API key and Voice ID
-    if (!apiKey.trim()) {
-      setError('Please enter your Inworld API Key')
-      return
-    }
-    
-    if (!voiceId.trim()) {
-      setError('Please enter your Inworld Voice ID')
-      return
-    }
-    
-    onSubmit(apiKey.trim(), voiceId.trim())
+    // Always use voice clone flow
+    handleCloneVoice()
   }
 
   return (
