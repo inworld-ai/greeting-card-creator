@@ -900,14 +900,6 @@ Final note: Be yourself - warm, curious, and genuinely interested. This should f
 
 If all three questions have been answered, wrap up warmly and say: "Thank you so much for sharing! I'll take your answers and create your ${experienceName} now." Make sure to include the exact phrase "I'll take your answers and create your ${experienceName} now" in your closing message.`
 
-${answeredContext}
-
-${nextQuestion ? `\nNEXT QUESTION TO ASK: "${nextQuestion.question}"\n\nIMPORTANT: This is the question you should ask NEXT. You have NOT asked this question yet. If you see this question in the "Questions already asked" list above, DO NOT ask it - there is an error, move to the next topic instead.` : '\nAll questions have been answered. Wrap up the conversation.\n'}
-
-${conversationContext}
-
-FINAL REMINDER: Review the conversation history above. If you have already asked a question (check the "Questions already asked" list), do NOT ask it again. Move on to the next question or wrap up if all questions are answered.`
-
     // For the first message, use a default greeting prompt
     const userPrompt = userMessage || "Hello, let's start the conversation!"
 
