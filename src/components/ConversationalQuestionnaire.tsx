@@ -269,6 +269,12 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const sendMessage = async (userMessage: string, currentHistory: ConversationMessage[] = conversationHistory, currentAnswers: Record<string, string> = answeredQuestions) => {
+    // Prevent multiple simultaneous TTS requests
+    if (isTTSInProgressRef.current) {
+      console.log('⚠️ TTS already in progress, ignoring duplicate request')
+      return
+    }
+    
     try {
       console.log('📤 Sending message to backend:', { 
         experienceType, 
@@ -450,6 +456,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
         
         audioRef.current = audio
+        isTTSInProgressRef.current = false
 
         // Stop recognition when audio starts playing (additional safety)
         audio.onplay = () => {
@@ -567,6 +574,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         await audio.play()
       } catch (ttsError: any) {
         console.error('❌ Error generating TTS:', ttsError)
+        isTTSInProgressRef.current = false
         setIsProcessing(false)
         // In continuous mode, recognition should already be running
         if (!isComplete && recognitionRef.current && !isListening) {
