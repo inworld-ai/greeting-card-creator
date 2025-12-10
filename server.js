@@ -1014,10 +1014,90 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
 
     const cleanResponse = responseText.trim()
 
-    // Determine if a question was answered based on the conversation flow
-    // More sophisticated detection: check if we have enough information about the current topic
+    // Use Claude to analyze the conversation and determine if we should progress
+    // This is more reliable than pattern matching
     let detectedAnswer = null
     let detectedQuestionKey = null
+    let shouldProgress = false
+    
+    if (userMessage && userMessage.trim().length > 5 && process.env.ANTHROPIC_API_KEY) {
+      try {
+        const analysisPrompt = `You are analyzing a conversation between Olivia (an AI assistant) and a user who is creating a greeting card.
+
+Current questions to ask:
+${questions.map((q, i) => `${i + 1}. ${q.key}: ${q.question}`).join('\n')}
+
+Questions already answered:
+${Object.keys(answeredQuestions).length > 0 ? Object.keys(answeredQuestions).map(key => {
+  const q = questions.find(q => q.key === key)
+  return `- ${key}: ${answeredQuestions[key]}`
+}).join('\n') : 'None'}
+
+Recent conversation:
+${conversationHistory.slice(-4).map(msg => `${msg.role === 'assistant' ? 'Olivia' : 'User'}: ${msg.content}`).join('\n')}
+User's latest response: "${userMessage}"
+Olivia's latest response: "${cleanResponse}"
+
+Analyze this conversation and determine:
+1. Did the user provide a meaningful answer to any of the unanswered questions? If yes, which question key (${questions.map(q => q.key).join(', ')})?
+2. Should Olivia move on to the next question, or is she stuck repeating the same question?
+
+Respond in JSON format:
+{
+  "answerDetected": true/false,
+  "questionKey": "key of the question answered (or null)",
+  "answerText": "the user's answer text (or null)",
+  "shouldProgress": true/false,
+  "reason": "brief explanation"
+}`
+
+        const analysisResponse = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 200,
+            messages: [
+              {
+                role: 'user',
+                content: analysisPrompt
+              }
+            ]
+          })
+        })
+
+        if (analysisResponse.ok) {
+          const analysisData = await analysisResponse.json()
+          const analysisText = analysisData.content[0].text.trim()
+          
+          // Try to parse JSON from the response
+          const jsonMatch = analysisText.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const analysis = JSON.parse(jsonMatch[0])
+            
+            if (analysis.answerDetected && analysis.questionKey) {
+              detectedAnswer = analysis.answerText || userMessage
+              detectedQuestionKey = analysis.questionKey
+              shouldProgress = analysis.shouldProgress
+              console.log(`✅ Claude detected answer for ${detectedQuestionKey}: ${detectedAnswer.substring(0, 50)}...`)
+              console.log(`📊 Should progress: ${shouldProgress}, Reason: ${analysis.reason}`)
+            } else {
+              console.log(`⚠️ Claude analysis: ${analysis.reason}`)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error in Claude analysis:', error)
+        // Fall back to pattern matching if Claude fails
+      }
+    }
+
+    // Fallback to pattern matching if Claude didn't detect anything
+    if (!detectedAnswer) {
     
     // For greeting cards, also check if we're wrapping up (both questions might be answered)
     const isWrappingUp = experienceType === 'greeting-card' && 
