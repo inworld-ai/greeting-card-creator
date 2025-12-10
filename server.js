@@ -863,6 +863,7 @@ ${askedQuestionsList.length > 0 ? `\nQUESTIONS ALREADY ASKED (DO NOT ASK THESE A
 IMPORTANT GUIDELINES:
 - Be warm, friendly, and conversational - like talking to a friend
 - Ask questions naturally and follow up if you need clarification (but only ONE follow-up per topic)
+- If the user gives a detailed, complete answer (especially if it mentions specific items like "laptop", "tablet", "camera", "getaway", "concert", "shoes", "coffee maker", etc.), treat it as a complete answer and SKIP the follow-up - move directly to the next question
 - If the user gives a brief answer, you may ask ONE gentle follow-up question to get more detail, then IMMEDIATELY move on
 - If the user asks a question, answer it naturally and then continue with the interview
 - Once you have asked the initial question and at most one follow-up about a topic, you MUST smoothly transition to the next question
