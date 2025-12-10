@@ -71,18 +71,18 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
       
       <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
-          className="btn btn-primary"
-          onClick={onAddNarration}
-          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
-        >
-          Add Narration →
-        </button>
-        <button
           className="btn btn-secondary"
           onClick={onStartOver}
           style={{ fontSize: '1.2rem', padding: '12px 24px' }}
         >
           Start Over
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={onAddNarration}
+          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+        >
+          Add Narration →
         </button>
       </div>
     </div>

@@ -437,6 +437,8 @@ function App() {
       return 'Year In Review'
     } else if (step.startsWith('wish-list')) {
       return 'Christmas Wish List'
+    } else if (step.startsWith('greeting-card')) {
+      return 'Personalized Greeting Card'
     }
     return 'The Voice Before Christmas'
   }

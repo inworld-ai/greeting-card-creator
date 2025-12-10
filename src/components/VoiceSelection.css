@@ -13,8 +13,8 @@
 }
 
 .voice-button {
-  background: linear-gradient(135deg, #0f5132 0%, #155724 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+  color: #fff8f0;
   border: 3px solid #0f5132;
   border-radius: 4px;
   padding: 18px 20px;
@@ -39,8 +39,8 @@
   box-shadow: 
     0 6px 12px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border-color: #155724;
-  background: linear-gradient(135deg, #155724 0%, #0f5132 100%);
+  border-color: #228b22;
+  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
 }
 
 .voice-button.selected:hover {
@@ -48,13 +48,13 @@
   box-shadow: 
     0 6px 12px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border-color: #28a745;
-  background: linear-gradient(135deg, #28a745 0%, #155724 100%);
+  border-color: #32cd32;
+  background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);
 }
 
 .voice-button.selected {
-  background: linear-gradient(135deg, #155724 0%, #0f5132 100%);
-  border-color: #155724;
+  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
+  border-color: #228b22;
   border-width: 3px;
   box-shadow: 
     0 6px 12px rgba(0, 0, 0, 0.4),
