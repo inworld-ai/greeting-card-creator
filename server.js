@@ -1115,7 +1115,10 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
       // More aggressive detection: if AI moves to next question OR user has given 2+ responses OR it looks like a preset, mark as answered
       // For greeting cards, be more lenient - accept answer after 1-2 responses
       const minResponsesForGreetingCard = experienceType === 'greeting-card' ? 1 : 2
-      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= minResponsesForGreetingCard))) {
+      const isWrappingUpInResponse = experienceType === 'greeting-card' && 
+                                     responseLower.includes('i\'ll take your answers') &&
+                                     responseLower.includes('greeting card')
+      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= minResponsesForGreetingCard) || isWrappingUpInResponse)) {
         // Determine which question was actually answered
         // CRITICAL: If Olivia moved to the next question, the answer is for the PREVIOUS question
         // Otherwise, find which question was most recently asked
