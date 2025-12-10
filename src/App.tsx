@@ -290,7 +290,15 @@ function App() {
   const getTitle = (): string => {
     if (step === 'landing') {
       return 'The Voice Before Christmas'
-    } else if (step === 'type-selection' || step === 'name-input' || step === 'custom-narrator' || step === 'image-upload' || step === 'generating' || step === 'narration') {
+    } else if (step === 'image-upload') {
+      // Image upload only exists for Year In Review
+      return 'Year In Review'
+    } else if (step === 'type-selection' || step === 'name-input') {
+      return 'Christmas Story Generator'
+    } else if (step === 'custom-narrator' || step === 'generating' || step === 'narration') {
+      // Check experience type for these steps
+      if (storyData.experienceType === 'year-review') return 'Year In Review'
+      if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
       return 'Christmas Story Generator'
     } else if (step.startsWith('year-review')) {
       return 'Year In Review'
