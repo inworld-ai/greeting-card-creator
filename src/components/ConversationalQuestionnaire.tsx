@@ -30,6 +30,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const isTTSInProgressRef = useRef(false)  // Prevent multiple simultaneous TTS requests
   const allAudioChunksRef = useRef<HTMLAudioElement[]>([])  // Track all audio chunks
+  const isProcessingRef = useRef(false)  // Use ref to avoid stale closure issues
   
   // Backend API URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
@@ -211,6 +212,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
   const startConversation = async () => {
     setIsProcessing(true)
+    isProcessingRef.current = true
     
     try {
       console.log('🎤 Starting conversation...')
@@ -218,6 +220,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     } catch (error: any) {
       console.error('❌ Error starting conversation:', error)
       setIsProcessing(false)
+      isProcessingRef.current = false
       // Show error to user
       const errorMessage = error?.message || 'Failed to start conversation. Please try again.'
       alert(`Unable to start conversation: ${errorMessage}`)
@@ -225,15 +228,19 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   }
 
   const handleUserMessage = async (userMessage: string) => {
-    // CRITICAL: Prevent multiple simultaneous requests
-    if (isTTSInProgressRef.current || isProcessing) {
-      console.log('⚠️ Already processing, ignoring duplicate user message')
+    // CRITICAL: Prevent multiple simultaneous requests - use refs to avoid stale closure
+    if (isTTSInProgressRef.current || isProcessingRef.current) {
+      console.log('⚠️ Already processing, ignoring duplicate user message', {
+        isTTSInProgress: isTTSInProgressRef.current,
+        isProcessing: isProcessingRef.current
+      })
       return
     }
     
     // CRITICAL: Set processing to true FIRST, then stop recognition
     // This ensures onresult handler will ignore any pending results
     setIsProcessing(true)
+    isProcessingRef.current = true
     isTTSInProgressRef.current = true
     
     // Stop speech recognition immediately when user message is being processed
@@ -261,6 +268,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         console.error('Error sending message:', error)
         isTTSInProgressRef.current = false
         setIsProcessing(false)
+        isProcessingRef.current = false
         // Restart recognition on error
         if (!isComplete && recognitionRef.current) {
           setTimeout(() => {
@@ -329,6 +337,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       // CRITICAL: Set isProcessing to true FIRST, then stop recognition
       // This prevents the onend handler from restarting recognition too early
       setIsProcessing(true)
+      isProcessingRef.current = true
       console.log('🔄 Set isProcessing=true (Olivia will be speaking soon)')
 
       // CRITICAL: Stop speech recognition IMMEDIATELY when we receive AI response
@@ -502,6 +511,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             // Mark TTS as complete and processing as false
             isTTSInProgressRef.current = false
             setIsProcessing(false)
+            isProcessingRef.current = false
             // CRITICAL: Wait longer before restarting to ensure audio is fully stopped
             // and speakers are quiet to prevent feedback loop
             if (!isComplete && recognitionRef.current) {
