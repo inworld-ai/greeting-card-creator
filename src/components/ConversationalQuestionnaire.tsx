@@ -857,7 +857,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                         key={index}
                         className="preset-button"
                         onClick={() => handlePresetClick(preset)}
-                        disabled={isProcessing || isTTSInProgressRef.current}
+                        disabled={isProcessing || isTTSInProgressRef.current || clickedPresets.has(preset)}
                       >
                         {preset}
                       </button>
