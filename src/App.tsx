@@ -681,8 +681,12 @@ function App() {
         
         {step === 'narration' && (
           <StoryNarration 
-            storyText={storyData.storyText || firstChunkText}
-            childName={storyData.childName}
+            storyText={storyData.experienceType === 'greeting-card' && storyData.greetingCardData?.cardMessage 
+              ? storyData.greetingCardData.cardMessage 
+              : storyData.storyText || firstChunkText}
+            childName={storyData.experienceType === 'greeting-card' && storyData.greetingCardData?.recipientName
+              ? storyData.greetingCardData.recipientName
+              : storyData.childName}
             voiceId={storyData.voiceId}
             storyType={storyData.type}
             imageUrl={storyData.imageUrl}
