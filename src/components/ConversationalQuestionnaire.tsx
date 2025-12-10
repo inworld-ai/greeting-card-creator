@@ -28,6 +28,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const [isComplete, setIsComplete] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const isTTSInProgressRef = useRef(false)  // Prevent multiple simultaneous TTS requests
+  const allAudioChunksRef = useRef<HTMLAudioElement[]>([])  // Track all audio chunks
   
   // Backend API URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
@@ -468,13 +470,22 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         // Set up handler on the LAST chunk only
         if (lastChunk) {
           lastChunk.onended = () => {
+            // Check if ALL audio chunks have actually finished playing
+            const allChunksFinished = allAudioChunksRef.current.every(chunk => chunk.ended || chunk.paused)
+            
+            if (!allChunksFinished) {
+              console.log('🔇 Not all chunks finished yet, waiting...')
+              return
+            }
+            
             setIsProcessing(false)
             // CRITICAL: Wait longer before restarting to ensure audio is fully stopped
             // and speakers are quiet to prevent feedback loop
             if (!isComplete && recognitionRef.current) {
               setTimeout(() => {
-                // Double-check we're still not processing (audio might have restarted)
-                if (!isProcessing && !isComplete && recognitionRef.current) {
+                // Triple-check: not processing, not complete, recognition exists, and no audio playing
+                const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
+                if (!isProcessing && !isComplete && recognitionRef.current && !anyAudioPlaying) {
                   try {
                     console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
                     // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
@@ -491,7 +502,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                     }
                   }
                 } else {
-                  console.log('🔇 Not restarting recognition - still processing or complete')
+                  console.log('🔇 Not restarting recognition - still processing, complete, or audio playing', {
+                    isProcessing,
+                    isComplete,
+                    anyAudioPlaying
+                  })
                 }
               }, 2000)  // 2 second delay to ensure audio is fully stopped and speakers are quiet
             }
