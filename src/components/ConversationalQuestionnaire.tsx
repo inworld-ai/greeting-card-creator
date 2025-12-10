@@ -277,41 +277,50 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     }
     
     // Update conversation history first, then send with updated history
-    setConversationHistory(prev => {
-      const updatedHistory: ConversationMessage[] = [...prev, { role: 'user' as const, content: userMessage }]
-      // Send message with updated history using functional update
-      sendMessage(userMessage, updatedHistory, answeredQuestions).catch((error: any) => {
-        console.error('Error sending message:', error)
-        isTTSInProgressRef.current = false
-        setIsProcessing(false)
-        isProcessingRef.current = false
-        // Restart recognition on error
-        if (!isComplete && recognitionRef.current) {
-          setTimeout(() => {
-            try {
+    // Use functional update to get the latest state
+    const updatedHistory: ConversationMessage[] = [...conversationHistory, { role: 'user' as const, content: userMessage }]
+    setConversationHistory(updatedHistory)
+    
+    // Send message with updated history - await it to prevent race conditions
+    try {
+      await sendMessage(userMessage, updatedHistory, answeredQuestions)
+    } catch (error: any) {
+      console.error('Error sending message:', error)
+      isTTSInProgressRef.current = false
+      setIsProcessing(false)
+      isProcessingRef.current = false
+      // Restart recognition on error
+      if (!isComplete && recognitionRef.current) {
+        setTimeout(() => {
+          try {
+            if (!isProcessingRef.current && !isTTSInProgressRef.current) {
               recognitionRef.current?.start()
               setIsListening(true)
-            } catch (err: any) {
-              if (err.name !== 'InvalidStateError') {
-                console.error('Error restarting recognition after error:', err)
-              }
             }
-          }, 300)
-        }
-      })
-      return updatedHistory
-    })
+          } catch (err: any) {
+            if (err.name !== 'InvalidStateError') {
+              console.error('Error restarting recognition after error:', err)
+            }
+          }
+        }, 300)
+      }
+    }
   }
 
   const sendMessage = async (userMessage: string, currentHistory: ConversationMessage[] = conversationHistory, currentAnswers: Record<string, string> = answeredQuestions) => {
     // Prevent multiple simultaneous requests - this should already be checked in handleUserMessage, but double-check here
-    if (isTTSInProgressRef.current) {
-      console.log('⚠️ TTS already in progress, ignoring duplicate request')
-      return
+    // CRITICAL: Check BOTH flags to prevent any race conditions
+    if (isTTSInProgressRef.current || isProcessingRef.current) {
+      console.log('⚠️ TTS already in progress or processing, ignoring duplicate request', {
+        isTTSInProgress: isTTSInProgressRef.current,
+        isProcessing: isProcessingRef.current
+      })
+      return { response: '', detectedAnswer: null, detectedQuestionKey: null }
     }
     
     // Set flag BEFORE making the request to prevent race conditions
     isTTSInProgressRef.current = true
+    isProcessingRef.current = true
     
     try {
       console.log('📤 Sending message to backend:', { 
