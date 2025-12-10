@@ -314,9 +314,11 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       return { response: '', detectedAnswer: null, detectedQuestionKey: null }
     }
     
-    // Set flag BEFORE making the request to prevent race conditions
+    // Set flags BEFORE making the request to prevent race conditions
+    // This ensures that any subsequent calls to sendMessage or handleUserMessage will be blocked
     isTTSInProgressRef.current = true
     isProcessingRef.current = true
+    setIsProcessing(true)
     
     try {
       console.log('📤 Sending message to backend:', { 
