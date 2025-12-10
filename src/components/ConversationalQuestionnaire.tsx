@@ -485,14 +485,19 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
 
         // Stop recognition when audio starts playing (additional safety)
         audio.onplay = () => {
-          if (recognitionRef.current && isListening) {
+          if (recognitionRef.current) {
             try {
               recognitionRef.current.stop()
               setIsListening(false)
               console.log('🔇 Stopped speech recognition when audio started playing')
-            } catch (error) {
-              console.error('Error stopping recognition on play:', error)
+            } catch (error: any) {
+              if (error.name !== 'InvalidStateError') {
+                console.error('Error stopping recognition on play:', error)
+              }
+              setIsListening(false)
             }
+          } else {
+            setIsListening(false)
           }
         }
 
