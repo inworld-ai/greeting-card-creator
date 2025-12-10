@@ -61,8 +61,10 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     let isProcessingUserInput = false  // Flag to prevent processing duplicate results
 
     recognition.onstart = () => {
+      // Always set listening to true when recognition actually starts
+      // This ensures the mic is active and we can process user input
       setIsListening(true)
-      console.log('🎤 Speech recognition started (continuous mode)')
+      console.log('🎤 Speech recognition started (continuous mode) - mic is now ACTIVE')
     }
 
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
@@ -134,16 +136,22 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             try {
               // Double-check we're still not processing before restarting
               if (!isProcessing && !isComplete) {
+                setIsListening(true)  // Set listening state before starting
                 recognition.start()
-                console.log('🎤 Restarted speech recognition after unexpected end')
+                console.log('🎤 Restarted speech recognition after unexpected end - mic should be active')
+                // onstart will also set isListening to true, but set it here too
               } else {
                 console.log('🔇 Not restarting recognition - processing or complete')
+                setIsListening(false)
               }
             } catch (error: any) {
-              if (error.name !== 'InvalidStateError') {
+              if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                console.log('🎤 Recognition already running - setting listening to true')
+                setIsListening(true)
+              } else if (error.name !== 'InvalidStateError') {
                 console.error('Error restarting recognition:', error)
+                setIsListening(false)
               }
-              setIsListening(false)
             }
           }, 500)
         }
