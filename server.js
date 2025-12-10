@@ -1214,8 +1214,9 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
               if (questionToAnswer !== nextQuestion) break // Found it, stop looking
             }
           }
+        }
           
-          // Collect all user responses about this topic
+        // Collect all user responses about this topic
           const topicResponses = []
           // Find when this specific question was first asked (not just any question)
           const specificQuestionIndex = conversationHistory.findIndex(msg => {
