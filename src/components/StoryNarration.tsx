@@ -1123,19 +1123,37 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           <>
             {!shareUrl ? (
               <button 
-                onClick={async () => {
-                  setIsSharing(true)
-                  setShareError(null)
-                  try {
-                    const result = await shareStory({
-                      storyText,
-                      childName,
-                      voiceId,
-                      storyType: _storyType,
-                      imageUrl,
-                      customApiKey,
-                      customVoiceId
-                    })
+                  onClick={async () => {
+                    setIsSharing(true)
+                    setShareError(null)
+                    try {
+                      // Convert blob URL to data URL if needed for sharing
+                      let finalImageUrl = imageUrl
+                      if (imageUrl && imageUrl.startsWith('blob:')) {
+                        try {
+                          const response = await fetch(imageUrl)
+                          const blob = await response.blob()
+                          const reader = new FileReader()
+                          finalImageUrl = await new Promise<string>((resolve, reject) => {
+                            reader.onloadend = () => resolve(reader.result as string)
+                            reader.onerror = reject
+                            reader.readAsDataURL(blob)
+                          })
+                        } catch (error) {
+                          console.error('Error converting blob URL to data URL:', error)
+                          // Continue with original URL if conversion fails
+                        }
+                      }
+                      
+                      const result = await shareStory({
+                        storyText,
+                        childName,
+                        voiceId,
+                        storyType: _storyType,
+                        imageUrl: finalImageUrl,
+                        customApiKey,
+                        customVoiceId
+                      })
                       setShareUrl(result.shareUrl)
                       // Copy to clipboard
                       try {
@@ -1296,12 +1314,30 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                     setIsSharing(true)
                     setShareError(null)
                     try {
+                      // Convert blob URL to data URL if needed for sharing
+                      let finalImageUrl = imageUrl
+                      if (imageUrl && imageUrl.startsWith('blob:')) {
+                        try {
+                          const response = await fetch(imageUrl)
+                          const blob = await response.blob()
+                          const reader = new FileReader()
+                          finalImageUrl = await new Promise<string>((resolve, reject) => {
+                            reader.onloadend = () => resolve(reader.result as string)
+                            reader.onerror = reject
+                            reader.readAsDataURL(blob)
+                          })
+                        } catch (error) {
+                          console.error('Error converting blob URL to data URL:', error)
+                          // Continue with original URL if conversion fails
+                        }
+                      }
+                      
                       const result = await shareStory({
                         storyText,
                         childName,
                         voiceId,
                         storyType: _storyType,
-                        imageUrl,
+                        imageUrl: finalImageUrl,
                         customApiKey,
                         customVoiceId
                       })
@@ -1350,7 +1386,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                     {isLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
                 </div>
-              )}
+            )}
               {shareError && (
                 <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                   {shareError}
