@@ -130,14 +130,22 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     recognition.onend = () => {
       // In continuous mode, onend should rarely fire unless there's an error
       // CRITICAL: Do NOT restart if we're processing (Olivia is speaking)
+      // Also, don't restart immediately - wait a bit to ensure audio has stopped
       if (!isComplete && !isProcessing) {
         console.log('🎤 Speech recognition ended unexpectedly, checking if we should restart...')
         // Only restart if we're not processing and recognition ref exists
         if (recognitionRef.current) {
           setTimeout(() => {
             try {
-              // Double-check we're still not processing before restarting
-              if (!isProcessing && !isComplete) {
+              // Triple-check we're still not processing before restarting
+              // This prevents restarting while audio is still playing
+              if (!isProcessing && !isComplete && recognitionRef.current) {
+                // Check if audio is still playing
+                if (audioRef.current && !audioRef.current.paused && !audioRef.current.ended) {
+                  console.log('🔇 Not restarting recognition - audio is still playing')
+                  setIsListening(false)
+                  return
+                }
                 setIsListening(true)  // Set listening state before starting
                 recognition.start()
                 console.log('🎤 Restarted speech recognition after unexpected end - mic should be active')
@@ -155,7 +163,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
                 setIsListening(false)
               }
             }
-          }, 500)
+          }, 1000)  // Wait 1 second before restarting to ensure audio has stopped
         }
       } else if (isComplete) {
         console.log('🎤 Speech recognition ended (conversation complete)')
