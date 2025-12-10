@@ -48,6 +48,39 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         { key: 'practicalNeed', question: "What's something practical you actually need but wouldn't buy for yourself?" }
       ]
 
+  // Preset options for Christmas Wish List
+  const presetOptions: Record<string, string[]> = {
+    dreamGift: [
+      "A new laptop or tablet for work and creativity",
+      "A high-quality camera to capture special moments",
+      "A subscription to a streaming service or book club"
+    ],
+    experience: [
+      "A weekend getaway to a cozy cabin or beach",
+      "Tickets to a concert or live show",
+      "A cooking class or wine tasting experience"
+    ],
+    practicalNeed: [
+      "A new pair of comfortable shoes or boots",
+      "A quality coffee maker or kitchen appliance",
+      "A professional organizer or home improvement tool"
+    ]
+  }
+
+  // Get the current question being asked
+  const remainingQuestions = questions.filter(q => !answeredQuestions[q.key])
+  const currentQuestion = remainingQuestions[0]
+  const currentPresets = currentQuestion && experienceType === 'wish-list' ? presetOptions[currentQuestion.key] : null
+
+  // Handle preset option click
+  const handlePresetClick = async (presetText: string) => {
+    if (isProcessing || isTTSInProgressRef.current) {
+      return // Don't allow clicks while processing
+    }
+    console.log('🎯 Preset option clicked:', presetText)
+    await handleUserMessage(presetText)
+  }
+
   useEffect(() => {
     // Initialize speech recognition
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -777,8 +810,27 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
               <span>Olivia is thinking...</span>
             </div>
           ) : isListening ? (
-            <div className="listening-text">
-              <span>Listening...</span>
+            <div className="listening-container">
+              <div className="listening-text">
+                <span>Listening...</span>
+              </div>
+              {currentPresets && experienceType === 'wish-list' && (
+                <div className="preset-options">
+                  <p className="preset-label">Or choose a preset option:</p>
+                  <div className="preset-buttons">
+                    {currentPresets.map((preset, index) => (
+                      <button
+                        key={index}
+                        className="preset-button"
+                        onClick={() => handlePresetClick(preset)}
+                        disabled={isProcessing || isTTSInProgressRef.current}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : hasStarted ? (
             // If conversation has started but we're not listening/processing, show a brief "waiting" state
