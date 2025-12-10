@@ -517,8 +517,9 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
             if (!isComplete && recognitionRef.current) {
               setTimeout(() => {
                 // Triple-check: not processing, not complete, recognition exists, TTS not in progress, and no audio playing
+                // Use refs to avoid stale closure issues
                 const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
-                if (!isProcessing && !isComplete && !isTTSInProgressRef.current && recognitionRef.current && !anyAudioPlaying) {
+                if (!isProcessingRef.current && !isComplete && !isTTSInProgressRef.current && recognitionRef.current && !anyAudioPlaying) {
                   try {
                     console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
                     // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
