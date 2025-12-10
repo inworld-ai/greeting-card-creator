@@ -432,6 +432,7 @@ function App() {
       // Check experience type for these steps
       if (storyData.experienceType === 'year-review') return 'Year In Review'
       if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
+      if (storyData.experienceType === 'greeting-card') return 'Personalized Greeting Card'
       return 'Christmas Story Generator'
     } else if (step.startsWith('year-review')) {
       return 'Year In Review'
