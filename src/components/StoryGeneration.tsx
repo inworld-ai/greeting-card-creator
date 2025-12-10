@@ -6,7 +6,8 @@ import type { StoryType } from '../App'
 interface StoryGenerationProps {
   storyType: StoryType
   childName: string
-  onStoryGenerated: (storyText: string) => void
+  uploadedImageUrl?: string | null
+  onStoryGenerated: (storyText: string, generatedImageUrl?: string | null) => void
   onFirstChunkReady?: (chunkText: string) => void
   customApiKey?: string
   onError?: () => void // Callback to handle errors (e.g., navigate back)

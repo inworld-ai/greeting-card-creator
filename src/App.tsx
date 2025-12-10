@@ -128,8 +128,8 @@ function App() {
     } else {
       setStoryData(prev => ({ ...prev, childName: name, voiceId }))
       setFirstChunkText('')
-      // Skip image upload for Christmas Story Generator
-      setStep('generating')
+      // Add image upload step for Christmas Story Generator
+      setStep('image-upload')
     }
   }
 
@@ -202,11 +202,10 @@ function App() {
         customApiKey: undefined   // Clear custom API key when preset is selected
       }))
       setFirstChunkText('')
-      // Only show image upload for Year In Review
-      if (storyData.experienceType === 'year-review') {
+      // Show image upload for Year In Review and Christmas Story
+      if (storyData.experienceType === 'year-review' || storyData.experienceType === 'story') {
         setStep('image-upload')
       } else {
-        // Skip image upload for Christmas Story Generator and Wish List
         setStep('generating')
       }
     }
@@ -220,11 +219,10 @@ function App() {
       customVoiceId: voiceId 
     }))
     setFirstChunkText('')
-    // Only show image upload for Year In Review
-    if (storyData.experienceType === 'year-review') {
+    // Show image upload for Year In Review and Christmas Story
+    if (storyData.experienceType === 'year-review' || storyData.experienceType === 'story') {
       setStep('image-upload')
     } else {
-      // Skip image upload for Christmas Story Generator and Wish List
       setStep('generating')
     }
   }
@@ -363,11 +361,11 @@ function App() {
       if (storyData.experienceType === 'wish-list') return 'wish-list-voice-selection'
     }
     if (step === 'image-upload') {
-      // Image upload only exists for Year In Review now
       if (storyData.customApiKey || storyData.customVoiceId) return 'custom-narrator'
+      if (storyData.experienceType === 'story') return 'name-input'
       if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
-      // Fallback (shouldn't happen)
-      return 'year-review-voice-selection'
+      // Fallback
+      return 'name-input'
     }
     return 'landing'
   }
@@ -377,7 +375,7 @@ function App() {
     if (step === 'landing') {
       return 'The Voice Before Christmas'
     } else if (step === 'image-upload') {
-      // Image upload only exists for Year In Review
+      if (storyData.experienceType === 'story') return 'Christmas Story Generator'
       return 'Year In Review'
     } else if (step === 'type-selection' || step === 'name-input') {
       return 'Christmas Story Generator'

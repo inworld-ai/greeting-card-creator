@@ -866,7 +866,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, onSubmit, 
     <div className="conversational-questionnaire">
       <div className="conversational-header">
         <h2 className="conversational-title">
-          {experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'}
+          {experienceType === 'year-review' ? 'Year In Review' : experienceType === 'greeting-card' ? 'Personalized Greeting Card' : 'Christmas Wish List'}
         </h2>
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }}></div>

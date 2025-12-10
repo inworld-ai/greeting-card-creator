@@ -2126,6 +2126,100 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   }
 })
 
+// Story image generation endpoint for Christmas Story Generator
+app.post('/api/generate-story-image', async (req, res) => {
+  console.log('\n\n🎨 ==========================================')
+  console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED')
+  console.log('🎨 ==========================================')
+
+  try {
+    const { storyType, childName, storyText, uploadedImageUrl } = req.body
+
+    if (!storyType || !childName || !storyText) {
+      return res.status(400).json({
+        error: 'Missing required fields: storyType, childName, storyText'
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({
+        error: 'Server configuration error: GOOGLE_API_KEY not set'
+      })
+    }
+
+    // If an image was uploaded, use it as the base for transformation
+    if (uploadedImageUrl) {
+      console.log('🎨 Using uploaded image as base for story book style transformation')
+      
+      // For uploaded images, we'll transform them into a children's story book style
+      // Extract first paragraph or title from story for context
+      const storyPreview = storyText.split('\n\n')[0].substring(0, 200)
+      
+      const imagePrompt = `Transform this photo into a beautiful children's Christmas story book illustration. Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, and a magical Christmas atmosphere. The image should match the story theme: ${storyType}. Include elements that reflect: ${storyPreview}. Make it look like a page from a classic children's Christmas storybook.`
+      
+      // For now, we'll generate a new image based on the story details
+      // In the future, we could use image editing API to transform the uploaded image
+      console.log('🎨 Generating story book style image based on uploaded photo and story details')
+    }
+
+    // Build image prompt based on story details
+    let imagePrompt = `A beautiful children's Christmas story book illustration featuring ${childName}. `
+    imagePrompt += `Story theme: ${storyType}. `
+    
+    // Extract key details from the story text
+    const storyPreview = storyText.split('\n\n')[0].substring(0, 300)
+    imagePrompt += `Story context: ${storyPreview}. `
+    
+    imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `
+    imagePrompt += `The illustration should look like a page from a beloved children's Christmas storybook.`
+
+    console.log(`🎨 Generating image with prompt: ${imagePrompt.substring(0, 200)}...`)
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: imagePrompt }
+          ]
+        }]
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Google Gemini API error:', errorText)
+      return res.status(200).json({
+        imageUrl: null,
+        error: `Image generation failed: ${errorText}`
+      })
+    }
+
+    const data = await response.json()
+
+    let generatedImageUrl = null
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      const imagePart = data.candidates[0].content.parts.find(part => part.inlineData && part.inlineData.mimeType.startsWith('image/'))
+      if (imagePart && imagePart.inlineData) {
+        generatedImageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+      }
+    }
+
+    console.log(`✅ Generated story image: ${generatedImageUrl ? 'Success' : 'Failed'}`)
+
+    return res.status(200).json({ imageUrl: generatedImageUrl })
+  } catch (error) {
+    console.error('❌ Error generating story image:', error)
+    return res.status(200).json({
+      imageUrl: null,
+      error: error.message || 'Failed to generate image'
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📖 Story generation endpoint: http://localhost:${PORT}/api/generate-story`)
