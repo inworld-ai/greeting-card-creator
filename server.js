@@ -1039,56 +1039,89 @@ FINAL REMINDER: Review the conversation history above. If you have already asked
       // More aggressive detection: if AI moves to next question OR user has given 2+ responses OR it looks like a preset, mark as answered
       if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= 2))) {
         // Determine which question was actually answered
-        // CRITICAL: Find which question was MOST RECENTLY asked in the conversation history
-        // This is more reliable than using nextQuestion which may be stale
+        // CRITICAL: If Olivia moved to the next question, the answer is for the PREVIOUS question
+        // Otherwise, find which question was most recently asked
         let questionToAnswer = nextQuestion // Default fallback
         
-        // Find the most recent assistant message that contains a question
-        const recentAssistantMessages = conversationHistory
-          .slice()
-          .reverse()
-          .filter(msg => msg.role === 'assistant')
-        
-        for (const msg of recentAssistantMessages) {
-          const msgLower = msg.content.toLowerCase()
-          // Check each question to see if it was asked in this message
+        if (movesToNext) {
+          // Olivia moved to the next question, so the user's answer was for the PREVIOUS question
+          // Find which question Olivia just asked in the CURRENT response
+          const matchingNewQuestion = questions.find(q => {
+            if (answeredQuestions[q.key]) return false // Already answered
+            const questionStart = q.question.substring(0, 30).toLowerCase()
+            return cleanResponse.toLowerCase().includes(questionStart)
+          })
+          
+          if (matchingNewQuestion) {
+            // Find the question that was asked BEFORE this new one
+            // Look through all questions to find which one comes before matchingNewQuestion
+            const questionIndex = questions.findIndex(q => q.key === matchingNewQuestion.key)
+            if (questionIndex > 0) {
+              // The previous question in the list
+              questionToAnswer = questions[questionIndex - 1]
+              console.log(`🔍 AI moved to "${matchingNewQuestion.key}", so answer is for previous question: "${questionToAnswer.key}"`)
+            } else {
+              // Fallback: look at conversation history to find what was asked before
+              questionToAnswer = nextQuestion
+              console.log(`🔍 AI moved to "${matchingNewQuestion.key}", using nextQuestion as fallback: "${questionToAnswer.key}"`)
+            }
+          } else {
+            // Couldn't find the new question, use nextQuestion
+            questionToAnswer = nextQuestion
+            console.log(`🔍 AI moved to next question but couldn't identify it, using nextQuestion: "${questionToAnswer.key}"`)
+          }
+        } else {
+          // Olivia didn't move to next question, so find which question was most recently asked
+          // Check the CURRENT response first (it might contain the question)
+          const responseLower = cleanResponse.toLowerCase()
           for (const q of questions) {
             if (answeredQuestions[q.key]) continue // Skip already answered questions
-            
             const questionStart = q.question.substring(0, 30).toLowerCase()
-            if (msgLower.includes(questionStart)) {
+            if (responseLower.includes(questionStart)) {
               // Make sure it doesn't match other questions
               const otherQuestions = questions.filter(otherQ => otherQ.key !== q.key)
               const isOtherQuestion = otherQuestions.some(otherQ => 
-                msgLower.includes(otherQ.question.substring(0, 20).toLowerCase())
+                responseLower.includes(otherQ.question.substring(0, 20).toLowerCase())
               )
-              
               if (!isOtherQuestion) {
-                // This is the question that was most recently asked
                 questionToAnswer = q
-                console.log(`🔍 Found most recently asked question: "${q.key}" in conversation history`)
+                console.log(`🔍 Found question in current response: "${q.key}"`)
                 break
               }
             }
           }
-          if (questionToAnswer !== nextQuestion) break // Found it, stop looking
-        }
-        
-        // If AI moved to next question, verify which question Olivia just asked in the current response
-        if (movesToNext) {
-          // The current AI response (cleanResponse) contains the new question
-          // Find which question this matches
-          const matchingNewQuestion = questions.find(q => {
-            if (answeredQuestions[q.key]) return false // Already answered
-            const questionStart = q.question.substring(0, 25).toLowerCase()
-            return cleanResponse.toLowerCase().includes(questionStart)
-          })
           
-          if (matchingNewQuestion && matchingNewQuestion.key !== questionToAnswer.key) {
-            // Olivia moved to a different question, so the answer is for the question that was asked before
-            console.log(`🔍 AI moved from "${questionToAnswer.key}" to "${matchingNewQuestion.key}", so answer is for "${questionToAnswer.key}"`)
-          } else {
-            console.log(`🔍 Using detected question "${questionToAnswer.key}" as answer target`)
+          // If not found in current response, check conversation history
+          if (questionToAnswer === nextQuestion) {
+            const recentAssistantMessages = conversationHistory
+              .slice()
+              .reverse()
+              .filter(msg => msg.role === 'assistant')
+            
+            for (const msg of recentAssistantMessages) {
+              const msgLower = msg.content.toLowerCase()
+              // Check each question to see if it was asked in this message
+              for (const q of questions) {
+                if (answeredQuestions[q.key]) continue // Skip already answered questions
+                
+                const questionStart = q.question.substring(0, 30).toLowerCase()
+                if (msgLower.includes(questionStart)) {
+                  // Make sure it doesn't match other questions
+                  const otherQuestions = questions.filter(otherQ => otherQ.key !== q.key)
+                  const isOtherQuestion = otherQuestions.some(otherQ => 
+                    msgLower.includes(otherQ.question.substring(0, 20).toLowerCase())
+                  )
+                  
+                  if (!isOtherQuestion) {
+                    // This is the question that was most recently asked
+                    questionToAnswer = q
+                    console.log(`🔍 Found most recently asked question in history: "${q.key}"`)
+                    break
+                  }
+                }
+              }
+              if (questionToAnswer !== nextQuestion) break // Found it, stop looking
+            }
           }
         }
         
