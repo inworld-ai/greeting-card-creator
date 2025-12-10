@@ -73,9 +73,12 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
     recognition.onresult = async (event: SpeechRecognitionEvent) => {
       // CRITICAL: Don't process results if we're processing (Olivia is speaking)
       // This is the primary safety check to prevent feedback loop
-      // We check isProcessing directly (not through closure) to avoid stale state issues
-      if (isProcessing) {
-        console.log('🔇 IGNORING speech recognition result - Olivia is speaking (isProcessing=true)')
+      // Use ref to avoid stale closure issues
+      if (isProcessingRef.current || isTTSInProgressRef.current) {
+        console.log('🔇 IGNORING speech recognition result - Olivia is speaking', {
+          isProcessing: isProcessingRef.current,
+          isTTSInProgress: isTTSInProgressRef.current
+        })
         return
       }
       
@@ -85,9 +88,8 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
       const transcript = event.results[resultIndex][0].transcript.trim()
       
       // Only process if we have a transcript and we're not already processing
-      // Note: We removed the isListening check here because it can have stale closure values
-      // The isProcessing check is sufficient to prevent feedback loops
-      if (transcript && !isProcessingUserInput && !isProcessing && !isComplete) {
+      // Use refs to avoid stale closure issues
+      if (transcript && !isProcessingUserInput && !isProcessingRef.current && !isTTSInProgressRef.current && !isComplete) {
         isProcessingUserInput = true
         console.log('✅ User response captured:', transcript)
 
