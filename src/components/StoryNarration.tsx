@@ -1180,11 +1180,27 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 >
                   {isLinkCopied ? 'Copied!' : 'Copy Link'}
                 </button>
-              </div>
+            </div>
             )}
+            {shareError && (
+              <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
+                {shareError}
+        </div>
+      )}
           </>
         )}
-      </div>
+        <button 
+          onClick={() => {
+            // Use browser refresh to ensure all audio stops completely
+            // This is the most reliable way to stop all audio and reset the app
+            window.location.href = '/'
+          }} 
+          className="restart-button"
+          style={{ order: 3 }}
+        >
+          Make Another Christmas Creation
+        </button>
+          </div>
 
       {error && (
         <div className="error-message" style={{ color: '#f5576c', marginBottom: '16px', textAlign: 'center' }}>
@@ -1224,7 +1240,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             }}
           >
             ▶️ Start Story Narration
-          </button>
+              </button>
         </div>
       )}
       
