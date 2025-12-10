@@ -470,7 +470,7 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
         }
         
         audioRef.current = audio
-        isTTSInProgressRef.current = false
+        // Don't set isTTSInProgressRef to false here - wait until all chunks finish playing
 
         // Stop recognition when audio starts playing (additional safety)
         audio.onplay = () => {
