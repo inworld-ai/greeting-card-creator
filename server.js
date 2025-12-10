@@ -1020,7 +1020,8 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
     let detectedQuestionKey = null
     let shouldProgress = false
     
-    if (userMessage && userMessage.trim().length > 5 && process.env.ANTHROPIC_API_KEY) {
+    // Only run Claude analysis if we have a user message and it's not the initial empty message
+    if (userMessage && userMessage.trim().length > 5 && conversationHistory.length > 0 && process.env.ANTHROPIC_API_KEY) {
       try {
         const analysisPrompt = `You are analyzing a conversation between Olivia (an AI assistant) and a user who is creating a greeting card.
 
@@ -1072,23 +1073,30 @@ Respond in JSON format:
 
         if (analysisResponse.ok) {
           const analysisData = await analysisResponse.json()
-          const analysisText = analysisData.content[0].text.trim()
+          const analysisText = analysisData.content[0]?.text?.trim() || ''
           
           // Try to parse JSON from the response
           const jsonMatch = analysisText.match(/\{[\s\S]*\}/)
           if (jsonMatch) {
-            const analysis = JSON.parse(jsonMatch[0])
-            
-            if (analysis.answerDetected && analysis.questionKey) {
-              detectedAnswer = analysis.answerText || userMessage
-              detectedQuestionKey = analysis.questionKey
-              shouldProgress = analysis.shouldProgress
-              console.log(`✅ Claude detected answer for ${detectedQuestionKey}: ${detectedAnswer.substring(0, 50)}...`)
-              console.log(`📊 Should progress: ${shouldProgress}, Reason: ${analysis.reason}`)
-            } else {
-              console.log(`⚠️ Claude analysis: ${analysis.reason}`)
+            try {
+              const analysis = JSON.parse(jsonMatch[0])
+              
+              if (analysis.answerDetected && analysis.questionKey) {
+                detectedAnswer = analysis.answerText || userMessage
+                detectedQuestionKey = analysis.questionKey
+                shouldProgress = analysis.shouldProgress
+                console.log(`✅ Claude detected answer for ${detectedQuestionKey}: ${detectedAnswer.substring(0, 50)}...`)
+                console.log(`📊 Should progress: ${shouldProgress}, Reason: ${analysis.reason}`)
+              } else {
+                console.log(`⚠️ Claude analysis: ${analysis.reason || 'No answer detected'}`)
+              }
+            } catch (parseError) {
+              console.error('❌ Error parsing Claude JSON response:', parseError)
             }
           }
+        } else {
+          const errorText = await analysisResponse.text().catch(() => 'Unknown error')
+          console.error(`❌ Claude API error: ${analysisResponse.status} - ${errorText}`)
         }
       } catch (error) {
         console.error('❌ Error in Claude analysis:', error)
