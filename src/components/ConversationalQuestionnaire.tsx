@@ -933,12 +933,12 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
             </div>
           ) : isProcessing ? (
             <div className="processing-text">
-              <span>Olivia is thinking...</span>
+              <span>{experienceType === 'greeting-card' ? 'Please listen...' : 'Olivia is thinking...'}</span>
             </div>
           ) : isListening ? (
             <div className="listening-container">
               <div className="listening-text">
-                <span>Listening...</span>
+                <span>{experienceType === 'greeting-card' ? 'Speak now...' : 'Listening...'}</span>
               </div>
               {currentPresets && experienceType === 'wish-list' && (
                 <div className="preset-options">
