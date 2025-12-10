@@ -72,25 +72,36 @@ function ConversationalQuestionnaire({ experienceType, onSubmit, onBack }: Conve
   const currentQuestion = remainingQuestions[0]
   
   // Only show presets for the initial question, not for follow-ups
-  // Check if this question has already been asked in the conversation (indicating a follow-up)
-  const isFollowUp = currentQuestion && conversationHistory.some(msg => {
-    if (msg.role === 'assistant') {
-      const msgLower = msg.content.toLowerCase()
-      const questionStart = currentQuestion.question.substring(0, 30).toLowerCase()
-      // Check if the question text appears in an assistant message
-      if (msgLower.includes(questionStart)) {
-        // Make sure it's not matching another question
-        const otherQuestions = questions.filter(q => q.key !== currentQuestion.key)
-        return !otherQuestions.some(q => msgLower.includes(q.question.substring(0, 20).toLowerCase()))
+  // A follow-up is when the question has been asked MORE THAN ONCE in the conversation
+  const isFollowUp = currentQuestion && (() => {
+    if (!conversationHistory.length) return false
+    
+    const questionStart = currentQuestion.question.substring(0, 30).toLowerCase()
+    let questionAskedCount = 0
+    
+    conversationHistory.forEach(msg => {
+      if (msg.role === 'assistant') {
+        const msgLower = msg.content.toLowerCase()
+        // Check if the question text appears in the assistant message
+        if (msgLower.includes(questionStart)) {
+          // Make sure it's not matching another question
+          const otherQuestions = questions.filter(q => q.key !== currentQuestion.key)
+          const isOtherQuestion = otherQuestions.some(q => msgLower.includes(q.question.substring(0, 20).toLowerCase()))
+          if (!isOtherQuestion) {
+            questionAskedCount++
+          }
+        }
       }
-    }
-    return false
-  })
+    })
+    
+    // If the question has been asked more than once, it's a follow-up
+    return questionAskedCount > 1
+  })()
   
   // Show presets only if:
   // 1. It's a wish-list experience
   // 2. There's a current question
-  // 3. It's NOT a follow-up (question hasn't been asked yet)
+  // 3. It's NOT a follow-up (question has been asked 0 or 1 times, not more)
   const currentPresets = currentQuestion && experienceType === 'wish-list' && !isFollowUp ? presetOptions[currentQuestion.key] : null
 
   // Handle preset option click
