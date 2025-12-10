@@ -7,9 +7,10 @@ interface GreetingCardProps {
   recipientName: string
   isOpen?: boolean
   onOpen?: () => void
+  showFullText?: boolean
 }
 
-function GreetingCard({ frontImageUrl, message, recipientName, isOpen: initialIsOpen = false, onOpen }: GreetingCardProps) {
+function GreetingCard({ frontImageUrl, message, recipientName, isOpen: initialIsOpen = false, onOpen, showFullText = false }: GreetingCardProps) {
   const [isOpen, setIsOpen] = useState(initialIsOpen)
 
   const handleOpen = () => {
@@ -42,7 +43,7 @@ function GreetingCard({ frontImageUrl, message, recipientName, isOpen: initialIs
         </div>
 
         {/* Inside of card */}
-        <div className="greeting-card-inside">
+        <div className={`greeting-card-inside ${showFullText ? 'show-full-text' : ''}`}>
           <div className="greeting-card-message">
             {message.split('\n\n').map((paragraph, index) => (
               <p key={index} className="greeting-card-paragraph">

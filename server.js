@@ -2114,6 +2114,81 @@ Make it feel genuine and fun, like something a friend would write.`
   }
 })
 
+// Rewrite greeting card message for elf narrators (Holly/Clark)
+app.post('/api/rewrite-greeting-card-for-elf', async (req, res) => {
+  console.log('\n\n🎄 ==========================================')
+  console.log('🎄 REWRITE GREETING CARD FOR ELF NARRATOR')
+  console.log('🎄 ==========================================')
+  
+  try {
+    const { originalMessage, senderName, recipientName } = req.body
+
+    if (!originalMessage || !senderName || !recipientName) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: originalMessage, senderName, recipientName' 
+      })
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: ANTHROPIC_API_KEY not set' 
+      })
+    }
+
+    const prompt = `Rewrite this greeting card message in third-person, as if one of Santa's elves is sharing a message that ${senderName} asked them to deliver to ${recipientName}.
+
+Original message:
+${originalMessage}
+
+Requirements:
+- Write in third person (use "${senderName}", "their", "they" instead of "I", "my", "me")
+- Add a brief opening (1-2 sentences) explaining that ${senderName} asked Santa's elves to share this message with ${recipientName}
+- Keep the same warm, humorous, and personal tone
+- Maintain all the specific details and stories from the original
+- Keep it the same length (2-3 short paragraphs)
+- End with a warm closing appropriate for an elf narrator (e.g., "Happy holidays from Santa's Elves!" or similar)
+
+Make it feel like a magical message from the North Pole!`
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Claude API error:', errorText)
+      throw new Error(`Claude API error: ${response.status} ${errorText}`)
+    }
+
+    const data = await response.json()
+    const rewrittenMessage = data.content[0].text.trim()
+
+    console.log(`✅ Rewritten greeting card message for elf narrator (${rewrittenMessage.length} chars)`)
+    
+    return res.status(200).json({ rewrittenMessage })
+  } catch (error) {
+    console.error('❌ Error rewriting greeting card message:', error)
+    const statusCode = error.statusCode || 500
+    const errorMessage = error.message || 'Failed to rewrite greeting card message'
+    return res.status(statusCode).json({ error: errorMessage })
+  }
+})
+
 // Greeting card image generation using Google Nano Banana (Gemini 2.5 Flash Image)
 app.post('/api/generate-greeting-card-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')

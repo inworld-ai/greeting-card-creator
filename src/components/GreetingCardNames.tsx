@@ -63,7 +63,7 @@ function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
 
       <div style={{ marginTop: '20px' }}>
         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-          What's your relationship?
+          What's their relationship to you?
         </label>
         <input
           type="text"

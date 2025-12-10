@@ -1118,7 +1118,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               : 'Start Narration 🧝'}
         </button>
         
-        {!isShared && (
+        {/* For greeting cards, Share and Make Another buttons go below the text */}
+        {experienceType !== 'greeting-card' && !isShared && (
           <>
             {!shareUrl ? (
               <button 
@@ -1189,17 +1190,19 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       )}
           </>
         )}
-        <button 
-          onClick={() => {
-            // Use browser refresh to ensure all audio stops completely
-            // This is the most reliable way to stop all audio and reset the app
-            window.location.href = '/'
-          }} 
-          className="restart-button"
-          style={{ order: 3 }}
-        >
-          Make Another Christmas Creation
-        </button>
+        {experienceType !== 'greeting-card' && (
+          <button 
+            onClick={() => {
+              // Use browser refresh to ensure all audio stops completely
+              // This is the most reliable way to stop all audio and reset the app
+              window.location.href = '/'
+            }} 
+            className="restart-button"
+            style={{ order: 3 }}
+          >
+            Make Another Christmas Creation
+          </button>
+        )}
           </div>
 
       {error && (
@@ -1281,6 +1284,92 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           )
         }
       })()}
+      
+      {/* For greeting cards, show Share and Make Another buttons below the text */}
+      {experienceType === 'greeting-card' && (
+        <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '30px' }}>
+          {!isShared && (
+            <>
+              {!shareUrl ? (
+                <button 
+                  onClick={async () => {
+                    setIsSharing(true)
+                    setShareError(null)
+                    try {
+                      const result = await shareStory({
+                        storyText,
+                        childName,
+                        voiceId,
+                        storyType: _storyType,
+                        imageUrl,
+                        customApiKey,
+                        customVoiceId
+                      })
+                        setShareUrl(result.shareUrl)
+                        // Copy to clipboard
+                        try {
+                          await navigator.clipboard.writeText(result.shareUrl)
+                        } catch (e) {
+                          console.warn('Failed to copy to clipboard:', e)
+                        }
+                    } catch (err: any) {
+                      setShareError(err.message || 'Failed to share story')
+                    } finally {
+                      setIsSharing(false)
+                    }
+                  }}
+                  disabled={isSharing}
+                  className="share-story-button"
+                >
+                  {isSharing ? 'Sharing...' : 'Share Story 🎁'}
+                </button>
+              ) : (
+                <div className="share-success">
+                  <input 
+                    type="text" 
+                    value={shareUrl} 
+                    readOnly 
+                    className="share-url-input"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button 
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(shareUrl)
+                        setIsLinkCopied(true)
+                        // Reset after 2 seconds
+                        setTimeout(() => {
+                          setIsLinkCopied(false)
+                        }, 2000)
+                      } catch (e) {
+                        console.warn('Failed to copy to clipboard:', e)
+                      }
+                    }}
+                    className="copy-link-button"
+                  >
+                    {isLinkCopied ? 'Copied!' : 'Copy Link'}
+                  </button>
+                </div>
+              )}
+              {shareError && (
+                <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
+                  {shareError}
+                </div>
+              )}
+            </>
+          )}
+          <button 
+            onClick={() => {
+              // Use browser refresh to ensure all audio stops completely
+              // This is the most reliable way to stop all audio and reset the app
+              window.location.href = '/'
+            }} 
+            className="restart-button"
+          >
+            Make Another Christmas Creation
+          </button>
+        </div>
+      )}
     </div>
   )
 }
