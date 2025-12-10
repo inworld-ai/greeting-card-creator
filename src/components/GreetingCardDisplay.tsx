@@ -19,7 +19,10 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
       </h2>
       
       <div className="greeting-card-display-wrapper">
-        <div className={`greeting-card-flip-container ${isFlipped ? 'flipped' : ''}`}>
+        <div 
+          className={`greeting-card-flip-container ${isFlipped ? 'flipped' : ''}`}
+          onClick={() => !isFlipped && setIsFlipped(true)}
+        >
           {/* Front - Cover Image */}
           <div className="greeting-card-flip-front">
             {coverImageUrl ? (
