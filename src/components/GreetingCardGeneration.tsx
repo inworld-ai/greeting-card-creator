@@ -4,6 +4,7 @@ import './StoryGeneration.css'
 interface GreetingCardGenerationProps {
   senderName: string
   recipientName: string
+  relationship: string
   specialAboutThem: string
   funnyStory: string
   uploadedImageUrl?: string | null
@@ -14,6 +15,7 @@ interface GreetingCardGenerationProps {
 function GreetingCardGeneration({ 
   senderName, 
   recipientName, 
+  relationship,
   specialAboutThem, 
   funnyStory, 
   uploadedImageUrl,
@@ -36,6 +38,7 @@ function GreetingCardGeneration({
           body: JSON.stringify({
             senderName,
             recipientName,
+            relationship,
             specialAboutThem,
             funnyStory
           })
@@ -82,7 +85,7 @@ function GreetingCardGeneration({
     }
 
     generateCard()
-  }, [senderName, recipientName, specialAboutThem, funnyStory, uploadedImageUrl, onCardGenerated, onError])
+  }, [senderName, recipientName, relationship, specialAboutThem, funnyStory, uploadedImageUrl, onCardGenerated, onError])
 
   return (
     <div className="story-generation">

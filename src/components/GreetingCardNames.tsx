@@ -2,20 +2,21 @@ import { useState } from 'react'
 import './NameInput.css'
 
 interface GreetingCardNamesProps {
-  onSubmit: (senderName: string, recipientName: string) => void
+  onSubmit: (senderName: string, recipientName: string, relationship: string) => void
   onBack: () => void
 }
 
 function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
   const [senderName, setSenderName] = useState('')
   const [recipientName, setRecipientName] = useState('')
+  const [relationship, setRelationship] = useState('')
 
   const handleSubmit = () => {
-    if (!senderName.trim() || !recipientName.trim()) {
-      alert('Please enter both your name and the recipient\'s name')
+    if (!senderName.trim() || !recipientName.trim() || !relationship.trim()) {
+      alert('Please enter your name, the recipient\'s name, and your relationship')
       return
     }
-    onSubmit(senderName.trim(), recipientName.trim())
+    onSubmit(senderName.trim(), recipientName.trim(), relationship.trim())
   }
 
   return (
@@ -60,6 +61,24 @@ function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
         />
       </div>
 
+      <div style={{ marginTop: '20px' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+          What's your relationship?
+        </label>
+        <input
+          type="text"
+          value={relationship}
+          onChange={(e) => setRelationship(e.target.value)}
+          placeholder="e.g., friend, family member, colleague"
+          className="name-input-field"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSubmit()
+            }
+          }}
+        />
+      </div>
+
       <div className="name-input-actions">
         <button 
           className="btn btn-secondary"
@@ -70,7 +89,7 @@ function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
         <button 
           className="btn btn-primary"
           onClick={handleSubmit}
-          disabled={!senderName.trim() || !recipientName.trim()}
+          disabled={!senderName.trim() || !recipientName.trim() || !relationship.trim()}
         >
           Continue →
         </button>

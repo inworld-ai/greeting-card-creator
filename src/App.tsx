@@ -37,6 +37,7 @@ export interface StoryData {
   greetingCardData?: {
     senderName: string
     recipientName: string
+    relationship: string
     specialAboutThem: string
     funnyStory: string
     cardMessage?: string
@@ -245,12 +246,13 @@ function App() {
     }
   }
 
-  const handleGreetingCardNamesSubmitted = (senderName: string, recipientName: string) => {
+  const handleGreetingCardNamesSubmitted = (senderName: string, recipientName: string, relationship: string) => {
     setStoryData(prev => ({
       ...prev,
       greetingCardData: {
         senderName,
         recipientName,
+        relationship,
         specialAboutThem: '',
         funnyStory: ''
       }
@@ -444,6 +446,7 @@ function App() {
           <GreetingCardGeneration
             senderName={storyData.greetingCardData.senderName}
             recipientName={storyData.greetingCardData.recipientName}
+            relationship={storyData.greetingCardData.relationship}
             specialAboutThem={storyData.greetingCardData.specialAboutThem}
             funnyStory={storyData.greetingCardData.funnyStory}
             uploadedImageUrl={storyData.imageUrl || null}

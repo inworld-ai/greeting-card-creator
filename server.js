@@ -2019,11 +2019,11 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
   console.log('💌 ==========================================')
   
   try {
-    const { senderName, recipientName, specialAboutThem, funnyStory } = req.body
+    const { senderName, recipientName, relationship, specialAboutThem, funnyStory } = req.body
 
-    if (!senderName || !recipientName || !specialAboutThem || !funnyStory) {
+    if (!senderName || !recipientName || !relationship || !specialAboutThem || !funnyStory) {
       return res.status(400).json({ 
-        error: 'Missing required fields: senderName, recipientName, specialAboutThem, funnyStory' 
+        error: 'Missing required fields: senderName, recipientName, relationship, specialAboutThem, funnyStory' 
       })
     }
 
@@ -2037,11 +2037,13 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
 
 Sender: ${senderName}
 Recipient: ${recipientName}
+Relationship: ${relationship}
 What's special about them: ${specialAboutThem}
 Funny story/joke: ${funnyStory}
 
 Write a warm, humorous greeting card message (2-3 short paragraphs max) that:
 - Is fun and comical in tone
+- Reflects the relationship between ${senderName} and ${recipientName} (${relationship})
 - References the special thing about them
 - Includes the funny story or joke in a lighthearted way
 - Feels personal and heartfelt
