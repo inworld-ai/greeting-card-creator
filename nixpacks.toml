@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_20", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm install --production=false"]
+cmds = ["npm ci --production=false"]
 
 [phases.build]
-cmds = []
+cmds = ["echo 'Skipping frontend build - backend only'"]
 
 [start]
 cmd = "node server.js"
