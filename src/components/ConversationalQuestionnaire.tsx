@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
+import { synthesizeSpeechStream } from '../services/ttsStreamService'
 import './ConversationalQuestionnaire.css'
 
 interface ConversationalQuestionnaireProps {
@@ -14,6 +15,7 @@ interface ConversationalQuestionnaireProps {
     experience?: string
     practicalNeed?: string
     recipientName?: string
+    relationship?: string
     specialAboutThem?: string
     funnyStory?: string
   }) => void
@@ -56,7 +58,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
           { key: 'funnyStory', question: `What's a funny or heartwarming anecdote about ${collectedRecipientName}?` }
         ]
       : [
-          { key: 'recipientName', question: "What is the name of the person that this card is for?" },
+          { key: 'recipientName', question: "What's the name of the person this card is for, and what's their relationship to you? (e.g., 'My wife Sarah' or 'My best friend Tom' or 'My grandmother Mary')" },
           { key: 'funnyStory', question: "What's a funny or heartwarming anecdote about that person?" }
         ]
     : [
@@ -65,7 +67,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
         { key: 'practicalNeed', question: "What's something practical you actually need but wouldn't buy for yourself?" }
       ]
 
-  // Preset options for Christmas Wish List
+  // Preset options for Christmas Wish List and Greeting Card
   const presetOptions: Record<string, string[]> = {
     dreamGift: [
       "A new laptop or tablet for work and creativity",
@@ -81,6 +83,11 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
       "A new pair of comfortable shoes or boots",
       "A quality coffee maker or kitchen appliance",
       "A professional organizer or home improvement tool"
+    ],
+    funnyStory: [
+      "They always help the neighbours",
+      "Their hair is wild in the morning",
+      "They can't resist petting every dog they see"
     ]
   }
 
@@ -116,10 +123,16 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
   })()
   
   // Show presets only if:
-  // 1. It's a wish-list experience
+  // 1. It's a wish-list experience OR greeting-card experience (for funnyStory question)
   // 2. There's a current question
   // 3. It's NOT a follow-up (question has been asked 0 or 1 times, not more)
-  const currentPresets = currentQuestion && experienceType === 'wish-list' && !isFollowUp ? presetOptions[currentQuestion.key] : null
+  // 4. The question has preset options defined
+  const currentPresets = currentQuestion && 
+    ((experienceType === 'wish-list') || (experienceType === 'greeting-card' && currentQuestion.key === 'funnyStory')) && 
+    !isFollowUp && 
+    presetOptions[currentQuestion.key] 
+    ? presetOptions[currentQuestion.key] 
+    : null
 
   // Handle preset option click
   const handlePresetClick = async (presetText: string) => {
@@ -271,29 +284,8 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
 
     recognitionRef.current = recognition
 
-    // Start the conversation and begin continuous listening
-    startConversation()
-    
-    // Start continuous recognition immediately, but only if not processing
-    setTimeout(() => {
-      try {
-        // Don't start if we're already processing (e.g., conversation already started)
-        if (!isProcessingRef.current && !isTTSInProgressRef.current) {
-          recognition.start()
-          setIsListening(true)  // Set listening state immediately when we start
-          console.log('🎤 Started continuous speech recognition - mic should be active')
-        } else {
-          console.log('🔇 Not starting recognition - already processing', {
-            isProcessing: isProcessingRef.current,
-            isTTSInProgress: isTTSInProgressRef.current
-          })
-          setIsListening(false)
-        }
-      } catch (error) {
-        console.error('Error starting initial recognition:', error)
-        setIsListening(false)
-      }
-    }, 1000)  // Small delay to ensure component is fully mounted
+    // Don't auto-start conversation - wait for user to click "Start Conversation" button
+    // This ensures audio playback works (requires user interaction)
 
     return () => {
       // CRITICAL: Stop recognition and clean up when component unmounts
@@ -452,7 +444,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
         body: JSON.stringify({
           experienceType,
           userMessage,
-          recipientName: experienceType === 'greeting-card' ? collectedRecipientName : undefined,
+          recipientName: experienceType === 'greeting-card' ? (collectedRecipientName || currentAnswers.recipientName) : undefined,
           relationship: experienceType === 'greeting-card' ? relationship : undefined,
           conversationHistory: currentHistory.map(msg => ({
             role: msg.role,
@@ -517,14 +509,33 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
               ...prevAnswers,
               [data.detectedQuestionKey]: data.detectedAnswer
             }
-            // If recipientName was just collected, update the state
+            // If recipientName was just collected, use the relationship from backend if available
             if (data.detectedQuestionKey === 'recipientName' && experienceType === 'greeting-card') {
-              setCollectedRecipientName(data.detectedAnswer)
+              const extractedName = data.detectedAnswer
+              
+              setCollectedRecipientName(extractedName)
+              
+              // Use relationship from backend response if available (backend extracts it more reliably)
+              if (data.relationship) {
+                updatedAnswers['relationship'] = data.relationship
+                console.log(`📝 Relationship from backend: ${data.relationship}`)
+              }
+              
+              // Store the name
+              updatedAnswers['recipientName'] = extractedName
             }
             // Update ref to keep it in sync
             answeredQuestionsRef.current = updatedAnswers
+            
+            // Calculate progress: only count question keys, exclude 'relationship' (it's extracted metadata, not a question)
+            const totalQuestions = experienceType === 'greeting-card' ? 2 : questions.length
+            const questionKeys = experienceType === 'greeting-card' 
+              ? ['recipientName', 'funnyStory'] // Fixed list for greeting-card
+              : questions.map(q => q.key)
+            const answeredCount = questionKeys.filter(key => updatedAnswers[key]).length
+            
             console.log(`✅ Answer detected for ${data.detectedQuestionKey}: ${data.detectedAnswer.substring(0, 50)}...`)
-            console.log(`📊 Progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
+            console.log(`📊 Progress: ${answeredCount}/${totalQuestions} questions answered`)
             console.log(`📊 Updated answeredQuestions keys:`, Object.keys(updatedAnswers))
           } else {
             console.log(`⚠️ No answer detected. detectedAnswer: ${data.detectedAnswer}, detectedQuestionKey: ${data.detectedQuestionKey}`)
@@ -593,7 +604,14 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
               setIsComplete(true)
               console.log('✅ All questions answered! Completing conversation...')
               console.log('📊 Final answers:', updatedAnswers)
-              console.log(`📊 Final progress: ${Object.keys(updatedAnswers).length}/${questions.length} questions answered`)
+              
+              // Calculate progress: only count question keys, exclude 'relationship' (it's extracted metadata, not a question)
+              const totalQuestions = experienceType === 'greeting-card' ? 2 : questions.length
+              const questionKeys = experienceType === 'greeting-card' 
+                ? ['recipientName', 'funnyStory'] // Fixed list for greeting-card
+                : questions.map(q => q.key)
+              const answeredCount = questionKeys.filter(key => updatedAnswers[key]).length
+              console.log(`📊 Final progress: ${answeredCount}/${totalQuestions} questions answered`)
               // Don't auto-submit - show Continue button instead
             }
           }
@@ -617,99 +635,171 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
       }
 
       // Get TTS audio for the response using Olivia voice
-      // Use the ttsService which handles the WAV chunk parsing correctly
+      // Use streaming TTS for greeting-card (low latency), chunked WAV for others
       try {
-        const audio = await synthesizeSpeech(aiResponse, {
-          voiceId: 'Olivia',
-          apiKey: undefined // Use default API key
-        })
-        
-        // Clean up previous audio
-        if (audioRef.current) {
-          audioRef.current.pause()
-          // Only revoke URL if it's a blob URL
-          if (audioRef.current.src.startsWith('blob:')) {
-            URL.revokeObjectURL(audioRef.current.src)
-          }
-        }
-        
-        audioRef.current = audio
-        // Don't set isTTSInProgressRef to false here - wait until all chunks finish playing
-
-        // Stop recognition when audio starts playing (additional safety)
-        audio.onplay = () => {
-          if (recognitionRef.current) {
-            try {
-              recognitionRef.current.stop()
-              setIsListening(false)
-              console.log('🔇 Stopped speech recognition when audio started playing')
-            } catch (error: any) {
-              if (error.name !== 'InvalidStateError') {
-                console.error('Error stopping recognition on play:', error)
+        if (experienceType === 'greeting-card') {
+          // Use streaming TTS for low latency
+          await synthesizeSpeechStream(aiResponse, {
+            voiceId: 'Olivia',
+            apiKey: undefined,
+            onAudioStart: () => {
+              // Stop recognition when audio starts
+              if (recognitionRef.current) {
+                try {
+                  recognitionRef.current.stop()
+                  setIsListening(false)
+                  console.log('🔇 Stopped speech recognition when streaming audio started')
+                } catch (error: any) {
+                  if (error.name !== 'InvalidStateError') {
+                    console.error('Error stopping recognition on audio start:', error)
+                  }
+                  setIsListening(false)
+                }
+              } else {
+                setIsListening(false)
               }
-              setIsListening(false)
-            }
-          } else {
-            setIsListening(false)
-          }
-        }
-
-        // Track if this is the last chunk
-        const lastChunk = (audio as any).__lastChunk as HTMLAudioElement | undefined
-        
-        // Set up handler on the LAST chunk only
-        if (lastChunk) {
-          lastChunk.onended = () => {
-            // Check if ALL audio chunks have actually finished playing
-            const allChunksFinished = allAudioChunksRef.current.every(chunk => chunk.ended || chunk.paused)
-            
-            if (!allChunksFinished) {
-              console.log('🔇 Not all chunks finished yet, waiting...')
-              return
-            }
-            
-            // Mark TTS as complete and processing as false
-            isTTSInProgressRef.current = false
-            setIsProcessing(false)
-            isProcessingRef.current = false
-            // CRITICAL: Wait longer before restarting to ensure audio is fully stopped
-            // and speakers are quiet to prevent feedback loop
-            if (!isComplete && recognitionRef.current) {
-              setTimeout(() => {
-                // Triple-check: not processing, not complete, recognition exists, TTS not in progress, and no audio playing
-                // Use refs to avoid stale closure issues
-                const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
-                if (!isProcessingRef.current && !isComplete && !isTTSInProgressRef.current && recognitionRef.current && !anyAudioPlaying) {
-                  try {
-                    if (!isComplete) {
-                      console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
-                      // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
+            },
+            onAudioEnd: () => {
+              // Mark TTS as complete and processing as false
+              isTTSInProgressRef.current = false
+              setIsProcessing(false)
+              isProcessingRef.current = false
+              
+              // Restart recognition after streaming audio finishes
+              if (!isComplete && recognitionRef.current) {
+                setTimeout(() => {
+                  if (!isProcessingRef.current && !isComplete && !isTTSInProgressRef.current && recognitionRef.current) {
+                    try {
+                      console.log('🎤 Restarting speech recognition after streaming audio finished')
                       setIsListening(true)
                       recognitionRef.current?.start()
-                    } else {
-                      console.log('🛑 Conversation is complete, not restarting recognition')
-                    }
-                    // onstart handler will also set isListening to true, but set it here too for immediate effect
-                  } catch (error: any) {
-                    if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
-                      console.log('🎤 Recognition already running - setting listening to true')
-                      setIsListening(true)
-                    } else {
-                      console.error('Error restarting recognition:', error)
-                      setIsListening(false)
+                    } catch (error: any) {
+                      if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                        console.log('🎤 Recognition already running')
+                        setIsListening(true)
+                      } else {
+                        console.error('Error restarting recognition:', error)
+                        setIsListening(false)
+                      }
                     }
                   }
-                } else {
-                  console.log('🔇 Not restarting recognition - still processing, complete, or audio playing', {
-                    isProcessing,
-                    isComplete,
-                    anyAudioPlaying
-                  })
-                }
-              }, 2000)  // 2 second delay to ensure audio is fully stopped and speakers are quiet
+                }, 2000) // 2 second delay to ensure audio is fully stopped
+              }
+            },
+            onError: (error) => {
+              console.error('❌ Streaming TTS error:', error)
+              isTTSInProgressRef.current = false
+              setIsProcessing(false)
+              isProcessingRef.current = false
+              
+              // Restart recognition on error
+              if (!isComplete && recognitionRef.current) {
+                setTimeout(() => {
+                  try {
+                    if (!isProcessingRef.current && !isComplete) {
+                      recognitionRef.current?.start()
+                      setIsListening(true)
+                    }
+                  } catch (err: any) {
+                    console.error('Error restarting recognition after error:', err)
+                  }
+                }, 500)
+              }
+            }
+          });
+        } else {
+          // Use chunked WAV for other experiences (story, year-review, wish-list)
+          const audio = await synthesizeSpeech(aiResponse, {
+            voiceId: 'Olivia',
+            apiKey: undefined // Use default API key
+          })
+          
+          // Clean up previous audio
+          if (audioRef.current) {
+            audioRef.current.pause()
+            // Only revoke URL if it's a blob URL
+            if (audioRef.current.src.startsWith('blob:')) {
+              URL.revokeObjectURL(audioRef.current.src)
             }
           }
-        } else {
+          
+          audioRef.current = audio
+          // Don't set isTTSInProgressRef to false here - wait until all chunks finish playing
+
+          // Stop recognition when audio starts playing (additional safety)
+          audio.onplay = () => {
+            if (recognitionRef.current) {
+              try {
+                recognitionRef.current.stop()
+                setIsListening(false)
+                console.log('🔇 Stopped speech recognition when audio started playing')
+              } catch (error: any) {
+                if (error.name !== 'InvalidStateError') {
+                  console.error('Error stopping recognition on play:', error)
+                }
+                setIsListening(false)
+              }
+            } else {
+              setIsListening(false)
+            }
+          }
+
+          // Track if this is the last chunk
+          const lastChunk = (audio as any).__lastChunk as HTMLAudioElement | undefined
+          
+          // Set up handler on the LAST chunk only
+          if (lastChunk) {
+            lastChunk.onended = () => {
+              // Check if ALL audio chunks have actually finished playing
+              const allChunksFinished = allAudioChunksRef.current.every(chunk => chunk.ended || chunk.paused)
+              
+              if (!allChunksFinished) {
+                console.log('🔇 Not all chunks finished yet, waiting...')
+                return
+              }
+              
+              // Mark TTS as complete and processing as false
+              isTTSInProgressRef.current = false
+              setIsProcessing(false)
+              isProcessingRef.current = false
+              // CRITICAL: Wait longer before restarting to ensure audio is fully stopped
+              // and speakers are quiet to prevent feedback loop
+              if (!isComplete && recognitionRef.current) {
+                setTimeout(() => {
+                  // Triple-check: not processing, not complete, recognition exists, TTS not in progress, and no audio playing
+                  // Use refs to avoid stale closure issues
+                  const anyAudioPlaying = allAudioChunksRef.current.some(chunk => !chunk.ended && !chunk.paused)
+                  if (!isProcessingRef.current && !isComplete && !isTTSInProgressRef.current && recognitionRef.current && !anyAudioPlaying) {
+                    try {
+                      if (!isComplete) {
+                        console.log('🎤 Restarting speech recognition after Olivia finished speaking (all chunks done, waited 2s)')
+                        // Set listening to true BEFORE starting (onstart will also set it, but this ensures it's set)
+                        setIsListening(true)
+                        recognitionRef.current?.start()
+                      } else {
+                        console.log('🛑 Conversation is complete, not restarting recognition')
+                      }
+                      // onstart handler will also set isListening to true, but set it here too for immediate effect
+                    } catch (error: any) {
+                      if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+                        console.log('🎤 Recognition already running - setting listening to true')
+                        setIsListening(true)
+                      } else {
+                        console.error('Error restarting recognition:', error)
+                        setIsListening(false)
+                      }
+                    }
+                  } else {
+                    console.log('🔇 Not restarting recognition - still processing, complete, or audio playing', {
+                      isProcessing,
+                      isComplete,
+                      anyAudioPlaying
+                    })
+                  }
+                }, 2000)  // 2 second delay to ensure audio is fully stopped and speakers are quiet
+              }
+            }
+          } else {
           // Fallback: if we can't find the last chunk, use the first audio's ended event
           // But only restart after a longer delay to ensure all chunks are done
           audio.onended = () => {
@@ -743,30 +833,31 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
               }, 2500)  // Even longer delay for fallback
             }
           }
-        }
 
-        audio.onerror = (error) => {
-          console.error('❌ Audio playback error:', error)
-          setIsProcessing(false)
-          // Restart recognition after audio error
-          if (!isComplete && recognitionRef.current) {
-            setTimeout(() => {
-              try {
-                recognitionRef.current?.start()
-                setIsListening(true)
-              } catch (err: any) {
-                if (err.name === 'InvalidStateError' && err.message.includes('already started')) {
-                  console.log('🎤 Recognition already running')
+          audio.onerror = (error) => {
+            console.error('❌ Audio playback error:', error)
+            setIsProcessing(false)
+            // Restart recognition after audio error
+            if (!isComplete && recognitionRef.current) {
+              setTimeout(() => {
+                try {
+                  recognitionRef.current?.start()
                   setIsListening(true)
-                } else {
-                  console.error('Error restarting recognition after audio error:', err)
+                } catch (err: any) {
+                  if (err.name === 'InvalidStateError' && err.message.includes('already started')) {
+                    console.log('🎤 Recognition already running')
+                    setIsListening(true)
+                  } else {
+                    console.error('Error restarting recognition after audio error:', err)
+                  }
                 }
-              }
-            }, 300)
+              }, 300)
+            }
           }
-        }
 
-        await audio.play()
+          await audio.play()
+        }
+      }
       } catch (ttsError: any) {
         console.error('❌ Error generating TTS:', ttsError)
         isTTSInProgressRef.current = false
@@ -875,6 +966,8 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
     } else if (experienceType === 'greeting-card') {
       onSubmit({
         recipientName: finalAnswers.recipientName || collectedRecipientName || 'Not specified',
+        relationship: finalAnswers.relationship || 'Not specified',
+        specialAboutThem: finalAnswers.specialAboutThem || 'Not specified',
         funnyStory: finalAnswers.funnyStory || 'Not specified'
       })
     } else {
@@ -886,51 +979,91 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
     }
   }
 
-  const handleManualStart = () => {
-    // In continuous mode, this button should rarely be needed
-    // But if recognition stopped, restart it
-    if (recognitionRef.current && !isListening && !isProcessing && !isComplete) {
-      try {
-        console.log('🎤 Manually restarting speech recognition')
-        recognitionRef.current.start()
-        setIsListening(true)
-      } catch (error) {
-        console.error('Error starting recognition:', error)
-        setIsListening(false)
+  const handleManualStart = async () => {
+    // Start the conversation with user interaction (required for audio playback)
+    if (hasStarted || isProcessing || isComplete) {
+      return
+    }
+    
+    try {
+      console.log('🎤 Starting conversation with user interaction...')
+      setHasStarted(true) // Mark conversation as started
+      
+      // Start speech recognition first
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start()
+          setIsListening(true)
+          console.log('🎤 Started speech recognition - mic is now active')
+        } catch (error: any) {
+          if (error.name === 'InvalidStateError' && error.message.includes('already started')) {
+            console.log('🎤 Recognition already running')
+            setIsListening(true)
+          } else {
+            console.error('Error starting recognition:', error)
+          }
+        }
       }
+      
+      // Then start the conversation (this will trigger audio playback)
+      await startConversation()
+    } catch (error: any) {
+      console.error('❌ Error starting conversation:', error)
+      setIsProcessing(false)
+      isProcessingRef.current = false
+      setHasStarted(false)
+      
+      const errorMessage = error?.message || 'Failed to start conversation. Please try again.'
+      alert(`Unable to start conversation: ${errorMessage}`)
     }
   }
 
-  const progress = (Object.keys(answeredQuestions).length / questions.length) * 100
+  // For greeting-card, always use 2 as the total (recipientName + funnyStory)
+  // The questions array changes dynamically, but the total should remain constant
+  const totalQuestions = experienceType === 'greeting-card' ? 2 : questions.length
+  // Count only actual question keys (exclude 'relationship' which is extracted from recipientName)
+  // For greeting-card, use fixed list since questions array changes after name is collected
+  const questionKeys = experienceType === 'greeting-card' 
+    ? ['recipientName', 'funnyStory'] // Fixed list for greeting-card
+    : questions.map(q => q.key)
+  const answeredQuestionKeys = questionKeys.filter(key => answeredQuestions[key]).length
+  const progress = (answeredQuestionKeys / totalQuestions) * 100
 
   return (
-    <div className="conversational-questionnaire">
+    <div className={`conversational-questionnaire ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
       <div className="conversational-header">
         {experienceType !== 'greeting-card' && (
           <h2 className="conversational-title">
             {experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'}
           </h2>
         )}
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-        </div>
-        <p className="progress-text">
-          {Object.keys(answeredQuestions).length} of {questions.length} questions answered
-        </p>
+        {hasStarted && (
+          <>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+            <p className="progress-text">
+              {answeredQuestionKeys} of {totalQuestions} questions answered
+            </p>
+          </>
+        )}
       </div>
 
       <div className="conversational-content">
-        <div className="olivia-blob-container">
-          <div className={`olivia-blob ${isComplete ? 'complete' : isProcessing ? 'processing' : isListening ? 'listening' : hasStarted ? 'processing' : 'idle'}`}>
-            <div className="blob-inner"></div>
-            <div className="blob-pulse"></div>
-            {isComplete && (
-              <div className="complete-overlay">
-                <div className="checkmark">✓</div>
-              </div>
-            )}
+        {/* Only show the pulsing circle when conversation has started (not in idle/purple state) */}
+        {hasStarted && (
+          <div className="olivia-blob-container">
+            <div className={`olivia-blob ${isComplete ? 'complete' : isProcessing ? 'processing' : isListening ? 'listening' : 'processing'} ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
+              <div className="blob-inner"></div>
+              {!isComplete && <div className="blob-pulse"></div>}
+              {isComplete && (
+                <div className="complete-overlay">
+                  <div className="checkmark">✓</div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="listening-indicator">
           {isComplete ? (
@@ -944,7 +1077,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
               </button>
             </div>
           ) : isProcessing ? (
-            <div className="processing-text">
+            <div className={`processing-text ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
               <span>{experienceType === 'greeting-card' ? 'Please listen...' : 'Olivia is thinking...'}</span>
             </div>
           ) : isListening ? (
@@ -952,7 +1085,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
               <div className="listening-text">
                 <span>{experienceType === 'greeting-card' ? 'Speak now...' : 'Listening...'}</span>
               </div>
-              {currentPresets && experienceType === 'wish-list' && (
+              {currentPresets && (experienceType === 'wish-list' || experienceType === 'greeting-card') && (
                 <div className="preset-options">
                   <p className="preset-label">Or choose a preset option:</p>
                   <div className="preset-buttons">
@@ -973,7 +1106,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
           ) : hasStarted ? (
             // If conversation has started but we're not listening/processing, show a brief "waiting" state
             // This prevents the "Start Conversation" button from appearing mid-conversation
-            <div className="processing-text">
+            <div className={`processing-text ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
               <span>{experienceType === 'greeting-card' ? 'Please listen...' : 'Olivia is thinking...'}</span>
             </div>
           ) : (
@@ -986,16 +1119,6 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
             </button>
           )}
         </div>
-      </div>
-
-      <div className="conversational-actions">
-        <button 
-          className="btn btn-secondary"
-          onClick={onBack}
-          disabled={isListening || isProcessing}
-        >
-          ← Back
-        </button>
       </div>
     </div>
   )

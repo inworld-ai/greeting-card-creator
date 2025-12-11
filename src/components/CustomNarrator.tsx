@@ -241,7 +241,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
               color: '#333',
               fontStyle: 'italic'
             }}>
-              "Hi there! I'm excited to show you my Christmas creation. This year has been wonderful, and I can't wait to spread a little magic wiith you. Thanks for listening!"
+              "Hi there! I'm excited to show you my Christmas creation. This year has been wonderful, and I can't wait to spread a little magic with you. Thanks for listening!"
             </div>
           </div>
 
