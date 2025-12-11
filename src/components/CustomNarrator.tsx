@@ -213,9 +213,6 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
   return (
     <div className="name-input">
-      <p className="prompt-text">
-        Create your own narrator for the story about <strong>{childName}</strong>! 🎤
-      </p>
       
       {/* Voice Clone Recording Only */}
       {useVoiceClone ? (
@@ -306,7 +303,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
                       cursor: isProcessing ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {isProcessing ? '🔄 Cloning Voice...' : '✨ Clone Voice & Create Story'}
+                    {isProcessing ? '🔄 Cloning Voice...' : 'Create Narrator'}
                   </button>
                 </div>
               </div>
