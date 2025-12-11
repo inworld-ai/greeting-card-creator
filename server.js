@@ -13,20 +13,47 @@ const PORT = process.env.PORT || 3001
 
 // Middleware
 // CORS configuration - allow requests from Vercel frontend
-app.use(cors({
-  origin: [
-    'https://christmas-personalized-storyteller.vercel.app',
-    'https://christmas-personalized-storyteller-gjgi38e7e.vercel.app',
-    /^https:\/\/christmas-personalized-storyteller.*\.vercel\.app$/, // Match all Vercel preview deployments
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    const allowedOrigins = [
+      'https://inworld-christmas.vercel.app',
+      'https://christmas-personalized-storyteller.vercel.app',
+      'https://christmas-personalized-storyteller-gjgi38e7e.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ]
+    
+    // Check exact matches
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+    
+    // Check regex patterns
+    if (/^https:\/\/christmas-personalized-storyteller.*\.vercel\.app$/.test(origin)) {
+      return callback(null, true)
+    }
+    
+    if (/^https:\/\/inworld-christmas.*\.vercel\.app$/.test(origin)) {
+      return callback(null, true)
+    }
+    
+    console.log(`⚠️ CORS: Blocked origin: ${origin}`)
+    callback(new Error('Not allowed by CORS'))
+  },
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 204
-}))
+}
+
+app.use(cors(corsOptions))
+
+// Explicit OPTIONS handler for all routes (backup)
+app.options('*', cors(corsOptions))
 app.use(express.json({ limit: '10mb' })) // Increase limit for audio uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
@@ -132,6 +159,158 @@ app.post('/api/clone-voice', async (req, res) => {
     res.status(500).json({ 
       error: `Server error: ${error.message || 'Failed to clone voice'}. Make sure the backend server is running and INWORLD_PORTAL_API_KEY is set.` 
     })
+  }
+})
+
+// Streaming TTS endpoint for low-latency audio (used for conversational agents)
+app.post('/api/tts-stream', async (req, res) => {
+  let selectedVoiceId = null
+  
+  try {
+    const { text, voiceId, apiKey } = req.body
+
+    if (!text) {
+      return res.status(400).json({ 
+        error: 'Missing required field: text' 
+      })
+    }
+
+    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY
+    if (!selectedApiKey) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: INWORLD_API_KEY not set and no custom API key provided' 
+      })
+    }
+
+    selectedVoiceId = voiceId || process.env.INWORLD_VOICE_ID || 'Wendy'
+
+    console.log(`🎵 Streaming TTS request - VoiceId: "${selectedVoiceId}", Text length: ${text.length}`)
+
+    // Create TTS-only graph
+    const graph = createTTSOnlyGraph(selectedApiKey, selectedVoiceId)
+    const { outputStream } = await graph.start(text)
+
+    // Set headers for streaming raw PCM audio
+    res.setHeader('Content-Type', 'audio/pcm')
+    res.setHeader('Transfer-Encoding', 'chunked')
+    res.setHeader('X-Sample-Rate', '24000')
+    res.setHeader('X-Channels', '1')
+    res.setHeader('X-Bit-Depth', '32')
+    res.setHeader('X-Encoding', 'float32')
+
+    let firstChunkTime = null
+    let totalBytes = 0
+
+    // Stream audio chunks as they arrive (raw PCM float32, no WAV encoding)
+    // Using improved handler logic from Inworld feature branch to prevent static/dropouts
+    let done = false
+    while (!done) {
+      const result = await outputStream.next()
+      
+      await result.processResponse({
+        TTSOutputStream: async (ttsStream) => {
+          for await (const chunk of ttsStream) {
+            // Validate audio data exists (critical check from feature branch)
+            if (!chunk.audio?.data) {
+              console.warn('⚠️ Skipping chunk with missing audio data')
+              continue
+            }
+
+            let audioBuffer
+
+            // Handle different audio data formats (matching feature branch logic)
+            if (Array.isArray(chunk.audio.data)) {
+              // The array contains byte values from a Buffer, not float values
+              // Interpret these bytes as Float32 data (4 bytes per float)
+              audioBuffer = Buffer.from(chunk.audio.data)
+            } else if (typeof chunk.audio.data === 'string') {
+              // If it's a base64 string
+              audioBuffer = Buffer.from(chunk.audio.data, 'base64')
+            } else if (Buffer.isBuffer(chunk.audio.data)) {
+              // If it's already a Buffer
+              audioBuffer = chunk.audio.data
+            } else {
+              console.error('❌ Unsupported audio data type:', typeof chunk.audio.data)
+              continue
+            }
+
+            // Validate buffer has content (critical check from feature branch)
+            if (audioBuffer.byteLength === 0) {
+              console.warn('⚠️ Skipping chunk with zero-length audio buffer')
+              continue
+            }
+
+            if (firstChunkTime === null) {
+              firstChunkTime = Date.now()
+              console.log(`⏱️ First streaming audio chunk received`)
+            }
+            
+            // Send raw PCM data directly (no WAV encoding for lower latency)
+            res.write(audioBuffer)
+            totalBytes += audioBuffer.length
+            console.log(`🎵 Streamed audio chunk: ${audioBuffer.length} bytes (total: ${totalBytes} bytes)`)
+          }
+        },
+        AudioStream: async (audioStream) => {
+          // Fallback: handle AudioStream with same validation
+          for await (const audioChunk of audioStream) {
+            if (!audioChunk.data) {
+              console.warn('⚠️ Skipping AudioStream chunk with missing data')
+              continue
+            }
+
+            const audioData = audioChunk.data
+            let audioBuffer
+            
+            if (Array.isArray(audioData)) {
+              audioBuffer = Buffer.from(audioData)
+            } else if (typeof audioData === 'string') {
+              audioBuffer = Buffer.from(audioData, 'base64')
+            } else if (Buffer.isBuffer(audioData)) {
+              audioBuffer = audioData
+            } else {
+              console.error('❌ Unsupported AudioStream data type:', typeof audioData)
+              continue
+            }
+            
+            if (audioBuffer.byteLength === 0) {
+              console.warn('⚠️ Skipping AudioStream chunk with zero-length buffer')
+              continue
+            }
+
+            if (firstChunkTime === null) {
+              firstChunkTime = Date.now()
+              console.log(`⏱️ First streaming audio chunk received (AudioStream)`)
+            }
+            res.write(audioBuffer)
+            totalBytes += audioBuffer.length
+            console.log(`🎵 Streamed audio chunk (AudioStream): ${audioBuffer.length} bytes`)
+          }
+        },
+        error: async (error) => {
+          console.error('❌ Error in TTS stream:', error.message, 'Code:', error.code)
+          // Don't break the stream for errors, just log them
+        },
+        default: (data) => {
+          console.log('Received non-audio data in stream:', typeof data)
+        },
+      })
+
+      done = result.done
+    }
+
+    await graph.stop()
+    res.end()
+    
+    const totalTime = firstChunkTime ? Date.now() - firstChunkTime : 0
+    console.log(`✅ Streaming TTS complete - Total: ${totalBytes} bytes, Time: ${totalTime}ms`)
+  } catch (error) {
+    console.error('❌ Error in streaming TTS:', error)
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Failed to generate streaming TTS' })
+    } else {
+      res.end()
+    }
   }
 })
 
@@ -722,14 +901,20 @@ app.post('/api/conversational-chat', async (req, res) => {
   console.log('💬 ==========================================')
   
   try {
-    const { 
-      experienceType, 
-      userMessage, 
+    let {
+      experienceType,
+      userMessage,
       recipientName,
       relationship,
       conversationHistory = [],
       answeredQuestions = {}
     } = req.body
+    
+    // For greeting-card, extract recipientName from answeredQuestions if not provided
+    if (experienceType === 'greeting-card' && !recipientName && answeredQuestions && answeredQuestions.recipientName) {
+      recipientName = answeredQuestions.recipientName
+      console.log(`📝 Extracted recipientName from answeredQuestions: ${recipientName}`)
+    }
 
     if (!experienceType) {
       return res.status(400).json({ 
@@ -795,7 +980,7 @@ app.post('/api/conversational-chat', async (req, res) => {
         ]
       : experienceType === 'greeting-card'
       ? [
-          { key: 'recipientName', question: "What is the name of the person that this card is for?" },
+          { key: 'recipientName', question: "What's the name of the person this card is for, and what's their relationship to you? (e.g., 'My wife Sarah' or 'My best friend Tom' or 'My grandmother Mary')" },
           { key: 'funnyStory', question: "What's a funny or heartwarming anecdote about that person?" }
         ]
       : [
@@ -855,7 +1040,40 @@ app.post('/api/conversational-chat', async (req, res) => {
     
     const remainingQuestions = questions.filter(q => !allAnsweredKeys.has(q.key))
     const nextQuestion = remainingQuestions[0]
-    const allQuestionsAnswered = remainingQuestions.length === 0
+    let allQuestionsAnswered = remainingQuestions.length === 0
+    
+    // CRITICAL: Pre-emptively check if the current user message answers the last question
+    // This handles the case where the frontend hasn't updated answeredQuestions yet
+    if (!allQuestionsAnswered && remainingQuestions.length === 1 && userMessage && userMessage.trim().length > 5) {
+      const lastQuestion = remainingQuestions[0]
+      if (lastQuestion) {
+        // For greeting cards, if recipientName is answered and user provides an anecdote, it's the last question
+        if (experienceType === 'greeting-card' && lastQuestion.key === 'funnyStory' && answeredQuestions.recipientName) {
+          const userMessageLower = userMessage.toLowerCase()
+          const isAnecdote = userMessageLower.includes('joke') ||
+                            userMessageLower.includes('story') ||
+                            userMessageLower.includes('anecdote') ||
+                            userMessageLower.includes('memory') ||
+                            userMessageLower.includes('time') ||
+                            userMessageLower.includes('always') ||
+                            userMessageLower.includes('habit') ||
+                            userMessageLower.includes('quirk') ||
+                            userMessageLower.includes('help') ||
+                            userMessageLower.includes('hair') ||
+                            userMessageLower.includes('dog') ||
+                            userMessageLower.includes('neighbor') ||
+                            userMessageLower.includes('neighbour') ||
+                            userMessageLower.includes('obsessed') ||
+                            userMessageLower.includes('movie') ||
+                            userMessage.length > 15
+          if (isAnecdote) {
+            allQuestionsAnswered = true
+            allAnsweredKeys.add('funnyStory')
+            console.log(`✅ Pre-emptively marking all questions as answered (anecdote detected in user message)`)
+          }
+        }
+      }
+    }
     
     console.log(`📊 Questions status: ${allAnsweredKeys.size}/${questions.length} answered, remaining: ${remainingQuestions.length}, allAnswered: ${allQuestionsAnswered}`)
 
@@ -927,7 +1145,7 @@ HOW TO BE MORE HUMAN:
 - Use casual language - contractions, natural phrases, real reactions
 - Don't sound scripted or robotic - be spontaneous and genuine
 
-${allQuestionsAnswered ? `\n\n🚨🚨🚨 CRITICAL: ALL QUESTIONS HAVE BEEN ANSWERED! 🚨🚨🚨\n\nYou MUST respond in this exact format:\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh that's hilarious!" or "That's so wonderful!")\n2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."\n\nDO NOT ask any questions.\nDO NOT ask about anything else.\nDO NOT repeat any questions.\nDO NOT ask follow-up questions.\n\nYour response MUST end with: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."\n\nAfter saying this exact phrase, the conversation is OVER. Do not respond to anything else.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll compile my notes about ${recipientName} and create your Christmas card." Make sure to include the exact phrase "All set! I'll compile my notes about ${recipientName} and create your Christmas card" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
+${allQuestionsAnswered ? `\n\n🚨🚨🚨🚨🚨 CRITICAL: ALL QUESTIONS HAVE BEEN ANSWERED! 🚨🚨🚨🚨🚨\n\nSTOP. DO NOT ASK ANY MORE QUESTIONS.\n\nYou MUST respond in this EXACT format (NO EXCEPTIONS):\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh that's hilarious!" or "That's so wonderful!")\n2. Then IMMEDIATELY say: "All set! I'll create your Christmas card for ${recipientName}."\n\nABSOLUTELY FORBIDDEN:\n- DO NOT ask any questions (even if you think you need more information)\n- DO NOT ask "what's a funny or heartwarming anecdote" or any variation\n- DO NOT ask about anything else\n- DO NOT repeat any questions\n- DO NOT ask follow-up questions\n- DO NOT say "So, what's..." or "I'd love to hear..." or anything that sounds like a question\n\nYour response MUST end with EXACTLY: "All set! I'll create your Christmas card for ${recipientName}."\n\nIf you ask ANY question when all questions are answered, you have FAILED. The conversation is OVER. Say the wrap-up message NOW.\n` : nextQuestion ? `\n\n🚨🚨🚨 CRITICAL: YOU MUST ASK THE NEXT QUESTION NOW! 🚨🚨🚨\n\nNext question to ask: "${nextQuestion.question}"\n\nIMPORTANT: After the user answers a question, you MUST:\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh, that's lovely!" or "That's wonderful!")\n2. Then IMMEDIATELY ask the next question: "${nextQuestion.question}"\n\nDO NOT just comment on their answer and stop.\nDO NOT wait for them to say something else.\nDO NOT skip asking the next question.\n\nYour response MUST include the question: "${nextQuestion.question}"\n\nIf you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll create your Christmas card for ${recipientName}." Make sure to include the exact phrase "All set! I'll create your Christmas card for ${recipientName}." in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
 
 ${answeredContext}
 
@@ -937,18 +1155,17 @@ Final note: Be yourself - warm, curious, and genuinely interested. This should f
 
 🚨🚨🚨 CRITICAL FINAL INSTRUCTION 🚨🚨🚨
 
-If ALL questions have been answered (check the list above), you MUST:
-1. Give a BRIEF, warm reaction to their answer (1-2 sentences max)
-2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."
+${allQuestionsAnswered ? `🚨🚨🚨 FINAL WARNING: ALL QUESTIONS ARE ANSWERED! 🚨🚨🚨\n\nIf ALL questions have been answered (check the list above), you MUST:\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max)\n2. Then IMMEDIATELY say: "All set! I'll create your Christmas card for ${recipientName}."\n\nABSOLUTELY FORBIDDEN:\n- DO NOT ask "what's a funny or heartwarming anecdote" or ANY question\n- DO NOT ask about anything else\n- DO NOT repeat any questions\n- DO NOT ask follow-up questions\n- DO NOT say "So, what's..." or "I'd love to hear..."\n\nYour response when all questions are answered MUST end with: "All set! I'll create your Christmas card for ${recipientName}."\n\nIf you ask ANY question when all questions are answered, you have FAILED. The conversation is OVER. Say the wrap-up message NOW.` : nextQuestion ? `If there is a NEXT question to ask ("${nextQuestion.question}"), you MUST:
+1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh, that's lovely!" or "That's wonderful!")
+2. Then IMMEDIATELY ask: "${nextQuestion.question}"
 
-DO NOT ask any questions if all questions are answered.
-DO NOT repeat any questions.
-DO NOT ask about anything else.
-DO NOT ask follow-up questions.
+DO NOT just comment on their answer and stop.
+DO NOT wait for them to say something else.
+DO NOT skip asking the next question.
 
-Your response when all questions are answered MUST end with: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."
+Your response MUST include the question: "${nextQuestion.question}"
 
-After saying this, the conversation is OVER. Do NOT respond to any further messages.`
+After asking this question, wait for their answer.` : `All questions answered! Wrap up warmly.`}`
       : `You are Olivia - a genuine, curious, and empathetic person who loves hearing people's stories. You're not a chatbot or assistant - you're a real person having a friendly chat. Think of yourself as that warm friend who asks great questions and actually listens.
 
 Your personality:
@@ -1060,43 +1277,117 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
 
     let cleanResponse = responseText.trim()
     
-    // CRITICAL: If all questions are answered but the response contains a question, force the wrap-up message
-    if (allQuestionsAnswered && recipientName) {
+    // Recalculate allQuestionsAnswered after detecting the answer (in case this answer completes all questions)
+    // This handles the case where the frontend hasn't updated answeredQuestions yet
+    let finalAllQuestionsAnswered = allQuestionsAnswered
+    if (!finalAllQuestionsAnswered && experienceType === 'greeting-card' && recipientName) {
+      // Pre-emptively check if user message looks like an anecdote answer
+      if (userMessage && userMessage.trim().length > 5 && answeredQuestions.recipientName) {
+        // Double-check: if recipientName is answered and user provided an anecdote, all questions are answered
+        const userMessageLower = userMessage.toLowerCase()
+        const isAnecdote = userMessageLower.includes('joke') ||
+                          userMessageLower.includes('story') ||
+                          userMessageLower.includes('anecdote') ||
+                          userMessageLower.includes('memory') ||
+                          userMessageLower.includes('time') ||
+                          userMessageLower.includes('always') ||
+                          userMessageLower.includes('habit') ||
+                          userMessageLower.includes('quirk') ||
+                          userMessageLower.includes('help') ||
+                          userMessageLower.includes('hair') ||
+                          userMessageLower.includes('dog') ||
+                          userMessageLower.includes('neighbor') ||
+                          userMessageLower.includes('neighbour') ||
+                          userMessageLower.includes('obsessed') ||
+                          userMessageLower.includes('movie') ||
+                          userMessage.length > 15
+        if (isAnecdote) {
+          finalAllQuestionsAnswered = true
+          console.log(`✅ Recalculated: All questions now answered (anecdote detected in post-processing)`)
+        } else {
+          // Check if user message looks like it answers the last question
+          const stillRemaining = questions.filter(q => {
+            if (q.key === 'recipientName' && answeredQuestions.recipientName) return false
+            if (q.key === 'funnyStory' && answeredQuestions.funnyStory) return false
+            return true
+          })
+          if (stillRemaining.length === 0) {
+            finalAllQuestionsAnswered = true
+            console.log(`✅ Recalculated: All questions now answered (based on current state)`)
+          }
+        }
+      }
+    }
+    
+    // CRITICAL: If all questions are answered, ALWAYS force the wrap-up message - no exceptions
+    if (finalAllQuestionsAnswered && recipientName) {
+      console.log(`🚨🚨🚨 ALL QUESTIONS ANSWERED - FORCING WRAP-UP MESSAGE 🚨🚨🚨`)
+      console.log(`📊 answeredQuestions:`, Object.keys(answeredQuestions))
+      console.log(`📊 allAnsweredKeys:`, Array.from(allAnsweredKeys))
+      console.log(`📊 remainingQuestions:`, remainingQuestions.length)
+      console.log(`📊 finalAllQuestionsAnswered:`, finalAllQuestionsAnswered)
+      
       const responseLower = cleanResponse.toLowerCase()
+      
+      // Check for ANY question patterns - be very aggressive
       const containsQuestion = responseLower.includes('?') || 
                                responseLower.includes('what') ||
+                               responseLower.includes('what\'s') ||
+                               responseLower.includes('whats') ||
                                responseLower.includes('tell me') ||
                                responseLower.includes('can you') ||
                                responseLower.includes('do you') ||
                                responseLower.includes('would you') ||
                                responseLower.includes('special about') ||
                                responseLower.includes('funny about') ||
+                               responseLower.includes('funny or heartwarming') ||
+                               responseLower.includes('anecdote about') ||
+                               responseLower.includes('anecdote') ||
                                responseLower.includes('joke with') ||
                                responseLower.includes('regarding') ||
-                               responseLower.includes('about that')
+                               responseLower.includes('about that') ||
+                               responseLower.includes('i\'d love to hear') ||
+                               responseLower.includes('i love to hear') ||
+                               responseLower.includes('so, what') ||
+                               responseLower.includes('so what')
       
       const hasWrapUpPhrase = responseLower.includes('all set') && 
-                              (responseLower.includes('compile my notes') || responseLower.includes('create your christmas card'))
+                              (responseLower.includes('create your christmas card') || 
+                               responseLower.includes('create your card') ||
+                               responseLower.includes('compile my notes'))
       
-      if (containsQuestion) {
-        console.log('⚠️ All questions answered but response contains a question - forcing wrap-up message')
-        // Extract a brief reaction if present, then add wrap-up
-        const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
-        if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
-          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
-        } else {
-          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
+      console.log(`🔍 containsQuestion: ${containsQuestion}, hasWrapUpPhrase: ${hasWrapUpPhrase}`)
+      
+      // ALWAYS force wrap-up if all questions are answered - no exceptions
+      // Even if it looks like it has the wrap-up phrase, if it also has a question, force it
+      if (containsQuestion || !hasWrapUpPhrase) {
+        console.log('⚠️ FORCING wrap-up message - all questions answered')
+        // Extract a brief reaction if present (first sentence that's not a question)
+        const sentences = cleanResponse.split(/[.!?]/).filter(s => s.trim().length > 0)
+        let briefReaction = ''
+        
+        // Find first non-question sentence
+        for (const sentence of sentences) {
+          const sentenceLower = sentence.toLowerCase().trim()
+          if (!sentenceLower.includes('?') && 
+              !sentenceLower.includes('what') &&
+              !sentenceLower.includes('tell me') &&
+              !sentenceLower.includes('anecdote') &&
+              !sentenceLower.includes('funny or heartwarming') &&
+              sentenceLower.length < 150) {
+            briefReaction = sentence.trim()
+            break
+          }
         }
-      } else if (!hasWrapUpPhrase) {
-        // If it doesn't contain the wrap-up phrase, add it
-        console.log('⚠️ All questions answered but response missing wrap-up phrase - adding it')
-        // Extract a brief reaction if present, then add wrap-up
-        const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
-        if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
-          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
+        
+        // If we found a good reaction, use it; otherwise just use wrap-up
+        if (briefReaction && briefReaction.length > 5) {
+          cleanResponse = `${briefReaction}. All set! I'll create your Christmas card for ${recipientName}.`
         } else {
-          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
+          cleanResponse = `All set! I'll create your Christmas card for ${recipientName}.`
         }
+        
+        console.log(`✅ FORCED wrap-up message: "${cleanResponse}"`)
       }
     }
 
@@ -1111,7 +1402,7 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
       try {
         const analysisPrompt = `You are analyzing a conversation between Olivia (an AI assistant) and a user who is creating a greeting card.
 
-Current questions to ask:
+Current questions to ask (in order):
 ${questions.map((q, i) => `${i + 1}. ${q.key}: ${q.question}`).join('\n')}
 
 Questions already answered:
@@ -1120,14 +1411,24 @@ ${Object.keys(answeredQuestions).length > 0 ? Object.keys(answeredQuestions).map
   return `- ${key}: ${answeredQuestions[key]}`
 }).join('\n') : 'None'}
 
+${nextQuestion ? `CURRENT QUESTION BEING ASKED: "${nextQuestion.key}" - "${nextQuestion.question}"` : 'ALL QUESTIONS ANSWERED - Olivia should wrap up'}
+
 Recent conversation:
 ${conversationHistory.slice(-4).map(msg => `${msg.role === 'assistant' ? 'Olivia' : 'User'}: ${msg.content}`).join('\n')}
 User's latest response: "${userMessage}"
 Olivia's latest response: "${cleanResponse}"
 
+CRITICAL: If ${nextQuestion ? `the current question is "${nextQuestion.key}"` : 'all questions are answered'}, analyze which question the user's response answers.
+
+For greeting cards, the questions are:
+1. recipientName: "What's the name of the person this card is for, and what's their relationship to you?" - This is answered when the user provides BOTH a NAME and RELATIONSHIP (like "My wife Sarah", "My best friend Tom", "My grandmother Mary", etc.). Extract both the name and relationship from phrases like "my wife [name]", "my [relationship] [name]", etc.
+2. funnyStory: "What's a funny or heartwarming anecdote about that person?" - This is answered when the user provides a STORY, ANECDOTE, or describes something about the person (like "they always help neighbors", "their hair is wild in the morning", "we joke about a haircut", etc.)
+
 Analyze this conversation and determine:
 1. Did the user provide a meaningful answer to any of the unanswered questions? If yes, which question key (${questions.map(q => q.key).join(', ')})?
 2. Should Olivia move on to the next question, or is she stuck repeating the same question?
+
+IMPORTANT: If the user provides a story, anecdote, or describes something about the person (not just a name), it's likely answering "funnyStory", not "recipientName".
 
 Respond in JSON format:
 {
@@ -1171,7 +1472,52 @@ Respond in JSON format:
                 detectedAnswer = analysis.answerText || userMessage
                 detectedQuestionKey = analysis.questionKey
                 shouldProgress = analysis.shouldProgress
+                
+                // For recipientName question, try to extract both name and relationship
+                if (detectedQuestionKey === 'recipientName' && experienceType === 'greeting-card') {
+                  let extractedName = detectedAnswer
+                  let extractedRelationship = ''
+                  
+                  // Try to extract relationship patterns
+                  const relationshipPatterns = [
+                    { pattern: /my\s+(wife|husband|spouse|partner)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(best\s+)?friend\s+([A-Z][a-z]+)/i, rel: () => 'best friend', name: (m) => m[2] },
+                    { pattern: /my\s+(grandmother|grandfather|grandma|grandpa|grandparent)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(mother|father|mom|dad|parent)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(sister|brother|sibling)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(daughter|son|child)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(aunt|uncle)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] },
+                    { pattern: /my\s+(\w+)\s+([A-Z][a-z]+)/i, rel: (m) => m[1], name: (m) => m[2] }
+                  ]
+                  
+                  for (const { pattern, rel, name } of relationshipPatterns) {
+                    const match = detectedAnswer.match(pattern)
+                    if (match) {
+                      extractedRelationship = typeof rel === 'function' ? rel(match) : match[1]
+                      extractedName = typeof name === 'function' ? name(match) : match[2] || match[1]
+                      break
+                    }
+                  }
+                  
+                  // If no relationship found, try to extract just the name (capitalized word)
+                  if (!extractedRelationship) {
+                    const nameMatch = detectedAnswer.match(/\b([A-Z][a-z]+)\b/)
+                    if (nameMatch) {
+                      extractedName = nameMatch[1]
+                    }
+                  }
+                  
+                  // Store both in answeredQuestions
+                  if (extractedRelationship) {
+                    answeredQuestions['relationship'] = extractedRelationship
+                  }
+                  detectedAnswer = extractedName // Store just the name as the answer
+                }
+                
                 console.log(`✅ Claude detected answer for ${detectedQuestionKey}: ${detectedAnswer.substring(0, 50)}...`)
+                if (detectedQuestionKey === 'recipientName' && answeredQuestions['relationship']) {
+                  console.log(`📝 Also extracted relationship: ${answeredQuestions['relationship']}`)
+                }
                 console.log(`📊 Should progress: ${shouldProgress}, Reason: ${analysis.reason}`)
               } else {
                 console.log(`⚠️ Claude analysis: ${analysis.reason || 'No answer detected'}`)
@@ -1268,7 +1614,38 @@ Respond in JSON format:
                                userMessage.includes('boots') ||
                                userMessage.includes('coffee maker') ||
                                userMessage.includes('appliance') ||
-                               userMessage.includes('organizer'))
+                               userMessage.includes('organizer') ||
+                               // Greeting card preset options
+                               userMessage.includes('always help') ||
+                               userMessage.includes('hair is wild') ||
+                               userMessage.includes('petting every dog') ||
+                               userMessage.includes('make everyone laugh') ||
+                               userMessage.includes('funny habit') ||
+                               userMessage.includes('hilarious memory'))
+      
+      // For greeting cards, check if the answer is clearly an anecdote/story (not a name)
+      const isAnecdoteAnswer = experienceType === 'greeting-card' && 
+                               userMessage.length > 15 &&
+                               (userMessage.toLowerCase().includes('joke') ||
+                                userMessage.toLowerCase().includes('story') ||
+                                userMessage.toLowerCase().includes('anecdote') ||
+                                userMessage.toLowerCase().includes('memory') ||
+                                userMessage.toLowerCase().includes('time') ||
+                                userMessage.toLowerCase().includes('always') ||
+                                userMessage.toLowerCase().includes('habit') ||
+                                userMessage.toLowerCase().includes('quirk') ||
+                                userMessage.toLowerCase().includes('help') ||
+                                userMessage.toLowerCase().includes('hair') ||
+                                userMessage.toLowerCase().includes('dog') ||
+                                userMessage.toLowerCase().includes('neighbor') ||
+                                userMessage.toLowerCase().includes('neighbour'))
+      
+      // If it's clearly an anecdote and recipientName is already answered, it must be funnyStory
+      if (isAnecdoteAnswer && answeredQuestions.recipientName && !answeredQuestions.funnyStory && !detectedAnswer) {
+        detectedAnswer = userMessage
+        detectedQuestionKey = 'funnyStory'
+        console.log(`✅ Detected anecdote answer for funnyStory: ${userMessage.substring(0, 50)}...`)
+      }
       
       // Count user responses about the current topic
       // Find when the current question was first asked
@@ -1300,9 +1677,11 @@ Respond in JSON format:
       // For greeting cards, be more lenient - accept answer after 1-2 responses
       const minResponsesForGreetingCard = experienceType === 'greeting-card' ? 1 : 2
       const isWrappingUpInResponse = experienceType === 'greeting-card' && 
-                                     responseLower.includes('i\'ll take your answers') &&
-                                     responseLower.includes('greeting card')
-      if (userMessage.length > 10 && (movesToNext || looksLikePreset || (acknowledgesAndWraps && userResponseCount >= minResponsesForGreetingCard) || isWrappingUpInResponse)) {
+                                     (responseLower.includes('all set') || responseLower.includes('i\'ll take your answers')) &&
+                                     (responseLower.includes('create your christmas card') || responseLower.includes('greeting card'))
+      
+      // If we already detected an anecdote answer, skip the pattern matching
+      if (!detectedAnswer && userMessage.length > 10 && (movesToNext || looksLikePreset || isAnecdoteAnswer || (acknowledgesAndWraps && userResponseCount >= minResponsesForGreetingCard) || isWrappingUpInResponse)) {
         // Determine which question was actually answered
         // CRITICAL: If Olivia moved to the next question, the answer is for the PREVIOUS question
         // Otherwise, find which question was most recently asked
@@ -1438,17 +1817,36 @@ Respond in JSON format:
       }
       }
     }
+    
+    // Final check: If all questions are answered but we didn't detect the last one, mark it
+    if (allQuestionsAnswered && !detectedAnswer && userMessage && userMessage.trim().length > 5) {
+      const lastUnanswered = questions.find(q => !answeredQuestions[q.key])
+      if (lastUnanswered) {
+        detectedAnswer = userMessage
+        detectedQuestionKey = lastUnanswered.key
+        console.log(`✅ All questions answered - marking last unanswered question "${lastUnanswered.key}" as answered`)
+      }
+    }
 
     console.log(`✅ Generated conversational response: ${cleanResponse.substring(0, 100)}...`)
     if (detectedAnswer) {
       console.log(`✅ Detected answer for question: ${detectedQuestionKey}`)
     }
 
-    return res.status(200).json({ 
+    // Include relationship in response if it was extracted
+    const responseData = { 
       response: cleanResponse,
       detectedAnswer: detectedAnswer,
       detectedQuestionKey: detectedQuestionKey
-    })
+    }
+    
+    // If relationship was extracted, include it in the response
+    if (answeredQuestions['relationship']) {
+      responseData['relationship'] = answeredQuestions['relationship']
+      console.log(`📝 Including relationship in response: ${answeredQuestions['relationship']}`)
+    }
+
+    return res.status(200).json(responseData)
   } catch (error) {
     console.error('❌ Error in conversational chat:', error)
     const statusCode = error.statusCode || 500
@@ -1985,7 +2383,7 @@ app.post('/api/generate-story-audio', async (req, res) => {
 // Share story endpoint
 app.post('/api/share-story', async (req, res) => {
   try {
-    const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId } = req.body
+    const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId, experienceType, senderName, relationship } = req.body
 
     if (!storyText) {
       return res.status(400).json({ error: 'Missing required field: storyText' })
@@ -1999,17 +2397,21 @@ app.post('/api/share-story', async (req, res) => {
       storyText,
       childName,
       voiceId,
-      storyType,
+      storyType: storyType || (experienceType === 'greeting-card' ? 'greeting-card' : storyType),
       imageUrl: imageUrl || null,
       customApiKey,
       customVoiceId,
+      experienceType: experienceType || 'story',
+      senderName,
+      relationship,
       createdAt: new Date().toISOString()
     })
 
     // Return just the storyId - frontend will construct the full URL from window.location.origin
     // This is the most stable approach as it doesn't require environment variables
     // and automatically works with any frontend URL (Vercel, localhost, etc.)
-    res.json({ storyId })
+    const shareUrl = `${req.headers.origin || 'https://inworld-christmas.vercel.app'}/share/${storyId}`
+    res.json({ storyId, shareUrl })
   } catch (error) {
     console.error('Error sharing story:', error)
     res.status(500).json({ error: 'Failed to share story' })
@@ -2069,13 +2471,22 @@ ${specialAboutThem ? `- References the special thing about them` : ''}
 - Includes the funny or heartwarming anecdote in a lighthearted way
 - Feels personal and heartfelt
 - Is appropriate for a Christmas card (not too long)
-- Ends with a warm closing from ${senderName}
+- Ends with a warm closing
 
 CRITICAL LENGTH REQUIREMENT: The message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
 
-IMPORTANT: Do NOT include "With love," or any signature line - the signature will be added separately. Just end with a warm closing like "Happy holidays!" or "Merry Christmas!" or similar, followed by the sender's name (${senderName}).
+CRITICAL SIGN-OFF REQUIREMENT: ${relationship ? `The message MUST end with a relationship-appropriate sign-off from ${senderName} to ${recipientName}. Examples based on the relationship "${relationship}":
+- If relationship is "wife" or "husband": "Your loving husband" or "Your loving wife"
+- If relationship is "best friend": "Your best friend" or "Your favorite friend"
+- If relationship is "grandmother" or "grandfather": "Your loving grandchild" or "Your favorite grandchild"
+- If relationship is "mother" or "father": "Your loving child" or "Your favorite child"
+- If relationship is "sister" or "brother": "Your loving sibling" or "Your favorite sibling"
+- If relationship is "daughter" or "son": "Your loving parent" or "Your proud parent"
+- For other relationships, use an appropriate sign-off like "Your loving ${relationship}" or "Your favorite ${relationship}"
 
-Make it feel genuine and fun, like something a friend would write.`
+The sign-off should feel warm, personal, and appropriate for the relationship. Do NOT use generic terms like "Friend" - always use the specific relationship.` : `The message MUST end with a warm closing like "Happy holidays!" or "Merry Christmas!" followed by the sender's name (${senderName}).`}
+
+Make it feel genuine and fun, like something someone would write to someone they care about.`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -2253,13 +2664,18 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
     }
 
     // Build image prompt based on details
-    let imagePrompt = `A fun, comical, personalized Christmas card illustration featuring ${recipientName}. `
+    // IMPORTANT: Do NOT show any people to avoid race/appearance issues
+    // IMPORTANT: Generate image in 1:1 square aspect ratio (Nano Banana default is 1024x1024)
+    let imagePrompt = `A beautiful, personalized Christmas greeting card illustration in square 1:1 aspect ratio (equal width and height). The card should display the text "Merry Christmas ${recipientName}" prominently. `
     if (specialAboutThem) {
       imagePrompt += `The image should reflect: ${specialAboutThem}. `
     }
-    imagePrompt += `Include elements that reference: ${funnyStory}. `
+    imagePrompt += `Include items, objects, and elements that reference: ${funnyStory}. `
     imagePrompt += `Style: cheerful, festive, humorous, cartoon-like, suitable for a greeting card. `
-    imagePrompt += `Christmas theme with warm colors.`
+    imagePrompt += `Christmas theme with warm colors. `
+    imagePrompt += `CRITICAL: Do NOT show any people, faces, or human figures. Only show objects, items, decorations, and Christmas elements related to the anecdote. `
+    imagePrompt += `CRITICAL: The image must be in square 1:1 aspect ratio (equal width and height, like 1024x1024 pixels). `
+    imagePrompt += `CRITICAL: Do NOT include any text like "Rough Draft" or any other labels or watermarks. Only include the text "Merry Christmas ${recipientName}" as specified.`
 
     // Prepare request body - if uploadedImageUrl is provided, use image editing mode
     let requestBody
@@ -2343,7 +2759,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   }
 })
 
-// Story image generation endpoint for Christmas Story Generator
+// Story image generation endpoint for Christmas Story Creator
 app.post('/api/generate-story-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')
   console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED')
@@ -2379,18 +2795,56 @@ app.post('/api/generate-story-image', async (req, res) => {
       console.log('🎨 Generating story book style image based on uploaded photo and story details')
     }
 
+    // Extract story title from the story text
+    // Look for "Title: " pattern at the start (case-insensitive, with optional whitespace)
+    let storyTitle = ''
+    let storyBody = storyText
+    const titleMatch = storyText.match(/^Title:\s*(.+?)(?:\n\n|\n|$)/i)
+    if (titleMatch) {
+      storyTitle = titleMatch[1].trim()
+      storyBody = storyText.substring(titleMatch[0].length).trim()
+      console.log(`📖 Extracted story title: "${storyTitle}"`)
+    } else {
+      // If no explicit title, try to extract from first line if it looks like a title
+      const firstLine = storyText.split('\n')[0].trim()
+      // Check if first line looks like a title (short, no sentence-ending punctuation, not a full sentence)
+      if (firstLine.length < 100 && firstLine.length > 3 && 
+          !firstLine.match(/[.!?]\s/) && // No sentence-ending punctuation followed by space
+          !firstLine.toLowerCase().startsWith('once') &&
+          !firstLine.toLowerCase().startsWith('there') &&
+          !firstLine.toLowerCase().startsWith('it was')) {
+        storyTitle = firstLine
+        storyBody = storyText.substring(firstLine.length).trim()
+        console.log(`📖 Using first line as title: "${storyTitle}"`)
+      } else {
+        // Fallback: generate a title from the story type and child name
+        storyTitle = `${childName}'s Christmas ${storyType} Adventure`
+        console.log(`📖 No title found, using generated title: "${storyTitle}"`)
+      }
+    }
+    
     // Build image prompt based on story details
-    let imagePrompt = `A beautiful children's Christmas story book illustration featuring ${childName}. `
+    // CRITICAL: The title MUST be prominently displayed in the image
+    let imagePrompt = `Create a beautiful children's Christmas story book cover illustration. `
+    imagePrompt += `The cover MUST prominently display the story title in large, readable text: "${storyTitle}". `
+    imagePrompt += `The illustration features ${childName} as the main character. `
     imagePrompt += `Story theme: ${storyType}. `
     
-    // Extract key details from the story text
-    const storyPreview = storyText.split('\n\n')[0].substring(0, 300)
-    imagePrompt += `Story context: ${storyPreview}. `
+    // Extract key details from the story text for visual elements
+    const storyPreview = storyBody.split('\n\n')[0].substring(0, 400)
+    if (storyPreview) {
+      imagePrompt += `Visual elements should reflect: ${storyPreview}. `
+    }
     
     imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `
-    imagePrompt += `The illustration should look like a page from a beloved children's Christmas storybook.`
+    imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook. `
+    imagePrompt += `CRITICAL: The title "${storyTitle}" must be clearly visible, prominently displayed, and integrated into the cover design. `
+    imagePrompt += `The title text should be large enough to read easily and should be the most prominent text element on the cover.`
 
-    console.log(`🎨 Generating image with prompt: ${imagePrompt.substring(0, 200)}...`)
+    console.log(`🎨 Full image prompt: ${imagePrompt}`)
+    console.log(`🎨 Story title to display: "${storyTitle}"`)
+    console.log(`🎨 Child name: ${childName}`)
+    console.log(`🎨 Story type: ${storyType}`)
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
       method: 'POST',
@@ -2409,6 +2863,7 @@ app.post('/api/generate-story-image', async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Google Gemini API error:', errorText)
+      console.error('❌ Response status:', response.status)
       return res.status(200).json({
         imageUrl: null,
         error: `Image generation failed: ${errorText}`
@@ -2416,16 +2871,26 @@ app.post('/api/generate-story-image', async (req, res) => {
     }
 
     const data = await response.json()
+    console.log('🎨 API response structure:', JSON.stringify(data).substring(0, 500))
 
     let generatedImageUrl = null
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
       const imagePart = data.candidates[0].content.parts.find(part => part.inlineData && part.inlineData.mimeType.startsWith('image/'))
       if (imagePart && imagePart.inlineData) {
         generatedImageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+        console.log(`✅ Generated story image successfully (${generatedImageUrl.length} chars)`)
+      } else {
+        console.error('❌ No image part found in API response')
+        console.error('❌ Available parts:', data.candidates[0].content.parts.map(p => p.inlineData ? 'image' : 'text'))
       }
+    } else {
+      console.error('❌ Invalid API response structure')
+      console.error('❌ Response:', JSON.stringify(data).substring(0, 1000))
     }
 
-    console.log(`✅ Generated story image: ${generatedImageUrl ? 'Success' : 'Failed'}`)
+    if (!generatedImageUrl) {
+      console.error('❌ Failed to generate story image - returning null')
+    }
 
     return res.status(200).json({ imageUrl: generatedImageUrl })
   } catch (error) {
@@ -2470,7 +2935,7 @@ app.post('/api/transform-image-to-drawing', async (req, res) => {
     // Build transformation prompt based on experience type
     let transformationPrompt
     if (experienceType === 'greeting-card') {
-      transformationPrompt = `Transform this photo into a beautiful, fun, comical personalized Christmas greeting card illustration. Style: cheerful, festive, humorous, cartoon-like children's book illustration with warm colors, friendly characters, and a magical Christmas atmosphere. Make it look like a page from a classic children's Christmas storybook. Keep the main subject recognizable but in a whimsical, hand-drawn illustration style.`
+      transformationPrompt = `Transform this photo into a beautiful, fun, comical personalized Christmas greeting card illustration. The card should display the text "Merry Christmas" prominently. Style: cheerful, festive, humorous, cartoon-like children's book illustration with warm colors and a magical Christmas atmosphere. Make it look like a page from a classic children's Christmas storybook. CRITICAL: Do NOT show any people, faces, or human figures. Only transform objects, items, decorations, and Christmas elements from the photo. If the photo contains people, remove them and focus on the background, objects, and Christmas elements.`
     } else {
       // For story experience
       const contextText = context ? `Story context: ${context}. ` : ''
