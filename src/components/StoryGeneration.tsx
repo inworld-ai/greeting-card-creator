@@ -48,7 +48,15 @@ function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkR
         }).then(async (imageResponse) => {
           if (imageResponse.ok) {
             const imageData = await imageResponse.json()
+            console.log('🎨 Image response data:', { 
+              hasImageUrl: !!imageData.imageUrl, 
+              hasError: !!imageData.error,
+              error: imageData.error 
+            })
             const imageUrl = imageData.imageUrl || null
+            if (imageData.error) {
+              console.error('❌ Image generation error in response:', imageData.error)
+            }
             console.log('✅ Story image generated:', imageUrl ? 'Success' : 'Failed - no imageUrl in response')
             if (imageUrl) {
               console.log('✅ Image URL length:', imageUrl.length)

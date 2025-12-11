@@ -2813,7 +2813,6 @@ app.post('/api/generate-story-image', async (req, res) => {
     imagePrompt += `Make it visually appealing and related to the story theme without showing any human main character.`
 
     console.log(`🎨 Full image prompt: ${imagePrompt}`)
-    console.log(`🎨 Story title to display: "${storyTitle}"`)
     console.log(`🎨 Child name: ${childName}`)
     console.log(`🎨 Story type: ${storyType}`)
 
