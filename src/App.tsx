@@ -96,6 +96,17 @@ function App() {
   
   const experienceFromPath = getExperienceFromPath()
   
+  // Update document title based on current path
+  useEffect(() => {
+    if (path === '/storyteller') {
+      document.title = 'Christmas Story Creator'
+    } else if (path === '/greetingcard') {
+      document.title = 'Christmas Card Creator'
+    } else {
+      document.title = 'Inworld Christmas Creations'
+    }
+  }, [path])
+  
   const [step, setStep] = useState<Step>(() => {
     if (experienceFromPath === 'story') return 'type-selection'
     if (experienceFromPath === 'greeting-card') return 'greeting-card-questionnaire-voice'
@@ -162,8 +173,8 @@ function App() {
     } else {
       setStoryData(prev => ({ ...prev, childName: name, voiceId }))
       setFirstChunkText('')
-      // Add image upload step for Christmas Story Generator
-      setStep('image-upload')
+      // Go directly to generating (image will be auto-generated)
+      setStep('generating')
     }
   }
 
@@ -236,8 +247,8 @@ function App() {
         customApiKey: undefined   // Clear custom API key when preset is selected
       }))
       setFirstChunkText('')
-      // Show image upload for Year In Review and Christmas Story
-      if (storyData.experienceType === 'year-review' || storyData.experienceType === 'story') {
+      // Show image upload for Year In Review (Christmas Story now auto-generates images)
+      if (storyData.experienceType === 'year-review') {
         setStep('image-upload')
       } else {
         setStep('generating')
@@ -253,8 +264,8 @@ function App() {
       customVoiceId: voiceId 
     }))
     setFirstChunkText('')
-    // Show image upload for Year In Review and Christmas Story
-    if (storyData.experienceType === 'year-review' || storyData.experienceType === 'story') {
+    // Show image upload for Year In Review (Christmas Story now auto-generates images)
+    if (storyData.experienceType === 'year-review') {
       setStep('image-upload')
     } else if (storyData.experienceType === 'greeting-card') {
       // For greeting cards, go directly to narration since the card is already generated
@@ -284,6 +295,7 @@ function App() {
 
   const handleGreetingCardQuestionnaireSubmitted = (answers: {
     recipientName?: string
+    relationship?: string
     specialAboutThem?: string
     funnyStory?: string
   }) => {
@@ -299,8 +311,8 @@ function App() {
       greetingCardData: {
         senderName,
         recipientName: answers.recipientName!,
-        relationship: '', // No longer collecting relationship
-        specialAboutThem: '', // No longer collecting this
+        relationship: answers.relationship || '',
+        specialAboutThem: answers.specialAboutThem || '',
         funnyStory: answers.funnyStory!
       }
     }))
@@ -403,10 +415,40 @@ function App() {
     setStep('narration')
   }
 
-  const handleStoryGenerated = (storyText: string) => {
-    setStoryData(prev => ({ ...prev, storyText }))
-    if (step === 'generating') {
+  const handleStoryGenerated = (storyText: string, generatedImageUrl?: string | null) => {
+    console.log('📖 handleStoryGenerated called:', { 
+      storyTextLength: storyText.length, 
+      generatedImageUrl,
+      hasImageUrl: !!generatedImageUrl 
+    })
+    
+    // For story experience, only transition to narration when both story AND image are ready
+    // This prevents showing the default "Merry Christmas" image before the generated image is ready
+    // generatedImageUrl !== undefined means image generation is complete (even if null)
+    // generatedImageUrl === undefined means image generation hasn't completed yet
+    const isStoryExperience = storyData.experienceType === 'story'
+    const imageReady = generatedImageUrl !== undefined
+    const shouldTransition = step === 'generating' && (
+      !isStoryExperience || // Non-story experiences can transition immediately
+      imageReady // Story experience needs image generation to complete
+    )
+    
+    setStoryData(prev => {
+      // Only update imageUrl if generatedImageUrl was explicitly provided (not undefined)
+      const newImageUrl = generatedImageUrl !== undefined ? generatedImageUrl : prev.imageUrl
+      console.log('📖 Setting storyData with imageUrl:', newImageUrl)
+      return { 
+        ...prev, 
+        storyText,
+        imageUrl: newImageUrl
+      }
+    })
+    
+    if (shouldTransition) {
+      console.log('📖 Transitioning to narration step (story and image ready)')
       setStep('narration')
+    } else if (step === 'generating' && isStoryExperience && !imageReady) {
+      console.log('📖 Waiting for image generation to complete before transitioning...')
     }
   }
 
@@ -449,26 +491,26 @@ function App() {
   // Determine the title based on the current step
   const getTitle = (): string => {
     if (step === 'landing') {
-      return 'The Voice Before Christmas'
+      return 'Inworld Christmas Creations'
     } else if (step === 'image-upload') {
-      if (storyData.experienceType === 'story') return 'Christmas Story Generator'
+      if (storyData.experienceType === 'story') return 'Christmas Story Creator'
       return 'Year In Review'
     } else if (step === 'type-selection' || step === 'name-input') {
-      return 'Christmas Story Generator'
+      return 'Christmas Story Creator'
     } else if (step === 'custom-narrator' || step === 'generating' || step === 'narration') {
       // Check experience type for these steps
       if (storyData.experienceType === 'year-review') return 'Year In Review'
       if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
-      if (storyData.experienceType === 'greeting-card') return 'Personalized Christmas Card'
-      return 'Christmas Story Generator'
+      if (storyData.experienceType === 'greeting-card') return 'Christmas Card Creator'
+      return 'Christmas Story Creator'
     } else if (step.startsWith('year-review')) {
       return 'Year In Review'
     } else if (step.startsWith('wish-list')) {
       return 'Christmas Wish List'
     } else if (step.startsWith('greeting-card')) {
-      return 'Personalized Christmas Card'
+      return 'Christmas Card Creator'
     }
-    return 'The Voice Before Christmas'
+    return 'Inworld Christmas Creations'
   }
 
   return (
@@ -483,7 +525,6 @@ function App() {
         {step === 'type-selection' && (
           <StoryTypeSelection 
             onSelect={handleStoryTypeSelected}
-            onBack={() => setStep('landing')}
           />
         )}
         
@@ -524,12 +565,44 @@ function App() {
             message={storyData.greetingCardData.cardMessage || ''}
             recipientName={storyData.greetingCardData.recipientName}
             onAddNarration={() => setStep('greeting-card-voice-selection')}
-            onStartOver={() => {
-              setStoryData(prev => ({
-                ...prev,
-                greetingCardData: undefined
-              }))
-              setStep('greeting-card-questionnaire-voice')
+            onShareAsIs={async () => {
+              try {
+                const apiUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
+                const response = await fetch(`${apiUrl}/api/share-story`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    storyText: storyData.greetingCardData?.cardMessage || '',
+                    childName: storyData.greetingCardData?.recipientName || '',
+                    voiceId: storyData.voiceId || 'christmas_story_generator__male_elf_narrator',
+                    storyType: 'greeting-card',
+                    imageUrl: storyData.imageUrl || storyData.greetingCardData?.generatedImageUrl || null,
+                    customApiKey: storyData.customApiKey,
+                    customVoiceId: storyData.customVoiceId,
+                    experienceType: 'greeting-card',
+                    senderName: storyData.greetingCardData?.senderName,
+                    relationship: storyData.greetingCardData?.relationship
+                  })
+                })
+                if (!response.ok) {
+                  throw new Error('Failed to create shareable link')
+                }
+                const result = await response.json()
+                // Construct share URL if not provided
+                const shareUrlValue = result.shareUrl || `${window.location.origin}/share/${result.storyId}`
+                // Use Web Share API (mobile) or clipboard (desktop)
+                const { shareUrl: shareUrlHelper } = await import('./services/shareService')
+                await shareUrlHelper(
+                  shareUrlValue,
+                  'Christmas Card Creator',
+                  `Check out this personalized Christmas card for ${storyData.greetingCardData?.recipientName || 'someone special'}!`
+                )
+              } catch (error: any) {
+                console.error('Error sharing card:', error)
+                alert('Failed to create shareable link. Please try again.')
+              }
             }}
           />
         )}
@@ -649,13 +722,13 @@ function App() {
           />
         )}
 
-        {step === 'image-upload' && (
+        {step === 'image-upload' && storyData.experienceType === 'year-review' && (
           <ImageUpload
             onImageSelected={handleImageSelected}
             onSkip={handleImageSkipped}
             onBack={() => setStep(getBackStep())}
             experienceType="story"
-            context={storyData.type ? `Story type: ${storyData.type}` : undefined}
+            context={undefined}
           />
         )}
         
