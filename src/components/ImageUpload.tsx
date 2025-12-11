@@ -118,7 +118,21 @@ function ImageUpload({ onImageSelected, onSkip, onBack, experienceType, context 
       <div className="image-upload-area">
         {isTransforming ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              border: '4px solid #f3f3f3',
+              borderTop: '4px solid #dc3545',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}></div>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
             <p style={{ fontSize: '1.1rem', color: '#666' }}>Transforming your image into a Christmas story drawing...</p>
           </div>
         ) : previewUrl ? (
