@@ -17,14 +17,14 @@
 }
 
 .landing-option {
-  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-  border: 2px solid #e9ecef;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 16px;
   padding: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .landing-option:hover {
@@ -44,11 +44,17 @@
 }
 
 .landing-option-title {
+  font-family: 'Playfair Display', 'Georgia', serif;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #212529;
+  color: #1a1a1a;
   margin: 0 0 0.75rem 0;
-  font-family: 'Georgia', serif;
+  letter-spacing: -0.02em;
+  /* Break at word boundaries, not within words */
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  white-space: normal;
 }
 
 .landing-option-description {
