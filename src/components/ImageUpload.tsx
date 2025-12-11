@@ -52,7 +52,7 @@ function ImageUpload({ onImageSelected, onSkip, onBack, experienceType, context 
 
         // Transform image to Christmas story drawing style using Nano Banana
         try {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+          const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://inworld-christmas-story-production.up.railway.app' : 'http://localhost:3001')
           const transformResponse = await fetch(`${API_BASE_URL}/api/transform-image-to-drawing`, {
             method: 'POST',
             headers: {
