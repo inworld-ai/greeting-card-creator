@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
@@ -83,20 +84,47 @@ type Step =
   | 'narration'
 
 function App() {
-  // Check if we're in single-experience mode (via environment variable)
-  const experienceTypeFromEnv = import.meta.env.VITE_EXPERIENCE_TYPE as 'story' | 'greeting-card' | 'both' | undefined
-  const isSingleExperience = experienceTypeFromEnv && experienceTypeFromEnv !== 'both'
-  const defaultExperience = isSingleExperience ? experienceTypeFromEnv : 'story'
+  const location = useLocation()
+  const path = location.pathname
   
-  const [step, setStep] = useState<Step>(isSingleExperience ? (defaultExperience === 'story' ? 'type-selection' : 'greeting-card-names') : 'landing')
+  // Determine experience type from URL path
+  const getExperienceFromPath = (): ExperienceType | null => {
+    if (path === '/storyteller') return 'story'
+    if (path === '/greetingcard') return 'greeting-card'
+    return null // Root path shows landing page
+  }
+  
+  const experienceFromPath = getExperienceFromPath()
+  const showLandingPage = path === '/' && !experienceFromPath
+  
+  const [step, setStep] = useState<Step>(() => {
+    if (experienceFromPath === 'story') return 'type-selection'
+    if (experienceFromPath === 'greeting-card') return 'greeting-card-names'
+    return 'landing'
+  })
   const [storyData, setStoryData] = useState<StoryData>({
-    experienceType: defaultExperience,
+    experienceType: experienceFromPath || 'story',
     type: null,
     childName: '',
     voiceId: 'christmas_story_generator__male_elf_narrator',
     storyText: ''
   })
   const [firstChunkText, setFirstChunkText] = useState<string>('')
+
+  // Update experience type when path changes
+  useEffect(() => {
+    const newExperience = getExperienceFromPath()
+    if (newExperience && newExperience !== storyData.experienceType) {
+      setStoryData(prev => ({ ...prev, experienceType: newExperience }))
+      if (newExperience === 'story') {
+        setStep('type-selection')
+      } else if (newExperience === 'greeting-card') {
+        setStep('greeting-card-names')
+      }
+    } else if (!newExperience && path === '/') {
+      setStep('landing')
+    }
+  }, [path, storyData.experienceType])
 
   const handleExperienceSelected = (experience: ExperienceType) => {
     setStoryData(prev => ({ ...prev, experienceType: experience }))
@@ -479,7 +507,7 @@ function App() {
         {step === 'greeting-card-names' && (
           <GreetingCardNames
             onSubmit={handleGreetingCardNamesSubmitted}
-            onBack={() => setStep('landing')}
+            onBack={() => experienceFromPath ? window.location.href = '/' : setStep('landing')}
           />
         )}
 
