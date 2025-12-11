@@ -13,9 +13,9 @@
 }
 
 .voice-button {
-  background: linear-gradient(135deg, #0f5132 0%, #155724 100%);
-  color: #fff8f0;
-  border: 3px solid #0f5132;
+  background: linear-gradient(135deg, #155724 0%, #28a745 100%);
+  color: #ffffff;
+  border: 3px solid #28a745;
   border-radius: 4px;
   padding: 18px 20px;
   cursor: pointer;
@@ -27,7 +27,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(40, 167, 69, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   font-family: 'Cinzel', serif;
   text-transform: uppercase;
@@ -37,27 +37,27 @@
 .voice-button:not(.selected):hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 12px rgba(0, 0, 0, 0.4),
+    0 6px 12px rgba(40, 167, 69, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border-color: #155724;
-  background: linear-gradient(135deg, #155724 0%, #0f5132 100%);
+  border-color: #20c997;
+  background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
 }
 
 .voice-button.selected:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 12px rgba(0, 0, 0, 0.4),
+    0 6px 12px rgba(40, 167, 69, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border-color: #28a745;
-  background: linear-gradient(135deg, #28a745 0%, #155724 100%);
+  border-color: #20c997;
+  background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
 }
 
 .voice-button.selected {
-  background: linear-gradient(135deg, #155724 0%, #0f5132 100%);
-  border-color: #155724;
+  background: linear-gradient(135deg, #155724 0%, #28a745 100%);
+  border-color: #28a745;
   border-width: 3px;
   box-shadow: 
-    0 6px 12px rgba(0, 0, 0, 0.4),
+    0 6px 12px rgba(40, 167, 69, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -71,7 +71,7 @@
 .voice-label {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff8f0;
+  color: #ffffff;
   font-family: 'Cinzel', serif;
   line-height: 1.4;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
