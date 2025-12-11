@@ -15,7 +15,6 @@ import StoryGeneration from './components/StoryGeneration'
 import YearInReviewGeneration from './components/YearInReviewGeneration'
 import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
-import GreetingCardNames from './components/GreetingCardNames'
 import GreetingCardGeneration from './components/GreetingCardGeneration'
 import GreetingCardDisplay from './components/GreetingCardDisplay'
 import './App.css'
@@ -99,7 +98,7 @@ function App() {
   
   const [step, setStep] = useState<Step>(() => {
     if (experienceFromPath === 'story') return 'type-selection'
-    if (experienceFromPath === 'greeting-card') return 'greeting-card-names'
+    if (experienceFromPath === 'greeting-card') return 'greeting-card-questionnaire-voice'
     return 'landing'
   })
   const [storyData, setStoryData] = useState<StoryData>({
@@ -119,7 +118,7 @@ function App() {
       if (newExperience === 'story') {
         setStep('type-selection')
       } else if (newExperience === 'greeting-card') {
-        setStep('greeting-card-names')
+        setStep('greeting-card-questionnaire-voice')
       }
     } else if (!newExperience && path === '/') {
       setStep('landing')
@@ -131,7 +130,7 @@ function App() {
     if (experience === 'story') {
       setStep('type-selection')
     } else if (experience === 'greeting-card') {
-      setStep('greeting-card-names')
+      setStep('greeting-card-questionnaire-voice')
     }
   }
 
@@ -283,33 +282,25 @@ function App() {
     }
   }
 
-  const handleGreetingCardNamesSubmitted = (senderName: string, recipientName: string, relationship: string) => {
+  const handleGreetingCardQuestionnaireSubmitted = (answers: {
+    recipientName?: string
+    specialAboutThem?: string
+    funnyStory?: string
+  }) => {
+    if (!answers.recipientName || !answers.funnyStory) {
+      alert('Please answer all questions before continuing.')
+      return
+    }
+    // Extract sender name from storyData if available, otherwise use a default
+    const senderName = storyData.greetingCardData?.senderName || 'Friend'
+    
     setStoryData(prev => ({
       ...prev,
       greetingCardData: {
         senderName,
-        recipientName,
-        relationship,
-        specialAboutThem: '',
-        funnyStory: ''
-      }
-    }))
-    setStep('greeting-card-photo')
-  }
-
-  const handleGreetingCardQuestionnaireSubmitted = (answers: {
-    specialAboutThem?: string
-    funnyStory?: string
-  }) => {
-    if (!answers.specialAboutThem || !answers.funnyStory) {
-      alert('Please answer all questions before continuing.')
-      return
-    }
-    setStoryData(prev => ({
-      ...prev,
-      greetingCardData: {
-        ...prev.greetingCardData!,
-        specialAboutThem: answers.specialAboutThem!,
+        recipientName: answers.recipientName!,
+        relationship: '', // No longer collecting relationship
+        specialAboutThem: '', // No longer collecting this
         funnyStory: answers.funnyStory!
       }
     }))
@@ -504,29 +495,13 @@ function App() {
           />
         )}
 
-        {step === 'greeting-card-names' && (
-          <GreetingCardNames
-            onSubmit={handleGreetingCardNamesSubmitted}
-            onBack={() => experienceFromPath ? navigate('/') : setStep('landing')}
-          />
-        )}
-
-        {step === 'greeting-card-photo' && (
-          <ImageUpload
-            onImageSelected={handleImageSelected}
-            onSkip={handleImageSkipped}
-            onBack={() => setStep('greeting-card-names')}
-            experienceType="greeting-card"
-          />
-        )}
-
-        {step === 'greeting-card-questionnaire-voice' && storyData.greetingCardData && (
+        {step === 'greeting-card-questionnaire-voice' && (
           <ConversationalQuestionnaire
             experienceType="greeting-card"
-            recipientName={storyData.greetingCardData.recipientName}
-            relationship={storyData.greetingCardData.relationship}
+            recipientName={undefined}
+            relationship={undefined}
             onSubmit={handleGreetingCardQuestionnaireSubmitted}
-            onBack={() => setStep('greeting-card-photo')}
+            onBack={() => experienceFromPath ? navigate('/') : setStep('landing')}
           />
         )}
 
@@ -549,7 +524,13 @@ function App() {
             message={storyData.greetingCardData.cardMessage || ''}
             recipientName={storyData.greetingCardData.recipientName}
             onAddNarration={() => setStep('greeting-card-voice-selection')}
-            onStartOver={() => setStep('greeting-card-names')}
+            onStartOver={() => {
+              setStoryData(prev => ({
+                ...prev,
+                greetingCardData: undefined
+              }))
+              setStep('greeting-card-questionnaire-voice')
+            }}
           />
         )}
 

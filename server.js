@@ -795,8 +795,8 @@ app.post('/api/conversational-chat', async (req, res) => {
         ]
       : experienceType === 'greeting-card'
       ? [
-          { key: 'specialAboutThem', question: "What's something special about them that you love?" },
-          { key: 'funnyStory', question: "What's something funny about them or a story that you love to joke with them about?" }
+          { key: 'recipientName', question: "What is the name of the person that this card is for?" },
+          { key: 'funnyStory', question: "What's a funny or heartwarming anecdote about that person?" }
         ]
       : [
           { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
@@ -2042,9 +2042,9 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
   try {
     const { senderName, recipientName, relationship, specialAboutThem, funnyStory } = req.body
 
-    if (!senderName || !recipientName || !relationship || !specialAboutThem || !funnyStory) {
+    if (!senderName || !recipientName || !funnyStory) {
       return res.status(400).json({ 
-        error: 'Missing required fields: senderName, recipientName, relationship, specialAboutThem, funnyStory' 
+        error: 'Missing required fields: senderName, recipientName, funnyStory' 
       })
     }
 
@@ -2054,21 +2054,21 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       })
     }
 
-    const prompt = `Create a short, fun, and comical personalized greeting card message. 
+    const prompt = `Create a short, fun, and comical personalized Christmas card message. 
 
 Sender: ${senderName}
 Recipient: ${recipientName}
-Relationship: ${relationship}
-What's special about them: ${specialAboutThem}
-Funny story/joke: ${funnyStory}
+${relationship ? `Relationship: ${relationship}` : ''}
+${specialAboutThem ? `What's special about them: ${specialAboutThem}` : ''}
+Funny or heartwarming anecdote: ${funnyStory}
 
-Write a warm, humorous greeting card message (2-3 short paragraphs max) that:
+Write a warm, humorous Christmas card message (2-3 short paragraphs max) that:
 - Is fun and comical in tone
-- Reflects the relationship between ${senderName} and ${recipientName} (${relationship})
-- References the special thing about them
-- Includes the funny story or joke in a lighthearted way
+${relationship ? `- Reflects the relationship between ${senderName} and ${recipientName} (${relationship})` : ''}
+${specialAboutThem ? `- References the special thing about them` : ''}
+- Includes the funny or heartwarming anecdote in a lighthearted way
 - Feels personal and heartfelt
-- Is appropriate for a greeting card (not too long)
+- Is appropriate for a Christmas card (not too long)
 - Ends with a warm closing from ${senderName}
 
 CRITICAL LENGTH REQUIREMENT: The message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
@@ -2240,9 +2240,9 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   try {
     const { recipientName, specialAboutThem, funnyStory, uploadedImageUrl } = req.body
 
-    if (!recipientName || !specialAboutThem || !funnyStory) {
+    if (!recipientName || !funnyStory) {
       return res.status(400).json({ 
-        error: 'Missing required fields: recipientName, specialAboutThem, funnyStory' 
+        error: 'Missing required fields: recipientName, funnyStory' 
       })
     }
 
@@ -2253,8 +2253,10 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
     }
 
     // Build image prompt based on details
-    let imagePrompt = `A fun, comical, personalized Christmas greeting card illustration featuring ${recipientName}. `
-    imagePrompt += `The image should reflect: ${specialAboutThem}. `
+    let imagePrompt = `A fun, comical, personalized Christmas card illustration featuring ${recipientName}. `
+    if (specialAboutThem) {
+      imagePrompt += `The image should reflect: ${specialAboutThem}. `
+    }
     imagePrompt += `Include elements that reference: ${funnyStory}. `
     imagePrompt += `Style: cheerful, festive, humorous, cartoon-like, suitable for a greeting card. `
     imagePrompt += `Christmas theme with warm colors.`

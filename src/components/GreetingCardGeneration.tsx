@@ -4,8 +4,8 @@ import './StoryGeneration.css'
 interface GreetingCardGenerationProps {
   senderName: string
   recipientName: string
-  relationship: string
-  specialAboutThem: string
+  relationship?: string
+  specialAboutThem?: string
   funnyStory: string
   uploadedImageUrl?: string | null
   onCardGenerated: (cardMessage: string, generatedImageUrl: string | null) => void
@@ -61,7 +61,7 @@ function GreetingCardGeneration({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               recipientName,
-              specialAboutThem,
+              specialAboutThem: specialAboutThem || '',
               funnyStory,
               uploadedImageUrl: null
             })

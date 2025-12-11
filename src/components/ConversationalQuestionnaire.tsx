@@ -13,6 +13,7 @@ interface ConversationalQuestionnaireProps {
     dreamGift?: string
     experience?: string
     practicalNeed?: string
+    recipientName?: string
     specialAboutThem?: string
     funnyStory?: string
   }) => void
@@ -27,6 +28,7 @@ interface ConversationMessage {
 function ConversationalQuestionnaire({ experienceType, recipientName, relationship, onSubmit, onBack }: ConversationalQuestionnaireProps) {
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
   const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, string>>({})
+  const [collectedRecipientName, setCollectedRecipientName] = useState<string | undefined>(recipientName)
   const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
@@ -49,10 +51,14 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
         { key: 'lookingForward', question: "What are you most looking forward to or hoping for in 2026?" }
       ]
     : experienceType === 'greeting-card'
-    ? [
-        { key: 'specialAboutThem', question: recipientName ? `What's something special about ${recipientName} that you love?` : "What's something special about them that you love?" },
-        { key: 'funnyStory', question: recipientName ? `What's something funny about ${recipientName} or a story that you love to joke with ${recipientName} about?` : "What's something funny about them or a story that you love to joke with them about?" }
-      ]
+    ? collectedRecipientName
+      ? [
+          { key: 'funnyStory', question: `What's a funny or heartwarming anecdote about ${collectedRecipientName}?` }
+        ]
+      : [
+          { key: 'recipientName', question: "What is the name of the person that this card is for?" },
+          { key: 'funnyStory', question: "What's a funny or heartwarming anecdote about that person?" }
+        ]
     : [
         { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
         { key: 'experience', question: "Is there something you'd love to experience rather than receive? (like a trip, concert, or special dinner)" },
@@ -446,7 +452,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
         body: JSON.stringify({
           experienceType,
           userMessage,
-          recipientName: experienceType === 'greeting-card' ? recipientName : undefined,
+          recipientName: experienceType === 'greeting-card' ? collectedRecipientName : undefined,
           relationship: experienceType === 'greeting-card' ? relationship : undefined,
           conversationHistory: currentHistory.map(msg => ({
             role: msg.role,
@@ -510,6 +516,10 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
             updatedAnswers = {
               ...prevAnswers,
               [data.detectedQuestionKey]: data.detectedAnswer
+            }
+            // If recipientName was just collected, update the state
+            if (data.detectedQuestionKey === 'recipientName' && experienceType === 'greeting-card') {
+              setCollectedRecipientName(data.detectedAnswer)
             }
             // Update ref to keep it in sync
             answeredQuestionsRef.current = updatedAnswers
@@ -864,7 +874,7 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
       })
     } else if (experienceType === 'greeting-card') {
       onSubmit({
-        specialAboutThem: finalAnswers.specialAboutThem || 'Not specified',
+        recipientName: finalAnswers.recipientName || collectedRecipientName || 'Not specified',
         funnyStory: finalAnswers.funnyStory || 'Not specified'
       })
     } else {
