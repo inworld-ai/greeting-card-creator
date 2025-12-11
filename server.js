@@ -2555,4 +2555,5 @@ app.listen(PORT, () => {
   console.log(`📖 Story generation endpoint: http://localhost:${PORT}/api/generate-story`)
   console.log(`🎵 TTS endpoint: http://localhost:${PORT}/api/tts`)
   console.log(`🎤 Voice clone endpoint: http://localhost:${PORT}/api/clone-voice`)
+  console.log(`🎨 Image transformation endpoint: http://localhost:${PORT}/api/transform-image-to-drawing`)
 })
