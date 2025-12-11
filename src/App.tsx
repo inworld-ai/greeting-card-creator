@@ -468,14 +468,14 @@ function App() {
       // Check experience type for these steps
       if (storyData.experienceType === 'year-review') return 'Year In Review'
       if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
-      if (storyData.experienceType === 'greeting-card') return 'Personalized Greeting Card'
+      if (storyData.experienceType === 'greeting-card') return 'Personalized Christmas Card'
       return 'Christmas Story Generator'
     } else if (step.startsWith('year-review')) {
       return 'Year In Review'
     } else if (step.startsWith('wish-list')) {
       return 'Christmas Wish List'
     } else if (step.startsWith('greeting-card')) {
-      return 'Personalized Greeting Card'
+      return 'Personalized Christmas Card'
     }
     return 'The Voice Before Christmas'
   }

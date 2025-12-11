@@ -525,14 +525,14 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
           
           // Check if Olivia is wrapping up the conversation
           const isWrappingUp = aiResponse.toLowerCase().includes('all set') ||
-                              aiResponse.toLowerCase().includes('i\'ll create your greeting card') ||
+                              aiResponse.toLowerCase().includes('i\'ll create your christmas card') ||
                               aiResponse.toLowerCase().includes('compile my notes') ||
                               aiResponse.toLowerCase().includes('i\'ll take your answers') ||
                               aiResponse.toLowerCase().includes('create your') ||
                               (aiResponse.toLowerCase().includes('thank') && 
                                (aiResponse.toLowerCase().includes('year in review') || 
                                 aiResponse.toLowerCase().includes('wish list') ||
-                                aiResponse.toLowerCase().includes('greeting card') ||
+                                aiResponse.toLowerCase().includes('christmas card') ||
                                 aiResponse.toLowerCase().includes('create')))
           
           if (allAnswered || isWrappingUp) {

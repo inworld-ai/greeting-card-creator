@@ -37,9 +37,9 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
           onClick={handleGreetingCardClick}
         >
           <div className="landing-option-icon">💌</div>
-          <h2 className="landing-option-title">Personalized Greeting Card</h2>
+          <h2 className="landing-option-title">Personalized Christmas Card</h2>
           <p className="landing-option-description">
-            Create a fun, comical personalized greeting card with AI-generated image and message
+            Create a fun, comical personalized Christmas card with AI-generated image and message
           </p>
         </div>
       </div>

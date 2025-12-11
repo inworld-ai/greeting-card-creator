@@ -22,7 +22,7 @@ function GreetingCardNames({ onSubmit, onBack }: GreetingCardNamesProps) {
   return (
     <div className="name-input">
       <p className="prompt-text">
-        Let's create a personalized greeting card! 💌
+        Let's create a personalized Christmas card! 💌
       </p>
       
       <div style={{ marginTop: '20px' }}>

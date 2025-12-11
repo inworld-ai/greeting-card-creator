@@ -927,7 +927,7 @@ HOW TO BE MORE HUMAN:
 - Use casual language - contractions, natural phrases, real reactions
 - Don't sound scripted or robotic - be spontaneous and genuine
 
-${allQuestionsAnswered ? `\n\n🚨🚨🚨 CRITICAL: ALL QUESTIONS HAVE BEEN ANSWERED! 🚨🚨🚨\n\nYou MUST respond in this exact format:\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh that's hilarious!" or "That's so wonderful!")\n2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your greeting card."\n\nDO NOT ask any questions.\nDO NOT ask about anything else.\nDO NOT repeat any questions.\nDO NOT ask follow-up questions.\n\nYour response MUST end with: "All set! I'll compile my notes about ${recipientName} and create your greeting card."\n\nAfter saying this exact phrase, the conversation is OVER. Do not respond to anything else.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll compile my notes about ${recipientName} and create your greeting card." Make sure to include the exact phrase "All set! I'll compile my notes about ${recipientName} and create your greeting card" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
+${allQuestionsAnswered ? `\n\n🚨🚨🚨 CRITICAL: ALL QUESTIONS HAVE BEEN ANSWERED! 🚨🚨🚨\n\nYou MUST respond in this exact format:\n1. Give a BRIEF, warm reaction to their answer (1-2 sentences max, like "Oh that's hilarious!" or "That's so wonderful!")\n2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."\n\nDO NOT ask any questions.\nDO NOT ask about anything else.\nDO NOT repeat any questions.\nDO NOT ask follow-up questions.\n\nYour response MUST end with: "All set! I'll compile my notes about ${recipientName} and create your greeting card."\n\nAfter saying this exact phrase, the conversation is OVER. Do not respond to anything else.\n` : nextQuestion ? `\nNext thing to ask about: "${nextQuestion.question}"\n\nRemember: If you've already asked this question (check the list above), don't ask it again - move to the next topic instead.` : `\nAll questions answered! Wrap up warmly and say: "All set! I'll compile my notes about ${recipientName} and create your greeting card." Make sure to include the exact phrase "All set! I'll compile my notes about ${recipientName} and create your greeting card" in your closing message. After saying this, DO NOT ask any more questions or respond further. The conversation is complete.\n`}
 
 ${answeredContext}
 
@@ -939,14 +939,14 @@ Final note: Be yourself - warm, curious, and genuinely interested. This should f
 
 If ALL questions have been answered (check the list above), you MUST:
 1. Give a BRIEF, warm reaction to their answer (1-2 sentences max)
-2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your greeting card."
+2. Then IMMEDIATELY say: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."
 
 DO NOT ask any questions if all questions are answered.
 DO NOT repeat any questions.
 DO NOT ask about anything else.
 DO NOT ask follow-up questions.
 
-Your response when all questions are answered MUST end with: "All set! I'll compile my notes about ${recipientName} and create your greeting card."
+Your response when all questions are answered MUST end with: "All set! I'll compile my notes about ${recipientName} and create your Christmas card."
 
 After saying this, the conversation is OVER. Do NOT respond to any further messages.`
       : `You are Olivia - a genuine, curious, and empathetic person who loves hearing people's stories. You're not a chatbot or assistant - you're a real person having a friendly chat. Think of yourself as that warm friend who asks great questions and actually listens.
@@ -1076,7 +1076,7 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
                                responseLower.includes('about that')
       
       const hasWrapUpPhrase = responseLower.includes('all set') && 
-                              (responseLower.includes('compile my notes') || responseLower.includes('create your greeting card'))
+                              (responseLower.includes('compile my notes') || responseLower.includes('create your christmas card'))
       
       if (containsQuestion) {
         console.log('⚠️ All questions answered but response contains a question - forcing wrap-up message')

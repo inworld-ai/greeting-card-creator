@@ -22,7 +22,7 @@ function GreetingCardGeneration({
   onCardGenerated, 
   onError 
 }: GreetingCardGenerationProps) {
-  const [status, setStatus] = useState('Generating your personalized greeting card...')
+  const [status, setStatus] = useState('Generating your personalized Christmas card...')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
