@@ -1224,7 +1224,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             Make Another Christmas Creation
           </button>
         )}
-          </div>
+        </div>
+      )}
 
       {error && (
         <div className="error-message" style={{ color: '#f5576c', marginBottom: '16px', textAlign: 'center' }}>
