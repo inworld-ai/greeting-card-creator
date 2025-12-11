@@ -5,21 +5,6 @@ interface LandingPageProps {
 }
 
 function LandingPage({ onSelectExperience }: LandingPageProps) {
-  // Check if we're in single-experience mode
-  const experienceTypeFromEnv = import.meta.env.VITE_EXPERIENCE_TYPE as 'story' | 'greeting-card' | 'both' | undefined
-  const showBoth = !experienceTypeFromEnv || experienceTypeFromEnv === 'both'
-  
-  // If single experience mode, auto-select and don't show landing page
-  if (!showBoth) {
-    if (experienceTypeFromEnv === 'story') {
-      onSelectExperience('story')
-      return null
-    } else if (experienceTypeFromEnv === 'greeting-card') {
-      onSelectExperience('greeting-card')
-      return null
-    }
-  }
-  
   return (
     <div className="landing-page">
       <div className="landing-options">
