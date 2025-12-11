@@ -1,19 +1,21 @@
 .conversational-questionnaire {
   max-width: 800px;
   margin: 0 auto;
-  padding: 30px 20px;
+  padding: 15px 20px;
 }
 
 .conversational-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 15px;
 }
 
 .conversational-title {
+  font-family: 'Playfair Display', 'Georgia', serif;
   font-size: 1.8rem;
-  color: #2c3e50;
-  margin-bottom: 20px;
+  color: #1a1a1a;
+  margin-bottom: 10px;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .progress-bar {
@@ -38,15 +40,17 @@
 }
 
 .conversational-content {
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
   border-radius: 16px;
-  padding: 60px 30px;
-  margin-bottom: 30px;
-  min-height: 500px;
+  padding: 30px 20px;
+  margin-bottom: 15px;
+  min-height: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .olivia-blob-container {
@@ -54,8 +58,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 40px;
-  min-height: 300px;
+  margin-bottom: 15px;
+  min-height: auto;
 }
 
 .olivia-blob {
@@ -82,10 +86,134 @@
   box-shadow: 0 20px 60px rgba(40, 167, 69, 0.5);
 }
 
+.olivia-blob.listening.greeting-card {
+  width: 200px;
+  height: 200px;
+  background: 
+    /* Snowflakes - different pattern from processing for differentiation */
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.95) 2.5px, transparent 2.5px),
+    radial-gradient(circle at 70% 40%, rgba(255, 255, 255, 0.9) 2px, transparent 2px),
+    radial-gradient(circle at 45% 65%, rgba(255, 255, 255, 0.85) 3px, transparent 3px),
+    radial-gradient(circle at 20% 75%, rgba(255, 255, 255, 0.9) 2.2px, transparent 2.2px),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.88) 2.8px, transparent 2.8px),
+    radial-gradient(circle at 55% 25%, rgba(255, 255, 255, 0.92) 2.3px, transparent 2.3px),
+    radial-gradient(circle at 35% 85%, rgba(255, 255, 255, 0.87) 2.6px, transparent 2.6px),
+    radial-gradient(circle at 65% 60%, rgba(255, 255, 255, 0.91) 2.1px, transparent 2.1px),
+    radial-gradient(circle at 15% 45%, rgba(255, 255, 255, 0.89) 2.7px, transparent 2.7px),
+    radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.93) 2.4px, transparent 2.4px),
+    /* Winter sky background - slightly different tones (more purple/blue) */
+    linear-gradient(135deg, #c8e6ff 0%, #a8d5ff 30%, #b8dfff 60%, #d0e8ff 100%);
+  background-size: 
+    90px 90px,
+    100px 100px,
+    85px 85px,
+    95px 95px,
+    105px 105px,
+    88px 88px,
+    92px 92px,
+    98px 98px,
+    87px 87px,
+    103px 103px,
+    100% 100%;
+  background-position:
+    0% 0%,
+    15% 15%,
+    25% 25%,
+    35% 35%,
+    45% 45%,
+    55% 55%,
+    65% 65%,
+    75% 75%,
+    85% 85%,
+    95% 95%,
+    0% 0%;
+  animation: listening-pulse 1.5s ease-in-out infinite, snow-fall 3.5s linear infinite;
+  box-shadow: 0 20px 60px rgba(168, 213, 255, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.olivia-blob.listening.greeting-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 45% 35%, rgba(255, 255, 255, 0.65) 1.2px, transparent 1.2px),
+    radial-gradient(circle at 75% 65%, rgba(255, 255, 255, 0.6) 1px, transparent 1px),
+    radial-gradient(circle at 25% 75%, rgba(255, 255, 255, 0.58) 1.3px, transparent 1.3px);
+  background-size: 45px 45px, 55px 55px, 50px 50px;
+  animation: snow-fall 2.8s linear infinite reverse;
+  opacity: 0.75;
+}
+
 .olivia-blob.processing {
   background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
   animation: processing-pulse 1s ease-in-out infinite;
   box-shadow: 0 20px 60px rgba(255, 193, 7, 0.5);
+}
+
+.olivia-blob.processing.greeting-card {
+  background: 
+    /* Snowflakes - multiple layers for depth */
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.9) 3px, transparent 3px),
+    radial-gradient(circle at 75% 35%, rgba(255, 255, 255, 0.85) 2.5px, transparent 2.5px),
+    radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.9) 2px, transparent 2px),
+    radial-gradient(circle at 15% 70%, rgba(255, 255, 255, 0.8) 3.5px, transparent 3.5px),
+    radial-gradient(circle at 85% 75%, rgba(255, 255, 255, 0.85) 2px, transparent 2px),
+    radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.9) 2.8px, transparent 2.8px),
+    radial-gradient(circle at 60% 85%, rgba(255, 255, 255, 0.8) 3px, transparent 3px),
+    radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.85) 2.2px, transparent 2.2px),
+    radial-gradient(circle at 70% 15%, rgba(255, 255, 255, 0.9) 2.5px, transparent 2.5px),
+    radial-gradient(circle at 90% 55%, rgba(255, 255, 255, 0.8) 3.2px, transparent 3.2px),
+    /* Winter sky background */
+    linear-gradient(135deg, #b3d9ff 0%, #87ceeb 30%, #add8e6 60%, #b0e0e6 100%);
+  background-size: 
+    100px 100px,
+    120px 120px,
+    90px 90px,
+    110px 110px,
+    95px 95px,
+    105px 105px,
+    115px 115px,
+    100px 100px,
+    125px 125px,
+    108px 108px,
+    100% 100%;
+  background-position:
+    0% 0%,
+    10% 10%,
+    20% 20%,
+    30% 30%,
+    40% 40%,
+    50% 50%,
+    60% 60%,
+    70% 70%,
+    80% 80%,
+    90% 90%,
+    0% 0%;
+  animation: processing-pulse 1s ease-in-out infinite, snow-fall 4s linear infinite;
+  box-shadow: 0 20px 60px rgba(135, 206, 235, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.olivia-blob.processing.greeting-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 35% 40%, rgba(255, 255, 255, 0.6) 1px, transparent 1px),
+    radial-gradient(circle at 65% 70%, rgba(255, 255, 255, 0.5) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.55) 1.2px, transparent 1.2px);
+  background-size: 50px 50px, 60px 60px, 55px 55px;
+  animation: snow-fall 3s linear infinite reverse;
+  opacity: 0.7;
 }
 
 .olivia-blob.complete {
@@ -163,6 +291,37 @@
   }
 }
 
+@keyframes snow-fall {
+  0% {
+    background-position:
+      0% 0%,
+      10% 0%,
+      20% 0%,
+      30% 0%,
+      40% 0%,
+      50% 0%,
+      60% 0%,
+      70% 0%,
+      80% 0%,
+      90% 0%,
+      0% 0%;
+  }
+  100% {
+    background-position:
+      0% 200%,
+      10% 180%,
+      20% 220%,
+      30% 190%,
+      40% 210%,
+      50% 195%,
+      60% 205%,
+      70% 185%,
+      80% 215%,
+      90% 200%,
+      0% 0%;
+  }
+}
+
 @keyframes complete-pulse {
   0%, 100% {
     transform: scale(1);
@@ -199,7 +358,7 @@
 
 .listening-indicator {
   text-align: center;
-  margin: 30px 0;
+  margin: 10px 0;
 }
 
 .listening-text,
@@ -216,11 +375,25 @@
 }
 
 .listening-text {
-  color: #28a745;
+  color: #000000;
+  font-weight: 700;
 }
 
 .processing-text {
-  color: #ffc107;
+  color: #000000;
+  font-weight: 700;
+}
+
+/* For greeting-card experience, also black and bold */
+.conversational-questionnaire .processing-text {
+  color: #000000;
+  font-weight: 700;
+}
+
+.conversational-questionnaire[data-experience="greeting-card"] .processing-text,
+.conversational-questionnaire .processing-text.greeting-card {
+  color: #000000;
+  font-weight: 700;
 }
 
 .listening-container {
@@ -228,14 +401,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 10px;
 }
 
 .preset-options {
   width: 100%;
   max-width: 600px;
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 10px;
+  padding: 15px;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -290,7 +463,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 
 .start-listening-btn {
@@ -326,8 +499,8 @@
   }
 
   .conversational-content {
-    padding: 40px 20px;
-    min-height: 400px;
+    padding: 20px 15px;
+    min-height: auto;
   }
 
   .olivia-blob {
