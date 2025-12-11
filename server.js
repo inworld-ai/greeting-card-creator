@@ -2873,23 +2873,26 @@ app.post('/api/generate-story-image', async (req, res) => {
     const data = await response.json()
     console.log('🎨 API response structure:', JSON.stringify(data).substring(0, 500))
 
+    // Use same parsing approach as greeting card endpoint (which works)
     let generatedImageUrl = null
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      const imagePart = data.candidates[0].content.parts.find(part => part.inlineData && part.inlineData.mimeType.startsWith('image/'))
-      if (imagePart && imagePart.inlineData) {
-        generatedImageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
-        console.log(`✅ Generated story image successfully (${generatedImageUrl.length} chars)`)
-      } else {
-        console.error('❌ No image part found in API response')
-        console.error('❌ Available parts:', data.candidates[0].content.parts.map(p => p.inlineData ? 'image' : 'text'))
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          // Convert base64 to data URL (matching greeting card approach)
+          const mimeType = part.inlineData.mimeType || 'image/png'
+          generatedImageUrl = `data:${mimeType};base64,${part.inlineData.data}`
+          console.log(`✅ Generated story image successfully (${generatedImageUrl.length} chars data URL)`)
+          break
+        }
       }
-    } else {
-      console.error('❌ Invalid API response structure')
-      console.error('❌ Response:', JSON.stringify(data).substring(0, 1000))
     }
 
     if (!generatedImageUrl) {
-      console.error('❌ Failed to generate story image - returning null')
+      console.warn('⚠️ No image data found in response')
+      return res.status(200).json({ 
+        imageUrl: null,
+        error: 'No image generated'
+      })
     }
 
     return res.status(200).json({ imageUrl: generatedImageUrl })

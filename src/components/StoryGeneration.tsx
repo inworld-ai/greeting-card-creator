@@ -6,21 +6,23 @@ import type { StoryType } from '../App'
 interface StoryGenerationProps {
   storyType: StoryType
   childName: string
-  uploadedImageUrl?: string | null
   onStoryGenerated: (storyText: string, generatedImageUrl?: string | null) => void
   onFirstChunkReady?: (chunkText: string) => void
   customApiKey?: string
   onError?: () => void // Callback to handle errors (e.g., navigate back)
 }
 
-function StoryGeneration({ storyType, childName, uploadedImageUrl, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: StoryGenerationProps) {
+function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: StoryGenerationProps) {
   useEffect(() => {
     // Log what we're about to send
     console.log('StoryGeneration - About to generate story progressively:', { storyType, childName })
     
     const generate = async () => {
       try {
-        const fullStory = await generateStoryProgressive(storyType, childName, (chunk) => {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
+        
+        // Start story generation
+        const storyPromise = generateStoryProgressive(storyType, childName, (chunk) => {
           console.log(`🟡 Chunk ${chunk.chunkIndex} generated, length: ${chunk.text.length}`)
           
           // When first chunk is ready, notify parent to start TTS
@@ -30,10 +32,15 @@ function StoryGeneration({ storyType, childName, uploadedImageUrl, onStoryGenera
           }
         }, customApiKey)
         
-        // Generate image after story is generated
-        let generatedImageUrl: string | null = null
+        // Wait for story to complete first
+        const fullStory = await storyPromise
+        console.log('✅ Full story generated, length:', fullStory.length)
+        
+        // Now generate image with full story (matching greeting card approach)
+        console.log('🎨 Starting image generation with full story...')
+        let finalImageUrl: string | null = null
+        
         try {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
           const imageResponse = await fetch(`${API_BASE_URL}/api/generate-story-image`, {
             method: 'POST',
             headers: {
@@ -42,24 +49,28 @@ function StoryGeneration({ storyType, childName, uploadedImageUrl, onStoryGenera
             body: JSON.stringify({
               storyType,
               childName,
-              storyText: fullStory,
-              uploadedImageUrl: uploadedImageUrl || null
+              storyText: fullStory, // Full story with title
+              uploadedImageUrl: null // No uploaded images for auto-generated covers
             })
           })
           
           if (imageResponse.ok) {
             const imageData = await imageResponse.json()
-            generatedImageUrl = imageData.imageUrl || null
-            console.log('✅ Story image generated:', generatedImageUrl ? 'Success' : 'Failed')
+            finalImageUrl = imageData.imageUrl || null
+            console.log('✅ Story image generated:', finalImageUrl ? 'Success' : 'Failed - no imageUrl in response')
+            if (finalImageUrl) {
+              console.log('✅ Image URL length:', finalImageUrl.length)
+            }
           } else {
-            console.error('❌ Failed to generate story image:', imageResponse.status)
+            const errorText = await imageResponse.text()
+            console.error('❌ Failed to generate story image:', imageResponse.status, errorText)
           }
         } catch (imageError) {
           console.error('❌ Error generating story image:', imageError)
-          // Don't fail the whole story generation if image generation fails
         }
         
-        onStoryGenerated(fullStory, generatedImageUrl)
+        console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
+        onStoryGenerated(fullStory, finalImageUrl)
       } catch (error: any) {
         console.error('Error generating story:', error)
         const errorMessage = error?.message || error?.toString() || 'Unknown error'
