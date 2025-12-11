@@ -1321,7 +1321,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       })()}
 
       {/* For greeting cards and stories, show Share and Make Another buttons below the text */}
-      {(experienceType === 'greeting-card' || experienceType === 'story') && (
+      {/* For story experience, only show buttons when image is ready */}
+      {(experienceType === 'greeting-card' || (experienceType === 'story' && imageUrl)) && (
         <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '30px' }}>
           {!isShared && (
             <>
