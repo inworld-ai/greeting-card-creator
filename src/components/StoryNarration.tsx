@@ -1091,32 +1091,34 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       {/* REMOVED: "Almost ready!" message - story page shows immediately */}
       
       {/* Start Narration button at the top */}
-      <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
-        {/* Start Story button - more prominent, comes first */}
-        <button 
-          onClick={async () => {
-            // Only start if audio is not playing
-            if (!isAudioPlaying && !isGeneratingAudio) {
-              await handleStartNarration(storyText)
-            }
-          }} 
-          disabled={isGeneratingAudio || isAudioPlaying}
-          className="restart-story-button"
-          style={{
-            fontSize: '1.3rem',
-            padding: '18px 36px',
-            fontWeight: '700',
-            order: 1,
-            opacity: (isGeneratingAudio || isAudioPlaying) ? 0.6 : 1,
-            cursor: (isGeneratingAudio || isAudioPlaying) ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {isGeneratingAudio 
-            ? 'Starting Narration...' 
-            : hasStartedNarration 
-              ? 'Restart Story 🧝' 
-              : 'Start Narration 🧝'}
-        </button>
+      {/* For story experience, only show button when image is ready */}
+      {(experienceType !== 'story' || imageUrl) && (
+        <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
+          {/* Start Story button - more prominent, comes first */}
+          <button 
+            onClick={async () => {
+              // Only start if audio is not playing
+              if (!isAudioPlaying && !isGeneratingAudio) {
+                await handleStartNarration(storyText)
+              }
+            }} 
+            disabled={isGeneratingAudio || isAudioPlaying}
+            className="restart-story-button"
+            style={{
+              fontSize: '1.3rem',
+              padding: '18px 36px',
+              fontWeight: '700',
+              order: 1,
+              opacity: (isGeneratingAudio || isAudioPlaying) ? 0.6 : 1,
+              cursor: (isGeneratingAudio || isAudioPlaying) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isGeneratingAudio 
+              ? 'Starting Narration...' 
+              : hasStartedNarration 
+                ? 'Restart Story 🧝' 
+                : 'Start Narration 🧝'}
+          </button>
         
         {/* For greeting cards and stories, Share and Make Another buttons go below the text */}
         {experienceType !== 'greeting-card' && experienceType !== 'story' && !isShared && (
