@@ -210,31 +210,31 @@ app.post('/api/tts-stream', async (req, res) => {
       await result.processResponse({
         TTSOutputStream: async (ttsStream) => {
           for await (const chunk of ttsStream) {
-            // Validate audio data exists (critical check from feature branch)
+            // Validate audio data exists
             if (!chunk.audio?.data) {
               console.warn('⚠️ Skipping chunk with missing audio data')
               continue
             }
 
+            // Pass audio data through directly without WAV encoding (as per Inworld engineer recommendation)
+            // The audio data from TTSOutputStream is already in the correct format for streaming
             let audioBuffer
 
-            // Handle different audio data formats (matching feature branch logic)
             if (Array.isArray(chunk.audio.data)) {
-              // The array contains byte values from a Buffer, not float values
-              // Interpret these bytes as Float32 data (4 bytes per float)
+              // Array of byte values - convert directly to Buffer
               audioBuffer = Buffer.from(chunk.audio.data)
             } else if (typeof chunk.audio.data === 'string') {
-              // If it's a base64 string
+              // Base64 string - decode to Buffer
               audioBuffer = Buffer.from(chunk.audio.data, 'base64')
             } else if (Buffer.isBuffer(chunk.audio.data)) {
-              // If it's already a Buffer
+              // Already a Buffer - use directly
               audioBuffer = chunk.audio.data
             } else {
               console.error('❌ Unsupported audio data type:', typeof chunk.audio.data)
               continue
             }
 
-            // Validate buffer has content (critical check from feature branch)
+            // Validate buffer has content
             if (audioBuffer.byteLength === 0) {
               console.warn('⚠️ Skipping chunk with zero-length audio buffer')
               continue
@@ -245,7 +245,7 @@ app.post('/api/tts-stream', async (req, res) => {
               console.log(`⏱️ First streaming audio chunk received`)
             }
             
-            // Send raw PCM data directly (no WAV encoding for lower latency)
+            // Send raw PCM data directly - no encoding, no processing, just pass through
             res.write(audioBuffer)
             totalBytes += audioBuffer.length
             console.log(`🎵 Streamed audio chunk: ${audioBuffer.length} bytes (total: ${totalBytes} bytes)`)
