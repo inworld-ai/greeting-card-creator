@@ -483,6 +483,7 @@ function App() {
             onImageSelected={handleImageSelected}
             onSkip={handleImageSkipped}
             onBack={() => setStep('greeting-card-names')}
+            experienceType="greeting-card"
           />
         )}
 
@@ -639,6 +640,8 @@ function App() {
             onImageSelected={handleImageSelected}
             onSkip={handleImageSkipped}
             onBack={() => setStep(getBackStep())}
+            experienceType="story"
+            context={storyData.type ? `Story type: ${storyData.type}` : undefined}
           />
         )}
         

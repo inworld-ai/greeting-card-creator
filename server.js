@@ -2435,6 +2435,121 @@ app.post('/api/generate-story-image', async (req, res) => {
   }
 })
 
+// Transform uploaded image to Christmas story drawing style using Nano Banana
+app.post('/api/transform-image-to-drawing', async (req, res) => {
+  console.log('\n\n🎨 ==========================================')
+  console.log('🎨 IMAGE TRANSFORMATION ENDPOINT CALLED')
+  console.log('🎨 ==========================================')
+  
+  try {
+    const { imageDataUrl, experienceType, context } = req.body
+
+    if (!imageDataUrl) {
+      return res.status(400).json({ 
+        error: 'Missing required field: imageDataUrl' 
+      })
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+      })
+    }
+
+    // Extract base64 data from data URL
+    const base64Data = imageDataUrl.includes(',') 
+      ? imageDataUrl.split(',')[1] 
+      : imageDataUrl
+
+    // Determine the mime type from the data URL
+    const mimeTypeMatch = imageDataUrl.match(/data:([^;]+)/)
+    const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png'
+
+    // Build transformation prompt based on experience type
+    let transformationPrompt
+    if (experienceType === 'greeting-card') {
+      transformationPrompt = `Transform this photo into a beautiful, fun, comical personalized Christmas greeting card illustration. Style: cheerful, festive, humorous, cartoon-like children's book illustration with warm colors, friendly characters, and a magical Christmas atmosphere. Make it look like a page from a classic children's Christmas storybook. Keep the main subject recognizable but in a whimsical, hand-drawn illustration style.`
+    } else {
+      // For story experience
+      const contextText = context ? `Story context: ${context}. ` : ''
+      transformationPrompt = `Transform this photo into a beautiful children's Christmas story book illustration. Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, and a magical Christmas atmosphere. ${contextText}Make it look like a page from a classic children's Christmas storybook. Keep the main subject recognizable but in a whimsical, hand-drawn illustration style.`
+    }
+
+    console.log(`🎨 Transforming image with prompt: ${transformationPrompt.substring(0, 150)}...`)
+
+    // Use Google's Gemini 2.5 Flash Image API (Nano Banana) with image input
+    // Reference: https://ai.google.dev/gemini-api/docs/image-generation
+    const requestBody = {
+      contents: [{
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          },
+          {
+            text: transformationPrompt
+          }
+        ]
+      }]
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Google Gemini Image API error:', errorText)
+      return res.status(200).json({ 
+        imageUrl: null,
+        error: 'Image transformation temporarily unavailable'
+      })
+    }
+
+    const data = await response.json()
+    
+    // Extract transformed image from response
+    let transformedImageUrl = null
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          // Convert base64 to data URL
+          const responseMimeType = part.inlineData.mimeType || 'image/png'
+          transformedImageUrl = `data:${responseMimeType};base64,${part.inlineData.data}`
+          break
+        }
+      }
+    }
+
+    if (!transformedImageUrl) {
+      console.warn('⚠️ No transformed image data found in response')
+      return res.status(200).json({ 
+        imageUrl: null,
+        error: 'No transformed image generated'
+      })
+    }
+
+    console.log(`✅ Transformed image to Christmas story drawing style (${transformedImageUrl.length} chars data URL)`)
+    
+    return res.status(200).json({ imageUrl: transformedImageUrl })
+  } catch (error) {
+    console.error('❌ Error transforming image:', error)
+    return res.status(200).json({ 
+      imageUrl: null,
+      error: error.message || 'Failed to transform image'
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📖 Story generation endpoint: http://localhost:${PORT}/api/generate-story`)

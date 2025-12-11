@@ -5,11 +5,14 @@ interface ImageUploadProps {
   onImageSelected: (imageFile: File, imageUrl: string) => void
   onSkip: () => void
   onBack: () => void
+  experienceType?: 'story' | 'greeting-card'
+  context?: string // Optional context for story experience
 }
 
-function ImageUpload({ onImageSelected, onSkip, onBack }: ImageUploadProps) {
+function ImageUpload({ onImageSelected, onSkip, onBack, experienceType, context }: ImageUploadProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isTransforming, setIsTransforming] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,24 +38,57 @@ function ImageUpload({ onImageSelected, onSkip, onBack }: ImageUploadProps) {
 
   const handleContinue = async () => {
     if (selectedFile && previewUrl) {
-      // Convert blob URL to data URL for sharing compatibility
+      setIsTransforming(true)
       try {
+        // Convert blob URL to data URL
         const response = await fetch(previewUrl)
         const blob = await response.blob()
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const dataUrl = reader.result as string
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+
+        // Transform image to Christmas story drawing style using Nano Banana
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+          const transformResponse = await fetch(`${API_BASE_URL}/api/transform-image-to-drawing`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              imageDataUrl: dataUrl,
+              experienceType: experienceType || 'story',
+              context: context
+            })
+          })
+
+          if (transformResponse.ok) {
+            const transformData = await transformResponse.json()
+            if (transformData.imageUrl) {
+              // Use transformed image
+              onImageSelected(selectedFile, transformData.imageUrl)
+              setIsTransforming(false)
+              return
+            }
+          }
+          
+          // If transformation fails, fall back to original image
+          console.warn('Image transformation failed, using original image')
+          onImageSelected(selectedFile, dataUrl)
+        } catch (transformError) {
+          console.error('Error transforming image:', transformError)
+          // Fall back to original image if transformation fails
           onImageSelected(selectedFile, dataUrl)
         }
-        reader.onerror = () => {
-          // Fallback to blob URL if conversion fails
-          onImageSelected(selectedFile, previewUrl)
-        }
-        reader.readAsDataURL(blob)
       } catch (error) {
         console.error('Error converting image to data URL:', error)
         // Fallback to blob URL if conversion fails
         onImageSelected(selectedFile, previewUrl)
+      } finally {
+        setIsTransforming(false)
       }
     }
   }
