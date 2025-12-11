@@ -83,9 +83,14 @@ type Step =
   | 'narration'
 
 function App() {
-  const [step, setStep] = useState<Step>('landing')
+  // Check if we're in single-experience mode (via environment variable)
+  const experienceTypeFromEnv = import.meta.env.VITE_EXPERIENCE_TYPE as 'story' | 'greeting-card' | 'both' | undefined
+  const isSingleExperience = experienceTypeFromEnv && experienceTypeFromEnv !== 'both'
+  const defaultExperience = isSingleExperience ? experienceTypeFromEnv : 'story'
+  
+  const [step, setStep] = useState<Step>(isSingleExperience ? (defaultExperience === 'story' ? 'type-selection' : 'greeting-card-names') : 'landing')
   const [storyData, setStoryData] = useState<StoryData>({
-    experienceType: 'story',
+    experienceType: defaultExperience,
     type: null,
     childName: '',
     voiceId: 'christmas_story_generator__male_elf_narrator',
