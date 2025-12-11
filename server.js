@@ -1083,9 +1083,9 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
         // Extract a brief reaction if present, then add wrap-up
         const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
         if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
-          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
         } else {
-          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
         }
       } else if (!hasWrapUpPhrase) {
         // If it doesn't contain the wrap-up phrase, add it
@@ -1093,9 +1093,9 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
         // Extract a brief reaction if present, then add wrap-up
         const briefReaction = cleanResponse.split(/[.!?]/)[0] || ''
         if (briefReaction && briefReaction.length < 100 && !briefReaction.toLowerCase().includes('?')) {
-          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+          cleanResponse = `${briefReaction.trim()}. All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
         } else {
-          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your greeting card.`
+          cleanResponse = `All set! I'll compile my notes about ${recipientName} and create your Christmas card.`
         }
       }
     }
