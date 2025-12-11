@@ -419,7 +419,8 @@ function App() {
     console.log('📖 handleStoryGenerated called:', { 
       storyTextLength: storyText.length, 
       generatedImageUrl,
-      hasImageUrl: !!generatedImageUrl 
+      hasImageUrl: !!generatedImageUrl,
+      currentStep: step
     })
     
     // For story experience, only transition to narration when both story AND image are ready
@@ -428,27 +429,42 @@ function App() {
     // generatedImageUrl === undefined means image generation hasn't completed yet
     const isStoryExperience = storyData.experienceType === 'story'
     const imageReady = generatedImageUrl !== undefined
-    const shouldTransition = step === 'generating' && (
-      !isStoryExperience || // Non-story experiences can transition immediately
-      imageReady // Story experience needs image generation to complete
-    )
     
-    setStoryData(prev => {
-      // Only update imageUrl if generatedImageUrl was explicitly provided (not undefined)
-      const newImageUrl = generatedImageUrl !== undefined ? generatedImageUrl : prev.imageUrl
-      console.log('📖 Setting storyData with imageUrl:', newImageUrl)
-      return { 
-        ...prev, 
-        storyText,
-        imageUrl: newImageUrl
+    // Only update state if we're still in the generating step (prevent updates from StoryNarration callbacks)
+    if (step === 'generating') {
+      setStoryData(prev => {
+        // Only update imageUrl if generatedImageUrl was explicitly provided (not undefined)
+        const newImageUrl = generatedImageUrl !== undefined ? generatedImageUrl : prev.imageUrl
+        console.log('📖 Setting storyData with imageUrl:', newImageUrl ? 'present' : 'null')
+        return { 
+          ...prev, 
+          storyText,
+          imageUrl: newImageUrl
+        }
+      })
+      
+      // Only transition if both story and image are ready (for story experience)
+      const shouldTransition = !isStoryExperience || imageReady
+      
+      if (shouldTransition) {
+        console.log('📖 Transitioning to narration step (story and image ready)')
+        setStep('narration')
+      } else if (isStoryExperience && !imageReady) {
+        console.log('📖 Waiting for image generation to complete before transitioning...')
       }
-    })
-    
-    if (shouldTransition) {
-      console.log('📖 Transitioning to narration step (story and image ready)')
-      setStep('narration')
-    } else if (step === 'generating' && isStoryExperience && !imageReady) {
-      console.log('📖 Waiting for image generation to complete before transitioning...')
+    } else {
+      // If we're already past the generating step, just update the story data without transitioning
+      // This handles callbacks from StoryNarration that don't include the image
+      console.log('📖 Already past generating step, updating story data only (no transition)')
+      setStoryData(prev => {
+        // Only update storyText, don't overwrite imageUrl if it's already set
+        const newImageUrl = generatedImageUrl !== undefined ? generatedImageUrl : prev.imageUrl
+        return { 
+          ...prev, 
+          storyText,
+          imageUrl: newImageUrl
+        }
+      })
     }
   }
 
