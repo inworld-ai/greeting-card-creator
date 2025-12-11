@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
-import { shareStory } from '../services/shareService'
+import { shareStory, shareUrl as shareUrlHelper } from '../services/shareService'
 import ChristmasCard from './ChristmasCard'
 import './StoryNarration.css'
 import './StoryGeneration.css'
@@ -1155,12 +1155,12 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                         customVoiceId
                       })
                       setShareUrl(result.shareUrl)
-                      // Copy to clipboard
-                      try {
-                        await navigator.clipboard.writeText(result.shareUrl)
-                      } catch (e) {
-                        console.warn('Failed to copy to clipboard:', e)
-                      }
+                      // Use Web Share API (mobile) or clipboard (desktop)
+                      await shareUrlHelper(
+                        result.shareUrl,
+                        'A Christmas Story For You',
+                        `Check out this personalized Christmas story for ${childName}!`
+                      )
                   } catch (err: any) {
                     setShareError(err.message || 'Failed to share story')
                   } finally {
@@ -1175,29 +1175,30 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               </button>
             ) : (
               <div className="share-success" style={{ order: 2 }}>
-                <input 
-                  type="text" 
-                  value={shareUrl} 
-                  readOnly 
-                  className="share-url-input"
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                />
+                  <input 
+                    type="text" 
+                    value={shareUrl} 
+                    readOnly 
+                    className="share-url-input"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
                 <button 
                   onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl)
-                      setIsLinkCopied(true)
-                      // Reset after 2 seconds
-                      setTimeout(() => {
-                        setIsLinkCopied(false)
-                      }, 2000)
-                    } catch (e) {
-                      console.warn('Failed to copy to clipboard:', e)
-                    }
+                    // Use Web Share API (mobile) or clipboard (desktop)
+                    await shareUrlHelper(
+                      shareUrl,
+                      'A Christmas Story For You',
+                      `Check out this personalized Christmas story for ${childName}!`
+                    )
+                    setIsLinkCopied(true)
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                      setIsLinkCopied(false)
+                    }, 2000)
                   }}
                   className="copy-link-button"
                 >
-                  {isLinkCopied ? 'Copied!' : 'Copy Link'}
+                  {isLinkCopied ? '✓ Shared!' : 'Share Again'}
                 </button>
             </div>
             )}
@@ -1277,8 +1278,24 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         const fullStoryText = title ? `Title: ${title}\n\n${cleanedBody}` : cleanedBody
         
         // Show ChristmasCard for Year In Review and Story (with cover image)
+        // For story experience, only show the card if we have an image (prevent placeholder flash)
         if (experienceType === 'year-review' || experienceType === 'story') {
-        return (
+          // For story experience, wait for image before showing card
+          if (experienceType === 'story' && !imageUrl) {
+            return (
+              <div className="story-generation">
+                <div className="loading-container">
+                  <h2 className="loading-title">CREATING YOUR CHRISTMAS STORY...</h2>
+                  <div className="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          return (
             <ChristmasCard
               imageUrl={imageUrl || null}
               title={title || ''}
@@ -1342,12 +1359,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                         customVoiceId
                       })
                         setShareUrl(result.shareUrl)
-                        // Copy to clipboard
-                        try {
-                          await navigator.clipboard.writeText(result.shareUrl)
-                        } catch (e) {
-                          console.warn('Failed to copy to clipboard:', e)
-                        }
+                        // Use Web Share API (mobile) or clipboard (desktop)
+                        await shareUrlHelper(
+                          result.shareUrl,
+                          experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
+                          experienceType === 'greeting-card' 
+                            ? `Check out this personalized Christmas card for ${childName}!`
+                            : `Check out this personalized Christmas story for ${childName}!`
+                        )
                     } catch (err: any) {
                       setShareError(err.message || 'Failed to share story')
                     } finally {
@@ -1370,20 +1389,23 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   />
                   <button 
                     onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(shareUrl)
-                        setIsLinkCopied(true)
-                        // Reset after 2 seconds
-                        setTimeout(() => {
-                          setIsLinkCopied(false)
-                        }, 2000)
-                      } catch (e) {
-                        console.warn('Failed to copy to clipboard:', e)
-                      }
+                      // Use Web Share API (mobile) or clipboard (desktop)
+                      await shareUrlHelper(
+                        shareUrl,
+                        experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
+                        experienceType === 'greeting-card' 
+                          ? `Check out this personalized Christmas card for ${childName}!`
+                          : `Check out this personalized Christmas story for ${childName}!`
+                      )
+                      setIsLinkCopied(true)
+                      // Reset after 2 seconds
+                      setTimeout(() => {
+                        setIsLinkCopied(false)
+                      }, 2000)
                     }}
                     className="copy-link-button"
                   >
-                    {isLinkCopied ? 'Copied!' : 'Copy Link'}
+                    {isLinkCopied ? '✓ Shared!' : 'Share Again'}
               </button>
                 </div>
             )}
