@@ -22,7 +22,6 @@ function GreetingCardGeneration({
   onCardGenerated, 
   onError 
 }: GreetingCardGenerationProps) {
-  const [status, setStatus] = useState('Creating your Christmas card...')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -31,7 +30,6 @@ function GreetingCardGeneration({
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://inworld-christmas-story-production.up.railway.app'
 
         // Generate message and image in parallel to cut generation time in half
-        setStatus('Creating your Christmas card...')
         
         // Start both API calls simultaneously
         const messagePromise = fetch(`${API_BASE_URL}/api/generate-greeting-card-message`, {
