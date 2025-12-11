@@ -1277,6 +1277,86 @@ If all three questions have been answered, wrap up warmly and say: "Thank you so
 
     let cleanResponse = responseText.trim()
     
+    // CRITICAL: If next question is the anecdote question, ensure it's asked
+    if (nextQuestion && nextQuestion.key === 'funnyStory' && !allQuestionsAnswered && experienceType === 'greeting-card' && recipientName) {
+      const responseLower = cleanResponse.toLowerCase()
+      const anecdoteQuestionLower = nextQuestion.question.toLowerCase()
+      const hasAnecdoteQuestion = responseLower.includes('funny') && 
+                                  (responseLower.includes('anecdote') || responseLower.includes('heartwarming')) &&
+                                  responseLower.includes('?')
+      
+      // Also check if response contains any follow-up questions that aren't the anecdote question
+      const hasFollowUpQuestion = responseLower.includes('?') && 
+                                  !hasAnecdoteQuestion &&
+                                  (responseLower.includes('how long') || 
+                                   responseLower.includes('how did') ||
+                                   responseLower.includes('when did') ||
+                                   responseLower.includes('tell me more') ||
+                                   responseLower.includes('i\'d love to hear'))
+      
+      if (!hasAnecdoteQuestion) {
+        console.log('🚨🚨🚨 ANECDOTE QUESTION NOT FOUND - FORCING IT 🚨🚨🚨')
+        console.log(`📝 Current response: "${cleanResponse.substring(0, 100)}..."`)
+        
+        // Extract a brief reaction if present (first sentence that's not a question)
+        const sentences = cleanResponse.split(/[.!?]/).filter(s => s.trim().length > 0)
+        let briefReaction = ''
+        
+        // Find first non-question sentence that's not a follow-up
+        for (const sentence of sentences) {
+          const sentenceLower = sentence.toLowerCase().trim()
+          if (!sentenceLower.includes('?') && 
+              !sentenceLower.includes('how long') &&
+              !sentenceLower.includes('how did') &&
+              !sentenceLower.includes('when did') &&
+              !sentenceLower.includes('tell me more') &&
+              sentenceLower.length < 150 &&
+              sentenceLower.length > 5) {
+            briefReaction = sentence.trim()
+            break
+          }
+        }
+        
+        // If we found a good reaction, use it; otherwise create a simple one
+        if (briefReaction && briefReaction.length > 5) {
+          cleanResponse = `${briefReaction}. ${nextQuestion.question}`
+        } else {
+          // Create a simple reaction using the recipient's name
+          cleanResponse = `Oh, that's so sweet! ${recipientName} sounds wonderful. 😊 ${nextQuestion.question}`
+        }
+        
+        console.log(`✅ FORCED anecdote question: "${cleanResponse.substring(0, 150)}..."`)
+      } else if (hasFollowUpQuestion) {
+        console.log('🚨🚨🚨 FOLLOW-UP QUESTION DETECTED - REMOVING AND FORCING ANECDOTE QUESTION 🚨🚨🚨')
+        
+        // Remove the follow-up question and replace with anecdote question
+        const sentences = cleanResponse.split(/[.!?]/).filter(s => s.trim().length > 0)
+        let briefReaction = ''
+        
+        // Find first non-question sentence
+        for (const sentence of sentences) {
+          const sentenceLower = sentence.toLowerCase().trim()
+          if (!sentenceLower.includes('?') && 
+              !sentenceLower.includes('how long') &&
+              !sentenceLower.includes('how did') &&
+              !sentenceLower.includes('when did') &&
+              sentenceLower.length < 150 &&
+              sentenceLower.length > 5) {
+            briefReaction = sentence.trim()
+            break
+          }
+        }
+        
+        if (briefReaction && briefReaction.length > 5) {
+          cleanResponse = `${briefReaction}. ${nextQuestion.question}`
+        } else {
+          cleanResponse = `Oh, that's so sweet! ${recipientName} sounds wonderful. 😊 ${nextQuestion.question}`
+        }
+        
+        console.log(`✅ REPLACED follow-up with anecdote question: "${cleanResponse.substring(0, 150)}..."`)
+      }
+    }
+    
     // Recalculate allQuestionsAnswered after detecting the answer (in case this answer completes all questions)
     // This handles the case where the frontend hasn't updated answeredQuestions yet
     let finalAllQuestionsAnswered = allQuestionsAnswered
