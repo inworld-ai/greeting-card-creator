@@ -689,7 +689,9 @@ function App() {
               : storyData.childName}
             voiceId={storyData.voiceId}
             storyType={storyData.type}
-            imageUrl={storyData.imageUrl}
+            imageUrl={storyData.experienceType === 'greeting-card' 
+              ? (storyData.imageUrl || storyData.greetingCardData?.generatedImageUrl || null)
+              : storyData.imageUrl}
             onRestart={handleRestart}
             isProgressive={!!firstChunkText && !storyData.storyText}
             onFullStoryReady={handleStoryGenerated}

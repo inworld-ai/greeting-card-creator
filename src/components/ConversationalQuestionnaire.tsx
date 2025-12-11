@@ -896,9 +896,11 @@ function ConversationalQuestionnaire({ experienceType, recipientName, relationsh
   return (
     <div className="conversational-questionnaire">
       <div className="conversational-header">
-        <h2 className="conversational-title">
-          {experienceType === 'year-review' ? 'Year In Review' : experienceType === 'greeting-card' ? 'Personalized Greeting Card' : 'Christmas Wish List'}
-        </h2>
+        {experienceType !== 'greeting-card' && (
+          <h2 className="conversational-title">
+            {experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'}
+          </h2>
+        )}
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }}></div>
         </div>
