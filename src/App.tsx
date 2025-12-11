@@ -95,7 +95,6 @@ function App() {
   }
   
   const experienceFromPath = getExperienceFromPath()
-  const showLandingPage = path === '/' && !experienceFromPath
   
   const [step, setStep] = useState<Step>(() => {
     if (experienceFromPath === 'story') return 'type-selection'
