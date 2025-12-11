@@ -2768,11 +2768,13 @@ app.post('/api/generate-story-image', async (req, res) => {
   try {
     const { storyType, childName, storyText, uploadedImageUrl } = req.body
 
-    if (!storyType || !childName || !storyText) {
+    if (!storyType || !childName) {
       return res.status(400).json({
-        error: 'Missing required fields: storyType, childName, storyText'
+        error: 'Missing required fields: storyType, childName'
       })
     }
+    
+    // storyText is optional - if empty, image will be generated based on storyType and childName only
 
     if (!process.env.GOOGLE_API_KEY) {
       return res.status(500).json({
@@ -2795,51 +2797,20 @@ app.post('/api/generate-story-image', async (req, res) => {
       console.log('🎨 Generating story book style image based on uploaded photo and story details')
     }
 
-    // Extract story title from the story text
-    // Look for "Title: " pattern at the start (case-insensitive, with optional whitespace)
-    let storyTitle = ''
-    let storyBody = storyText
-    const titleMatch = storyText.match(/^Title:\s*(.+?)(?:\n\n|\n|$)/i)
-    if (titleMatch) {
-      storyTitle = titleMatch[1].trim()
-      storyBody = storyText.substring(titleMatch[0].length).trim()
-      console.log(`📖 Extracted story title: "${storyTitle}"`)
-    } else {
-      // If no explicit title, try to extract from first line if it looks like a title
-      const firstLine = storyText.split('\n')[0].trim()
-      // Check if first line looks like a title (short, no sentence-ending punctuation, not a full sentence)
-      if (firstLine.length < 100 && firstLine.length > 3 && 
-          !firstLine.match(/[.!?]\s/) && // No sentence-ending punctuation followed by space
-          !firstLine.toLowerCase().startsWith('once') &&
-          !firstLine.toLowerCase().startsWith('there') &&
-          !firstLine.toLowerCase().startsWith('it was')) {
-        storyTitle = firstLine
-        storyBody = storyText.substring(firstLine.length).trim()
-        console.log(`📖 Using first line as title: "${storyTitle}"`)
-      } else {
-        // Fallback: generate a title from the story type and child name
-        storyTitle = `${childName}'s Christmas ${storyType} Adventure`
-        console.log(`📖 No title found, using generated title: "${storyTitle}"`)
-      }
-    }
-    
-    // Build image prompt based on story details
-    // CRITICAL: The title MUST be prominently displayed in the image
+    // Build image prompt based on story type and character name
+    // Do NOT include the story title on the cover - just create an illustration related to the story plot
+    // Include the character name somewhere in the image (but not as a title)
+    // Do NOT depict the main character to avoid assumptions about race/appearance
     let imagePrompt = `Create a beautiful children's Christmas story book cover illustration. `
-    imagePrompt += `The cover MUST prominently display the story title in large, readable text: "${storyTitle}". `
-    imagePrompt += `The illustration features ${childName} as the main character. `
     imagePrompt += `Story theme: ${storyType}. `
-    
-    // Extract key details from the story text for visual elements
-    const storyPreview = storyBody.split('\n\n')[0].substring(0, 400)
-    if (storyPreview) {
-      imagePrompt += `Visual elements should reflect: ${storyPreview}. `
-    }
-    
+    imagePrompt += `The illustration should be related to the story plot and theme, but do NOT include the story title as text on the cover. `
+    imagePrompt += `Include the name "${childName}" somewhere naturally in the image (for example, on a letter, name tag, or sign), but NOT as a large title. `
+    imagePrompt += `CRITICAL: Do NOT depict or show the main character ${childName} in the image. `
+    imagePrompt += `It is okay to include Santa Claus, elves, reindeer, Christmas decorations, magical elements, and other story-related items, but absolutely NO depiction of the main character. `
+    imagePrompt += `The image should be a scene related to the ${storyType} story theme, showing the setting, magical elements, and supporting characters (like Santa or elves), but never the main character. `
     imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `
     imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook. `
-    imagePrompt += `CRITICAL: The title "${storyTitle}" must be clearly visible, prominently displayed, and integrated into the cover design. `
-    imagePrompt += `The title text should be large enough to read easily and should be the most prominent text element on the cover.`
+    imagePrompt += `Make it visually appealing and related to the story theme without showing any human main character.`
 
     console.log(`🎨 Full image prompt: ${imagePrompt}`)
     console.log(`🎨 Story title to display: "${storyTitle}"`)

@@ -32,43 +32,41 @@ function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkR
           }
         }, customApiKey)
         
-        // Wait for story to complete first
-        const fullStory = await storyPromise
-        console.log('✅ Full story generated, length:', fullStory.length)
-        
-        // Now generate image with full story (matching greeting card approach)
-        console.log('🎨 Starting image generation with full story...')
-        let finalImageUrl: string | null = null
-        
-        try {
-          const imageResponse = await fetch(`${API_BASE_URL}/api/generate-story-image`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              storyType,
-              childName,
-              storyText: fullStory, // Full story with title
-              uploadedImageUrl: null // No uploaded images for auto-generated covers
-            })
+        // Start image generation in parallel (only needs storyType and childName, not full story)
+        console.log('🎨 Starting image generation in parallel with story generation...')
+        const imagePromise = fetch(`${API_BASE_URL}/api/generate-story-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            storyType,
+            childName,
+            storyText: '', // Empty - image will be generated based on storyType and childName only
+            uploadedImageUrl: null
           })
-          
+        }).then(async (imageResponse) => {
           if (imageResponse.ok) {
             const imageData = await imageResponse.json()
-            finalImageUrl = imageData.imageUrl || null
-            console.log('✅ Story image generated:', finalImageUrl ? 'Success' : 'Failed - no imageUrl in response')
-            if (finalImageUrl) {
-              console.log('✅ Image URL length:', finalImageUrl.length)
+            const imageUrl = imageData.imageUrl || null
+            console.log('✅ Story image generated:', imageUrl ? 'Success' : 'Failed - no imageUrl in response')
+            if (imageUrl) {
+              console.log('✅ Image URL length:', imageUrl.length)
             }
+            return imageUrl
           } else {
             const errorText = await imageResponse.text()
             console.error('❌ Failed to generate story image:', imageResponse.status, errorText)
+            return null
           }
-        } catch (imageError) {
+        }).catch((imageError) => {
           console.error('❌ Error generating story image:', imageError)
-        }
+          return null
+        })
         
+        // Wait for both story and image to complete in parallel
+        const [fullStory, finalImageUrl] = await Promise.all([storyPromise, imagePromise])
+        console.log('✅ Full story generated, length:', fullStory.length)
         console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
         onStoryGenerated(fullStory, finalImageUrl)
       } catch (error: any) {
