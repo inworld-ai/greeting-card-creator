@@ -74,7 +74,7 @@
 
 .inworld-footer-link {
   font-size: 1rem;
-  color: #32cd32;
+  color: #000000;
   text-decoration: none;
   font-family: 'Crimson Text', serif;
   font-style: italic;
@@ -84,7 +84,7 @@
 
 .inworld-footer-link:hover {
   opacity: 1;
-  color: #90ee90;
+  color: #000000;
   text-decoration: underline;
 }
 
