@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
@@ -85,6 +85,7 @@ type Step =
 
 function App() {
   const location = useLocation()
+  const navigate = useNavigate()
   const path = location.pathname
   
   // Determine experience type from URL path
@@ -506,7 +507,7 @@ function App() {
         {step === 'greeting-card-names' && (
           <GreetingCardNames
             onSubmit={handleGreetingCardNamesSubmitted}
-            onBack={() => experienceFromPath ? window.location.href = '/' : setStep('landing')}
+            onBack={() => experienceFromPath ? navigate('/') : setStep('landing')}
           />
         )}
 
