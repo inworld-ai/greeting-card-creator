@@ -116,7 +116,12 @@ function ImageUpload({ onImageSelected, onSkip, onBack, experienceType, context 
       </p>
 
       <div className="image-upload-area">
-        {previewUrl ? (
+        {isTransforming ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+            <p style={{ fontSize: '1.1rem', color: '#666' }}>Transforming your image into a Christmas story drawing...</p>
+          </div>
+        ) : previewUrl ? (
           <div className="image-preview-container">
             <img src={previewUrl} alt="Preview" className="image-preview" />
             <button
