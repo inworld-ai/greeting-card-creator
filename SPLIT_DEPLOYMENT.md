@@ -1,70 +1,71 @@
-# Splitting into Two Separate Vercel Sites
+# URL-Based Routing for Separate Experiences
 
-This guide explains how to deploy the Christmas Story Generator and Personalized Greeting Card as two separate Vercel sites while sharing the same Railway backend.
+This guide explains how the app uses URL-based routing to provide separate experiences while maintaining a single Vercel deployment.
 
 ## Overview
 
+- **Single Vercel Project**: One deployment handles all routes
+- **URL Structure**:
+  - `/` - Landing page with both options
+  - `/storyteller` - Christmas Story Generator experience
+  - `/greetingcard` - Personalized Greeting Card experience
+  - `/share/:storyId` - Shared story/card view
 - **Backend**: Single Railway instance handles both experiences
-- **Frontend**: Two separate Vercel projects
-  - Site 1: Christmas Story Generator only
-  - Site 2: Personalized Greeting Card only
 
-## Setup Instructions
+## URL Structure
 
-### Step 1: Create Two Vercel Projects
+### Main Domain
+- **Root URL**: `https://inworld-christmas.vercel.app/`
+  - Shows landing page with both experience options
 
-1. **Christmas Story Generator Site**:
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Click "Add New Project"
-   - Import the same GitHub repository: `inworld-ai/personalized-christmas-storyteller`
-   - Project Name: `christmas-story-generator` (or your preferred name)
+### Story Generator
+- **URL**: `https://inworld-christmas.vercel.app/storyteller`
+  - Directly starts the Christmas Story Generator flow
+  - Skips landing page, goes straight to story type selection
 
-2. **Personalized Greeting Card Site**:
-   - Click "Add New Project" again
-   - Import the same GitHub repository: `inworld-ai/personalized-christmas-storyteller`
-   - Project Name: `personalized-greeting-card` (or your preferred name)
+### Greeting Card
+- **URL**: `https://inworld-christmas.vercel.app/greetingcard`
+  - Directly starts the Personalized Greeting Card flow
+  - Skips landing page, goes straight to name entry
 
-### Step 2: Configure Environment Variables
-
-For each Vercel project, set the following environment variables:
-
-#### Christmas Story Generator Site:
-```
-VITE_API_URL=https://inworld-christmas-story-production.up.railway.app
-VITE_EXPERIENCE_TYPE=story
-```
-
-#### Personalized Greeting Card Site:
-```
-VITE_API_URL=https://inworld-christmas-story-production.up.railway.app
-VITE_EXPERIENCE_TYPE=greeting-card
-```
-
-**To set environment variables in Vercel:**
-1. Go to your project settings
-2. Navigate to "Environment Variables"
-3. Add each variable for "Production", "Preview", and "Development" environments
-
-### Step 3: Deploy Both Sites
-
-1. Deploy the Christmas Story Generator site
-2. Deploy the Personalized Greeting Card site
-
-Both sites will use the same codebase but show different experiences based on the `VITE_EXPERIENCE_TYPE` environment variable.
+### Shared Links
+- **URL**: `https://inworld-christmas.vercel.app/share/:storyId`
+  - Displays shared stories or greeting cards
 
 ## How It Works
 
-- When `VITE_EXPERIENCE_TYPE=story`: The app automatically starts with the story experience (skips landing page)
-- When `VITE_EXPERIENCE_TYPE=greeting-card`: The app automatically starts with the greeting card experience (skips landing page)
-- When `VITE_EXPERIENCE_TYPE=both` or not set: Shows the landing page with both options (default behavior)
+The app uses React Router to detect the current path and automatically:
+1. Determines which experience to show based on the URL
+2. Sets the initial step (skips landing page for specific paths)
+3. Updates the experience type in state
+
+## Vercel Configuration
+
+### Custom Domain Setup
+
+1. Go to your Vercel project settings
+2. Navigate to "Domains"
+3. Add your custom domain: `inworld-christmas.vercel.app` (or your preferred domain)
+4. Vercel will automatically handle all routes including `/storyteller` and `/greetingcard`
+
+### Environment Variables
+
+Set these in Vercel project settings:
+
+```
+VITE_API_URL=https://inworld-christmas-story-production.up.railway.app
+```
+
+No need for `VITE_EXPERIENCE_TYPE` - routing is handled by URL paths.
 
 ## Backend Configuration
 
-The Railway backend doesn't need any changes - it already handles both experiences through the same endpoints. Both Vercel sites will point to the same Railway backend URL.
+The Railway backend doesn't need any changes - it already handles both experiences through the same endpoints. All routes use the same backend URL.
 
-## Testing
+## Benefits
 
-1. Test the Story Generator site - should go directly to story type selection
-2. Test the Greeting Card site - should go directly to name entry for greeting card
-3. Both should work with the same Railway backend
-
+- ✅ Single deployment to manage
+- ✅ Clean, shareable URLs for each experience
+- ✅ Easy to bookmark specific experiences
+- ✅ SEO-friendly URLs
+- ✅ No environment variable management needed

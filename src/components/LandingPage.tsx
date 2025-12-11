@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import './LandingPage.css'
 
 interface LandingPageProps {
@@ -5,12 +6,24 @@ interface LandingPageProps {
 }
 
 function LandingPage({ onSelectExperience }: LandingPageProps) {
+  const navigate = useNavigate()
+
+  const handleStoryClick = () => {
+    navigate('/storyteller')
+    onSelectExperience('story')
+  }
+
+  const handleGreetingCardClick = () => {
+    navigate('/greetingcard')
+    onSelectExperience('greeting-card')
+  }
+
   return (
     <div className="landing-page">
       <div className="landing-options">
         <div 
           className="landing-option"
-          onClick={() => onSelectExperience('story')}
+          onClick={handleStoryClick}
         >
           <div className="landing-option-icon">📖</div>
           <h2 className="landing-option-title">Christmas Story Generator</h2>
@@ -21,7 +34,7 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
 
         <div 
           className="landing-option"
-          onClick={() => onSelectExperience('greeting-card')}
+          onClick={handleGreetingCardClick}
         >
           <div className="landing-option-icon">💌</div>
           <h2 className="landing-option-title">Personalized Greeting Card</h2>
