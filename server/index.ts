@@ -686,6 +686,141 @@ app.get('/api/story/:id', async (req, res) => {
   }
 });
 
+// Story generation endpoint - imports from graph.js for compatibility with Christmas Story Creator
+app.post('/api/generate-story', async (req, res) => {
+  console.log('\n📖 STORY GENERATION ENDPOINT');
+  
+  try {
+    const { storyType, childName, apiKey } = req.body;
+
+    if (!storyType || !childName) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: storyType and childName' 
+      });
+    }
+
+    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY;
+    if (!selectedApiKey) {
+      return res.status(500).json({ 
+        error: 'INWORLD_API_KEY not set' 
+      });
+    }
+
+    console.log(`📖 Generating story for "${childName}" about "${storyType}"`);
+
+    // Import graph.js dynamically (it's ESM)
+    const graphModule = await import('../graph.js');
+    const graph = graphModule.createTextOnlyGraph(selectedApiKey);
+
+    const { outputStream } = await graph.start({
+      childName,
+      storyType,
+    });
+
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    
+    let storyText = '';
+    let firstChunkSent = false;
+    let done = false;
+
+    while (!done) {
+      const result = await outputStream.next();
+      
+      await result.processResponse({
+        ContentStream: async (contentStream: AsyncIterable<{ text?: string }>) => {
+          for await (const chunk of contentStream) {
+            if (chunk.text) {
+              storyText += chunk.text;
+              
+              if (!firstChunkSent && storyText.length >= 100) {
+                const sentenceEnd = storyText.search(/[.!?]\s+/);
+                const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
+                  ? storyText.substring(0, sentenceEnd + 1).trim()
+                  : storyText.substring(0, Math.min(200, storyText.length)).trim();
+                
+                if (firstChunk.length >= 80) {
+                  res.write(JSON.stringify({ 
+                    chunkIndex: 0, 
+                    text: firstChunk, 
+                    isFirst: true,
+                    isComplete: false 
+                  }) + '\n');
+                  firstChunkSent = true;
+                }
+              }
+            }
+          }
+        },
+        string: (text: string) => {
+          storyText += text;
+          
+          if (!firstChunkSent && storyText.length >= 100) {
+            const sentenceEnd = storyText.search(/[.!?]\s+/);
+            const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
+              ? storyText.substring(0, sentenceEnd + 1).trim()
+              : storyText.substring(0, Math.min(200, storyText.length)).trim();
+            
+            if (firstChunk.length >= 80) {
+              res.write(JSON.stringify({ 
+                chunkIndex: 0, 
+                text: firstChunk, 
+                isFirst: true,
+                isComplete: false 
+              }) + '\n');
+              firstChunkSent = true;
+            }
+          }
+        },
+        default: (data: any) => {
+          if (data?.text) {
+            storyText += data.text;
+          }
+        },
+      });
+
+      done = result.done;
+    }
+
+    await graph.stop();
+
+    if (!storyText || storyText.trim().length === 0) {
+      console.error('❌ No story text generated');
+      return res.status(500).json({ error: 'No story generated' });
+    }
+
+    console.log(`✅ Generated story: ${storyText.substring(0, 100)}...`);
+
+    // Send final chunk
+    if (firstChunkSent) {
+      res.write(JSON.stringify({ 
+        chunkIndex: 1, 
+        text: storyText.trim(),
+        isFirst: false,
+        isComplete: true 
+      }) + '\n');
+    } else {
+      // Story was short, send it all at once
+      res.write(JSON.stringify({ 
+        chunkIndex: 0, 
+        text: storyText.trim(), 
+        isFirst: true,
+        isComplete: true 
+      }) + '\n');
+    }
+    
+    res.end();
+  } catch (error: any) {
+    console.error('❌ Story generation error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Story generation failed' });
+    } else {
+      res.end();
+    }
+  }
+});
+
 // Start server
 server.listen(WS_APP_PORT, async () => {
   try {
@@ -699,6 +834,7 @@ server.listen(WS_APP_PORT, async () => {
   console.log(`🔌 REST API endpoints:`);
   console.log(`   POST /load - Create session`);
   console.log(`   POST /unload - End session`);
+  console.log(`   POST /api/generate-story`);
   console.log(`   POST /api/generate-greeting-card-message`);
   console.log(`   POST /api/generate-greeting-card-image`);
   console.log(`   POST /api/clone-voice`);
