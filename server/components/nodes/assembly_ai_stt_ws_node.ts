@@ -61,7 +61,8 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
   private wsEndpointBaseUrl: string = 'wss://streaming.assemblyai.com/v3/ws';
 
   // Per-session WebSocket connections
-  private readonly INACTIVITY_TIMEOUT_MS = 60000; // 60 seconds
+  // Increased timeout to allow for TTS playback between turns
+  private readonly INACTIVITY_TIMEOUT_MS = 300000; // 5 minutes
   private sessions: Map<
     string,
     {
