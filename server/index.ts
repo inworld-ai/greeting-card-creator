@@ -686,7 +686,7 @@ app.get('/api/story/:id', async (req, res) => {
   }
 });
 
-// Story generation endpoint - imports from graph.js for compatibility with Christmas Story Creator
+// Story generation endpoint - uses inline graph creation
 app.post('/api/generate-story', async (req, res) => {
   console.log('\n📖 STORY GENERATION ENDPOINT');
   
@@ -708,9 +708,54 @@ app.post('/api/generate-story', async (req, res) => {
 
     console.log(`📖 Generating story for "${childName}" about "${storyType}"`);
 
-    // Import graph.js dynamically (it's ESM)
-    const graphModule = await import('../graph.js');
-    const graph = graphModule.createTextOnlyGraph(selectedApiKey);
+    // Import and create graph inline (avoid path issues with graph.js)
+    const { RemoteLLMChatNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
+    
+    const graphBuilder = new SequentialGraphBuilder({
+      id: 'storyteller-llm-text-only',
+      apiKey: selectedApiKey,
+      enableRemoteConfig: false,
+      nodes: [
+        new RemoteLLMChatNode({
+          provider: 'google',
+          modelName: 'gemini-2.5-flash-lite',
+          stream: true,
+          messageTemplates: [
+            {
+              role: 'system',
+              content: {
+                type: 'template',
+                template: `You are a creative and playful Christmas storyteller who writes fun, energetic stories in the style of Robert Munsch. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness.`,
+              },
+            },
+            {
+              role: 'user',
+              content: {
+                type: 'template',
+                template: `You are writing a personalized Christmas story for a child named {{childName}}.
+
+CRITICAL REQUIREMENT - THE STORY MUST BE ABOUT THIS EXACT TOPIC:
+"{{storyType}}"
+
+Story Requirements:
+- Start with a title on the first line in the format: "Title: [Story Title]"
+- The main character is {{childName}}
+- {{childName}} is the hero of the story
+- The story is specifically about: {{storyType}}
+- Include classic Christmas elements: Santa Claus, reindeer, elves, Christmas trees, presents, snow, the North Pole, Christmas magic
+- Write in the style of Robert Munsch: playful, energetic, silly, and full of fun
+- Keep it to about 200-250 words
+- The story MUST end with {{childName}} having a wonderful Christmas
+- DO NOT use onomatopoeia or ALL-CAPS
+- DO NOT end with the child falling asleep`,
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    const graph = graphBuilder.build();
 
     const { outputStream } = await graph.start({
       childName,
@@ -821,6 +866,90 @@ app.post('/api/generate-story', async (req, res) => {
   }
 });
 
+// Story image generation using Gemini
+app.post('/api/generate-story-image', async (req, res) => {
+  console.log('\n🎨 STORY IMAGE GENERATION');
+  
+  try {
+    const { storyText, childName, storyType } = req.body;
+
+    if (!storyText || !childName) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: storyText and childName' 
+      });
+    }
+
+    if (!process.env.GOOGLE_API_KEY) {
+      return res.status(500).json({ 
+        error: 'GOOGLE_API_KEY not set' 
+      });
+    }
+
+    const imagePrompt = `Create a beautiful, colorful illustration for a children's Christmas story.
+
+The story is about a child named ${childName} and involves: ${storyType || 'Christmas magic'}.
+
+Story excerpt: ${storyText.substring(0, 300)}
+
+Style requirements:
+- Cheerful, colorful, child-friendly illustration style
+- Christmas theme with festive elements (snow, presents, decorations, etc.)
+- Square 1:1 aspect ratio
+- CRITICAL: Do NOT show any people, faces, or human figures - only show festive objects, landscapes, and decorations
+- Whimsical, magical atmosphere`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: imagePrompt }] }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Gemini API error:', errorText);
+      return res.status(200).json({ imageUrl: null, error: 'Image generation unavailable' });
+    }
+
+    const data = await response.json() as { 
+      candidates?: Array<{ 
+        content?: { 
+          parts?: Array<{ 
+            inlineData?: { data: string; mimeType?: string } 
+          }> 
+        } 
+      }> 
+    };
+    
+    let imageUrl: string | null = null;
+    
+    if (data.candidates?.[0]?.content?.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData?.data) {
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+          break;
+        }
+      }
+    }
+
+    if (imageUrl) {
+      console.log('✅ Generated story image');
+    } else {
+      console.warn('⚠️ No image data in response');
+    }
+    
+    return res.status(200).json({ imageUrl });
+  } catch (error: any) {
+    console.error('❌ Error generating story image:', error);
+    return res.status(200).json({ imageUrl: null, error: error.message });
+  }
+});
+
 // Start server
 server.listen(WS_APP_PORT, async () => {
   try {
@@ -835,6 +964,7 @@ server.listen(WS_APP_PORT, async () => {
   console.log(`   POST /load - Create session`);
   console.log(`   POST /unload - End session`);
   console.log(`   POST /api/generate-story`);
+  console.log(`   POST /api/generate-story-image`);
   console.log(`   POST /api/generate-greeting-card-message`);
   console.log(`   POST /api/generate-greeting-card-image`);
   console.log(`   POST /api/clone-voice`);
