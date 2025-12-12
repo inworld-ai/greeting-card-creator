@@ -287,15 +287,22 @@ Guidelines:
         // Elf finished speaking - allow user to speak again
         setIsProcessing(false)
         
-        // Auto-enable mic AFTER elf finishes speaking (not during)
-        if (!autoMicEnabledRef.current && voiceSessionRef.current) {
-          autoMicEnabledRef.current = true
-          try {
-            await voiceSessionRef.current.startRecording()
+        // Ensure mic is enabled after EVERY interaction, not just the first one
+        // This makes the conversation more resilient to timing issues
+        if (voiceSessionRef.current && !generationStartedRef.current) {
+          if (!voiceSessionRef.current.isRecordingActive()) {
+            try {
+              await voiceSessionRef.current.startRecording()
+              setIsRecording(true)
+              console.log('🎤 Mic enabled after interaction ended')
+            } catch (err: any) {
+              console.error('Failed to enable mic:', err)
+            }
+          } else if (!autoMicEnabledRef.current) {
+            // First time - just mark as auto-enabled
+            autoMicEnabledRef.current = true
             setIsRecording(true)
-            console.log('🎤 Mic auto-enabled after elf finished speaking')
-          } catch (err: any) {
-            console.error('Failed to auto-enable mic:', err)
+            console.log('🎤 Mic already active after elf finished speaking')
           }
         }
       },
