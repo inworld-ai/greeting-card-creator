@@ -441,7 +441,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       console.log(`🟡 Preloading ${storyChunks.length} audio chunks in background...`)
 
       // Add title to the first chunk
-      const firstChunkWithTitle = title ? `${title}. ${storyChunks[0]}` : storyChunks[0]
+      // For greeting cards, prepend [happy] emotion tag to influence voice tone (won't be verbalized)
+      const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
+      const firstChunkWithTitle = emotionPrefix + (title ? `${title}. ${storyChunks[0]}` : storyChunks[0])
       
       // Generate first chunk audio
       const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
@@ -592,7 +594,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       console.log(`🟡 Splitting story into ${storyChunks.length} chunks (first: ${storyChunks[0]?.split(/\s+/).length || 0} words) for ultra-fast TTS start`)
 
       // Add title to the first chunk for TTS (if title exists)
-      const firstChunkWithTitle = title ? `${title}. ${storyChunks[0]}` : storyChunks[0]
+      // For greeting cards, prepend [happy] emotion tag to influence voice tone (won't be verbalized)
+      const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
+      const firstChunkWithTitle = emotionPrefix + (title ? `${title}. ${storyChunks[0]}` : storyChunks[0])
       console.log(`🟡 Generating TTS for first chunk (${firstChunkWithTitle.length} chars, ~${firstChunkWithTitle.split(/\s+/).length} words) - should start in ~1-2 seconds...`)
       
       // Start TTS on first chunk immediately (small chunk = fast generation)

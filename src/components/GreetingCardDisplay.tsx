@@ -36,8 +36,9 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
       try {
         console.log('🎵 Preloading card message audio...')
         
-        // Preload main message audio
-        const audio = await synthesizeSpeech(message, {
+        // Preload main message audio with [happy] emotion tag for TTS
+        // The tag influences voice tone but won't be verbalized
+        const audio = await synthesizeSpeech('[happy] ' + message, {
           voiceId: 'Craig'
         })
         preloadedAudioRef.current = audio
@@ -91,7 +92,8 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
         audio = preloadedAudioRef.current
       } else {
         console.log('🎵 Generating card message audio on-demand...')
-        audio = await synthesizeSpeech(message, {
+        // Add [happy] emotion tag for TTS - influences voice tone but won't be verbalized
+        audio = await synthesizeSpeech('[happy] ' + message, {
           voiceId: 'Craig'
         })
       }
