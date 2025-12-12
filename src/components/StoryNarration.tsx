@@ -106,6 +106,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null) // Preloaded audio ready to play
   const isPreloadingRef = useRef<boolean>(false) // Track if we're currently preloading
   const preloadedChunksRef = useRef<HTMLAudioElement[]>([]) // All preloaded audio chunks
+  const [isAudioPreloaded, setIsAudioPreloaded] = useState(false) // Track if audio is fully ready to play
 
   useEffect(() => {
     return () => {
@@ -421,14 +422,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
     
     // Don't preload if we already have audio ready
-    if (preloadedAudioRef.current) {
-      console.log('🎵 Audio already preloaded, skipping')
+    if (preloadedAudioRef.current && isAudioPreloaded) {
+      console.log('🎵 Audio already preloaded and ready, skipping')
       return
     }
     
     console.log('🎵 Starting audio preload in background...')
     isPreloadingRef.current = true
     setIsGeneratingAudio(true)
+    setIsAudioPreloaded(false)
 
     try {
       // Extract title for TTS
@@ -459,6 +461,29 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       allAudioElementsRef.current.add(firstAudio)
       preloadedChunksRef.current.push(firstAudio)
       
+      // Wait for first audio to be fully buffered and ready to play
+      await new Promise<void>((resolve) => {
+        if (firstAudio.readyState >= 4) { // HAVE_ENOUGH_DATA
+          console.log('🟡 First audio chunk already buffered and ready')
+          resolve()
+        } else {
+          console.log('🟡 Waiting for first audio chunk to buffer...')
+          firstAudio.addEventListener('canplaythrough', () => {
+            console.log('🟡 First audio chunk buffered and ready to play!')
+            resolve()
+          }, { once: true })
+          // Also listen for loadeddata as a fallback
+          firstAudio.addEventListener('loadeddata', () => {
+            if (firstAudio.readyState >= 3) {
+              console.log('🟡 First audio chunk loaded (fallback)')
+              resolve()
+            }
+          }, { once: true })
+          // Trigger loading if not already started
+          firstAudio.load()
+        }
+      })
+      
       // Generate remaining chunks in parallel
       const remainingChunks = storyChunks.slice(1)
       if (remainingChunks.length > 0) {
@@ -477,21 +502,37 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
         
         const audioChunks = await Promise.all(audioPromises)
-        audioChunks.forEach(audio => {
-          allAudioElementsRef.current.add(audio)
-          preloadedChunksRef.current.push(audio)
-        })
         
-        console.log(`✅ All ${audioChunks.length + 1} audio chunks preloaded and ready!`)
+        // Buffer all audio chunks for instant playback
+        await Promise.all(audioChunks.map((audio, index) => {
+          return new Promise<void>((resolve) => {
+            allAudioElementsRef.current.add(audio)
+            preloadedChunksRef.current.push(audio)
+            
+            if (audio.readyState >= 4) {
+              resolve()
+            } else {
+              audio.addEventListener('canplaythrough', () => resolve(), { once: true })
+              audio.addEventListener('loadeddata', () => {
+                if (audio.readyState >= 3) resolve()
+              }, { once: true })
+              audio.load()
+            }
+          })
+        }))
+        
+        console.log(`✅ All ${audioChunks.length + 1} audio chunks preloaded and buffered!`)
       }
       
       setIsGeneratingAudio(false)
+      setIsAudioPreloaded(true) // Mark audio as fully ready
       isPreloadingRef.current = false
-      console.log('✅ Audio preload complete - ready to play instantly when card opens')
+      console.log('✅ Audio preload complete - READY FOR INSTANT PLAYBACK!')
       
     } catch (err: any) {
       console.error('Error preloading audio:', err)
       setIsGeneratingAudio(false)
+      setIsAudioPreloaded(false)
       isPreloadingRef.current = false
       // Don't set error - preload failure shouldn't block the user
     }
@@ -1403,9 +1444,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           // Handler for when user clicks to open the card (starts audio playback)
           const handleCardOpen = async () => {
             console.log('🎵 Card opened - starting narration...')
-            // Use preloaded audio if available, otherwise generate and play
-            if (preloadedAudioRef.current && preloadedChunksRef.current.length > 0) {
-              console.log('🎵 Using preloaded audio - instant playback!')
+            console.log(`🎵 Audio preload status: preloaded=${!!preloadedAudioRef.current}, ready=${isAudioPreloaded}, chunks=${preloadedChunksRef.current.length}`)
+            
+            // Use preloaded audio if available and ready
+            if (preloadedAudioRef.current && isAudioPreloaded && preloadedChunksRef.current.length > 0) {
+              console.log('🎵 Using preloaded audio - INSTANT playback!')
               
               // Set up the audio refs and chain all preloaded chunks
               audioRef.current = preloadedAudioRef.current
@@ -1435,14 +1478,17 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 isNarrationInProgressRef.current = false
               }
               
-              // Start playing the first chunk
+              // Start playing the first chunk IMMEDIATELY
               try {
-                await preloadedAudioRef.current.play()
+                // Play should be instant since audio is already buffered
+                const playPromise = preloadedAudioRef.current.play()
                 setHasStartedNarration(true)
                 setIsAudioPlaying(true)
                 isNarrationInProgressRef.current = true
                 startPollingForAudioEnd()
-                console.log('🎵 Preloaded audio started playing!')
+                
+                await playPromise
+                console.log('🎵 Preloaded audio playing!')
               } catch (err: any) {
                 console.error('Error playing preloaded audio:', err)
                 if (err.name === 'NotAllowedError') {
@@ -1452,9 +1498,35 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   await handleStartNarration(storyText)
                 }
               }
+            } else if (preloadedAudioRef.current && !isAudioPreloaded) {
+              // Audio is still loading - wait briefly then play
+              console.log('🎵 Audio still buffering, waiting...')
+              setIsGeneratingAudio(true)
+              
+              // Wait for first audio to be ready (max 3 seconds)
+              const timeout = setTimeout(() => {
+                console.log('🎵 Timeout waiting for audio, generating fresh...')
+                handleStartNarration(storyText)
+              }, 3000)
+              
+              preloadedAudioRef.current.addEventListener('canplaythrough', async () => {
+                clearTimeout(timeout)
+                setIsGeneratingAudio(false)
+                console.log('🎵 Audio ready now, playing...')
+                try {
+                  await preloadedAudioRef.current?.play()
+                  setHasStartedNarration(true)
+                  setIsAudioPlaying(true)
+                  isNarrationInProgressRef.current = true
+                  startPollingForAudioEnd()
+                } catch (err) {
+                  console.error('Error playing audio:', err)
+                  await handleStartNarration(storyText)
+                }
+              }, { once: true })
             } else {
               // No preloaded audio, generate and play
-              console.log('🎵 No preloaded audio, generating now...')
+              console.log('🎵 No preloaded audio available, generating now...')
               await handleStartNarration(storyText)
             }
           }
@@ -1466,6 +1538,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               content={fullStoryText}
               childName={childName}
               onCardOpen={experienceType === 'story' ? handleCardOpen : undefined}
+              isAudioReady={experienceType === 'story' ? isAudioPreloaded : undefined}
+              isAudioLoading={experienceType === 'story' ? isGeneratingAudio : undefined}
             />
           )
         } else {
