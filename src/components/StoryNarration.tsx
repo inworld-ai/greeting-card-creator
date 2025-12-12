@@ -504,7 +504,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         const audioChunks = await Promise.all(audioPromises)
         
         // Buffer all audio chunks for instant playback
-        await Promise.all(audioChunks.map((audio, index) => {
+        await Promise.all(audioChunks.map((audio) => {
           return new Promise<void>((resolve) => {
             allAudioElementsRef.current.add(audio)
             preloadedChunksRef.current.push(audio)
