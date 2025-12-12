@@ -288,22 +288,15 @@ Guidelines:
         // Elf finished speaking - allow user to speak again
         setIsProcessing(false)
         
-        // Ensure mic is enabled after EVERY interaction, not just the first one
-        // This makes the conversation more resilient to timing issues
+        // Recording now starts immediately when session connects,
+        // so we just need to update the UI state
         if (voiceSessionRef.current && !generationStartedRef.current) {
-          if (!voiceSessionRef.current.isRecordingActive()) {
-            try {
-              await voiceSessionRef.current.startRecording()
-              setIsRecording(true)
-              console.log('🎤 Mic enabled after interaction ended')
-            } catch (err: any) {
-              console.error('Failed to enable mic:', err)
-            }
-          } else if (!autoMicEnabledRef.current) {
-            // First time - just mark as auto-enabled
-            autoMicEnabledRef.current = true
+          if (voiceSessionRef.current.isRecordingActive()) {
             setIsRecording(true)
-            console.log('🎤 Mic already active after elf finished speaking')
+            if (!autoMicEnabledRef.current) {
+              autoMicEnabledRef.current = true
+              console.log('🎤 Mic active (started on session connect)')
+            }
           }
         }
       },
@@ -367,9 +360,9 @@ Guidelines:
       await session.start()
       setHasStarted(true)
       setIsProcessing(true) // Set to true - elf is speaking first
+      setIsRecording(true)  // Recording starts immediately on connect
       
-      // Mic will auto-enable after elf finishes speaking (in onInteractionEnd)
-      console.log('🎤 Waiting for elf to finish speaking before enabling mic...')
+      console.log('🎤 Session started - mic recording immediately to keep audio stream alive')
     } catch (err: any) {
       console.error('Failed to start voice session:', err)
       setError(err.message || 'Failed to connect')
