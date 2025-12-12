@@ -205,10 +205,10 @@ After the user answers #2, respond with EXACTLY this one sentence and nothing el
 
 STRICT RULES:
 - Ask ONLY those 2 questions; no follow-ups
-- Max 1 sentence per response
+- Max 2 sentences per response
 - Be warm and enthusiastic but concise
 - If user says "I don't know" for the anecdote, respond: "No worries! Just share one little thing you love about them - anything at all!"
-- If user goes off-topic, redirect warmly with: "Ha! Love the energy, but let's get back to making this card extra special — [repeat the current question in a cheerful way]"`;
+- If user shares something off-topic, briefly acknowledge it warmly (1 sentence), then redirect to the current question in a cheerful way`;
     }
 
     let basePrompt = agent.systemPrompt?.replace('{userName}', userName) || '';
