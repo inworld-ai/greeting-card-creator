@@ -45,7 +45,7 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
         console.log('✅ Card message audio preloaded and ready!')
 
         // Also preload the follow-up question
-        const question = 'Want to customize this Christmas card with your own voice? Tap the Add Narration button.'
+        const question = 'Want to customize this Christmas card with your own voice? Tap the Add Custom Narrator button.'
         const followUpAudio = await synthesizeSpeech(question, {
           voiceId: 'christmas_story_generator__female_elf_narrator'
         })
@@ -110,7 +110,7 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
             console.log('🎵 Playing preloaded follow-up audio...')
             qAudio = preloadedFollowUpRef.current
           } else {
-            const question = 'Want to customize this Christmas card with your own voice? Tap the Add Narration button.'
+            const question = 'Want to customize this Christmas card with your own voice? Tap the Add Custom Narrator button.'
             qAudio = await synthesizeSpeech(question, {
               voiceId: 'christmas_story_generator__female_elf_narrator'
             })
@@ -225,7 +225,7 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
           onClick={onAddNarration}
           style={{ fontSize: '1.2rem', padding: '12px 24px' }}
         >
-          Add Narration →
+          Add Custom Narrator →
         </button>
         <button
           className="btn btn-secondary"
