@@ -40,6 +40,41 @@ export class MessageHandler {
         this.createNewInteraction('Starting a new interaction from text input');
         const textInteractionId = this.currentInteractionId;
 
+        // Handle [START] trigger specially - bypass LLM and use fixed greeting
+        const isStartTrigger = message.text?.trim().toLowerCase() === '[start]';
+        if (isStartTrigger) {
+          console.log('📢 [START] trigger received - generating initial greeting');
+          const connection = this.inworldApp.connections[sessionId];
+          if (connection) {
+            const experienceType = connection.state.experienceType || 'greeting-card';
+            const greetingText = this.inworldApp.getInitialGreeting(experienceType);
+            
+            // Add greeting as assistant message to conversation history
+            connection.state.messages.push({
+              role: 'assistant',
+              content: greetingText,
+              id: textInteractionId,
+            });
+            
+            // Use the greeting text directly instead of [START]
+            const textInput: TextInput = {
+              text: greetingText,
+              interactionId: textInteractionId,
+              sessionId,
+            };
+            
+            // Execute TTS-only graph for the greeting
+            this.addToQueue(() =>
+              this.executeGreeting({
+                sessionId,
+                greetingText,
+                interactionId: textInteractionId,
+              }),
+            );
+            break;
+          }
+        }
+
         const textInput: TextInput = {
           text: message.text,
           interactionId: textInteractionId,
@@ -103,6 +138,99 @@ export class MessageHandler {
     });
 
     await this.handleResponse(outputStream, interactionId, connection, sessionId);
+    this.send(EventFactory.interactionEnd(interactionId));
+  }
+
+  private async executeGreeting({
+    sessionId,
+    greetingText,
+    interactionId,
+  }: {
+    sessionId: string;
+    greetingText: string;
+    interactionId: string;
+  }) {
+    const connection = this.inworldApp.connections[sessionId];
+    if (!connection) {
+      throw new Error(`Failed to get connection for sessionId:${sessionId}`);
+    }
+
+    console.log(`📢 Generating TTS for greeting: "${greetingText}"`);
+
+    try {
+      // Import TTS components dynamically
+      const { RemoteTTSNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
+      
+      // Get the voice ID from the connection state
+      const voiceId = connection.state.voiceId || 'christmas_story_generator__female_elf_narrator';
+      
+      const graphBuilder = new SequentialGraphBuilder({
+        id: `greeting-tts-${Date.now()}`,
+        apiKey: process.env.INWORLD_API_KEY,
+        enableRemoteConfig: false,
+        nodes: [
+          new RemoteTTSNode({
+            speakerId: voiceId,
+            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1',
+            sampleRate: 24000,
+            temperature: 0.8,
+          }),
+        ],
+      });
+
+      const graph = graphBuilder.build();
+      const { outputStream } = await graph.start(greetingText);
+
+      // Send text packet first
+      const textPacket = EventFactory.text(greetingText, interactionId, {
+        isAgent: true,
+        name: connection.state.agent?.id || 'elf',
+      });
+      this.send(textPacket);
+
+      // Process TTS output
+      for await (const result of outputStream) {
+        await result.processResponse({
+          TTSOutputStream: async (ttsStream: any) => {
+            for await (const chunk of ttsStream) {
+              if (!chunk.audio?.data) continue;
+
+              let audioBuffer: Buffer;
+              if (Array.isArray(chunk.audio.data)) {
+                audioBuffer = Buffer.from(chunk.audio.data);
+              } else if (typeof chunk.audio.data === 'string') {
+                audioBuffer = Buffer.from(chunk.audio.data, 'base64');
+              } else if (Buffer.isBuffer(chunk.audio.data)) {
+                audioBuffer = chunk.audio.data;
+              } else {
+                continue;
+              }
+
+              if (audioBuffer.byteLength === 0) continue;
+
+              this.send(
+                EventFactory.audio(
+                  audioBuffer.toString('base64'),
+                  interactionId,
+                  textPacket.packetId.utteranceId,
+                ),
+              );
+            }
+          },
+          default: () => {},
+        });
+      }
+
+      console.log(`✅ Greeting TTS complete for session ${sessionId}`);
+    } catch (error) {
+      console.error(`❌ Error generating greeting TTS:`, error);
+      // Still send the text even if TTS fails
+      this.send(EventFactory.text(greetingText, interactionId, {
+        isAgent: true,
+        name: connection.state.agent?.id || 'elf',
+      }));
+    }
+
     this.send(EventFactory.interactionEnd(interactionId));
   }
 
