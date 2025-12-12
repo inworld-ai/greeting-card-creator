@@ -5,7 +5,7 @@
 }
 
 .story-content-direct {
-  background: #fff;
+  background: #faf7f5;
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -320,7 +320,7 @@
   font-size: 0.9rem;
   border: 2px solid #228b22;
   border-radius: 4px;
-  background: white;
+  background: #faf7f5;
   color: #0f5132;
   font-family: 'Crimson Text', serif;
   cursor: text;

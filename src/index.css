@@ -1,5 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500;600&display=swap');
 
+/* Custom FeatureDeck font */
+@font-face {
+  font-family: 'FeatureDeck';
+  src: url('/fonts/FeatureDeck-NormalRegular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,10 +16,10 @@
 }
 
 body {
-  font-family: 'Lora', 'Georgia', serif;
+  font-family: 'FeatureDeck', 'Lora', 'Georgia', serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #ffffff;
+  background: #faf7f5;
   min-height: 100vh;
   display: flex;
   justify-content: center;

@@ -42,7 +42,7 @@
 }
 
 .greeting-card-inside {
-  background: #fff;
+  background: #faf7f5;
   transform: rotateY(180deg);
   padding: 2rem;
   display: flex;
