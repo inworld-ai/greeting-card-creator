@@ -35,36 +35,36 @@ const STEPS = {
   ]
 }
 
-// Smart detection: check if conversation contains recipient info AND funny story
-function hasCollectedGreetingCardInfo(messages: ConversationMessage[]): { hasRecipient: boolean; hasStory: boolean } {
+// Smart detection: check if the elf has confirmed both pieces of info are collected
+function hasCollectedGreetingCardInfo(messages: ConversationMessage[]): { hasRecipient: boolean; hasStory: boolean; isComplete: boolean } {
   const userMessages = messages.filter(m => m.role === 'user')
   const assistantMessages = messages.filter(m => m.role === 'assistant')
   
-  // We need at least 2 user messages
-  if (userMessages.length < 2) {
-    return { hasRecipient: userMessages.length >= 1, hasStory: false }
+  // Check if elf has said the magic trigger phrase "CARD_READY:"
+  const allAgentText = assistantMessages.map(m => m.content).join(' ')
+  const isComplete = allAgentText.includes('CARD_READY:')
+  
+  if (isComplete) {
+    return { hasRecipient: true, hasStory: true, isComplete: true }
   }
   
-  // Check the agent's questions to understand what was asked
-  const allAgentText = assistantMessages.map(m => m.content.toLowerCase()).join(' ')
+  // For progress tracking (not completion detection):
+  // Estimate progress based on conversation flow
+  const askedAboutAnecdote = allAgentText.toLowerCase().includes('funny') || 
+                             allAgentText.toLowerCase().includes('anecdote') || 
+                             allAgentText.toLowerCase().includes('story') ||
+                             allAgentText.toLowerCase().includes('sweet') ||
+                             allAgentText.toLowerCase().includes('special') ||
+                             allAgentText.toLowerCase().includes('memory') ||
+                             allAgentText.toLowerCase().includes('what makes them')
   
-  // First user response after agent asks about recipient
-  const hasRecipient = userMessages.length >= 1 && userMessages[0].content.length > 2
+  // We have recipient info if elf moved on to asking about anecdote
+  const hasRecipient = askedAboutAnecdote && userMessages.length >= 1
   
-  // Second user response should be the funny story/anecdote
-  // Verify agent asked about story/anecdote/funny thing before user's second message
-  const askedAboutStory = allAgentText.includes('funny') || 
-                          allAgentText.includes('anecdote') || 
-                          allAgentText.includes('story') ||
-                          allAgentText.includes('sweet') ||
-                          allAgentText.includes('special') ||
-                          allAgentText.includes('love about')
+  // Story progress - elf has asked about it and user has responded substantively
+  const hasStory = false // Only true when isComplete
   
-  const hasStory = userMessages.length >= 2 && 
-                   userMessages[1].content.length > 15 && // Story should be substantive (more than just 2-3 words)
-                   askedAboutStory
-  
-  return { hasRecipient, hasStory }
+  return { hasRecipient, hasStory, isComplete }
 }
 
 export default function VoiceConversation({ experienceType, userName = 'Friend', onSubmit, onBack }: VoiceConversationProps) {
@@ -211,6 +211,7 @@ Guidelines:
           // Check for trigger phrase - agent is done collecting info
           const fullText = fullAgentTextRef.current.toLowerCase()
           if (!triggerDetectedRef.current && (
+              fullText.includes('card_ready:') ||
               fullText.includes('creating your christmas card') ||
               fullText.includes('calling my buddy elves') ||
               fullText.includes('let me generate a christmas card for you') ||
@@ -218,7 +219,7 @@ Guidelines:
               fullText.includes('generate your card') ||
               fullText.includes('make your card'))) {
             triggerDetectedRef.current = true
-            console.log('🎄 Trigger phrase detected - starting generation')
+            console.log('🎄 Trigger phrase detected (CARD_READY) - starting generation')
             setCurrentStep(2) // Generating
             setIsGenerating(true)
             
@@ -319,16 +320,16 @@ Guidelines:
           // Check if we've collected all info (user finished speaking)
           setConversationHistory(prev => {
             if (experienceType === 'greeting-card') {
-              const { hasRecipient, hasStory } = hasCollectedGreetingCardInfo(prev)
+              const { hasRecipient, isComplete } = hasCollectedGreetingCardInfo(prev)
               
               // Update step based on what we've collected
-              if (hasRecipient && !hasStory) {
+              if (hasRecipient && !isComplete) {
                 setCurrentStep(1) // Got name, waiting for story
               }
               
-              // If we have both pieces AND haven't already started generation
-              if (hasRecipient && hasStory && !generationStartedRef.current) {
-                console.log('🎄 User finished speaking - both pieces collected, starting generation')
+              // If elf confirmed both pieces AND hasn't already started generation
+              if (isComplete && !generationStartedRef.current) {
+                console.log('🎄 Elf confirmed CARD_READY - starting generation')
                 console.log('📝 Final conversation:', prev.map(m => `${m.role}: ${m.content}`).join('\n'))
                 generationStartedRef.current = true
                 triggerDetectedRef.current = true
