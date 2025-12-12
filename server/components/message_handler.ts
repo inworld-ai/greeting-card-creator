@@ -344,45 +344,28 @@ export class MessageHandler {
       let currentGraphInteractionId: string | undefined = undefined;
       let resultCount = 0;
 
+      // SINGLE-TURN: Process results until graph completes (no looping)
       for await (const result of outputStream) {
         resultCount++;
         console.log(
-          `[Session ${sessionId}] Processing audio interaction ${resultCount} from stream`,
+          `[Session ${sessionId}] Processing result ${resultCount} from single-turn graph`,
         );
 
         // Check if result contains an error
         if (result && result.isGraphError && result.isGraphError()) {
           const errorData = result.data;
           console.error(
-            `[Session ${sessionId}] Received error result from graph:`,
+            `[Session ${sessionId}] Graph error:`,
             errorData?.message || errorData,
             'Code:',
             errorData?.code,
           );
-
-          const isTimeout =
-            errorData?.code === 4 || errorData?.message?.includes('timed out');
-          const isGraphNotRunning =
-            errorData?.code === 9 || errorData?.message?.includes('Graph executor is not running');
 
           const effectiveInteractionId = currentGraphInteractionId || v4();
           const errorObj = new Error(
             errorData?.message || 'Graph processing error',
           );
           this.send(EventFactory.error(errorObj, effectiveInteractionId));
-
-          if (isTimeout || isGraphNotRunning) {
-            console.error(
-              `[Session ${sessionId}] ⚠️ ${isTimeout ? 'TIMEOUT' : 'GRAPH NOT RUNNING'} DETECTED - Closing audio session and clearing graph`,
-            );
-            // Clear the session's graph
-            this.inworldApp.clearGraphCache(sessionId);
-            if (audioStreamManager) {
-              audioStreamManager.end();
-            }
-            outputStream.abort();
-            break;
-          }
           continue;
         }
 
@@ -400,12 +383,28 @@ export class MessageHandler {
       }
 
       console.log(
-        `[Session ${sessionId}] Audio stream processing complete - processed ${resultCount} result(s)`,
+        `[Session ${sessionId}] ✅ Single-turn graph complete - processed ${resultCount} result(s)`,
       );
+      
+      // SINGLE-TURN: Signal to client that this turn is complete
+      // Client should stop recording and can start a new turn when ready
+      this.send(EventFactory.turnComplete(sessionId));
+      
     } catch (error) {
-      console.error('Error processing audio stream interactions:', error);
+      console.error('Error processing audio stream:', error);
       throw error;
     } finally {
+      // SINGLE-TURN: Clean up after each turn
+      console.log(`[Session ${sessionId}] 🧹 Cleaning up after single turn`);
+      
+      // End the audio stream
+      if (audioStreamManager && !audioStreamManager.isEnded()) {
+        audioStreamManager.end();
+      }
+      
+      // Destroy the graph so a fresh one is created for the next turn
+      this.inworldApp.clearGraphCache(sessionId);
+      
       connection.audioStreamManager = undefined;
       connection.currentAudioGraphExecution = undefined;
     }

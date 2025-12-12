@@ -176,6 +176,8 @@ export class InworldGraphWrapper {
         id: `speech-complete-notifier-node${postfix}`,
       });
 
+      // SINGLE-TURN GRAPH: No loops - processes ONE user turn then completes
+      // For multi-turn conversations, a NEW graph is created per turn with conversation history
       graphBuilder
         .addNode(audioInputNode)
         .addNode(assemblyAISTTNode)
@@ -183,13 +185,7 @@ export class InworldGraphWrapper {
         .addNode(speechCompleteNotifierNode)
         .addNode(interactionQueueNode)
         .addEdge(audioInputNode, assemblyAISTTNode)
-        .addEdge(assemblyAISTTNode, assemblyAISTTNode, {
-          condition: async (input: any) => {
-            return input?.stream_exhausted !== true;
-          },
-          loop: true,
-          optional: true,
-        })
+        // STT processes audio until ONE turn is detected, then continues (no loop back)
         .addEdge(assemblyAISTTNode, speechCompleteNotifierNode, {
           condition: async (input: any) => {
             return input?.interaction_complete === true;
@@ -206,10 +202,7 @@ export class InworldGraphWrapper {
             return !!(input.text && input.text.trim().length > 0);
           },
         })
-        .addEdge(stateUpdateNode, interactionQueueNode, {
-          loop: true,
-          optional: true,
-        })
+        // NO StateUpdate → InteractionQueue loop - graph completes after TTS
         .setStartNode(audioInputNode);
     } else {
       graphBuilder.setStartNode(textInputNode);

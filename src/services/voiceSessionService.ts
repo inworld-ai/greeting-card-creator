@@ -34,6 +34,7 @@ export interface VoiceSessionConfig {
   onSpeechComplete?: (interactionId: string) => void;
   onGreetingStart?: () => void;
   onGreetingEnd?: () => void;
+  onTurnComplete?: () => void; // Called when server finishes processing a turn
 }
 
 export class VoiceSession {
@@ -91,19 +92,9 @@ export class VoiceSession {
         return;
       }
 
-      this.ws.onopen = async () => {
+      this.ws.onopen = () => {
         console.log('✅ Voice session connected');
         this.audioPlayer.prepare();
-        
-        // Start recording IMMEDIATELY to keep audio stream flowing
-        // This prevents timeout issues when the server's STT node waits for audio
-        try {
-          await this.startRecording();
-          console.log('🎙️ Recording started immediately on session connect');
-        } catch (err) {
-          console.warn('⚠️ Failed to start recording immediately:', err);
-          // Continue anyway - recording can be started later
-        }
         
         // Send greeting trigger to make agent speak first
         this.ws!.send(JSON.stringify({
@@ -197,7 +188,31 @@ export class VoiceSession {
         console.log('🎄 Greeting ended - mic should auto-enable');
         this.config.onGreetingEnd?.();
         break;
+
+      case 'TURN_COMPLETE':
+        console.log('🔄 Turn complete - ready for next turn');
+        // Clean up current audio session so a fresh graph can be created for next turn
+        this.cleanupAudioSession();
+        this.config.onTurnComplete?.();
+        break;
     }
+  }
+
+  /**
+   * Clean up audio session without sending audioSessionEnd
+   * Used between turns to prepare for a fresh graph
+   */
+  private cleanupAudioSession(): void {
+    if (this.audioInterval) {
+      clearInterval(this.audioInterval);
+      this.audioInterval = null;
+    }
+    
+    this.mediaStream?.getTracks().forEach(track => track.stop());
+    this.audioWorkletNode?.disconnect();
+    this.silentGainNode?.disconnect();
+    this.silentGainNode = null;
+    this.isRecording = false;
   }
 
   async startRecording(): Promise<void> {
@@ -249,42 +264,28 @@ export class VoiceSession {
       this.silentGainNode.connect(this.audioContext.destination);
 
       // Send audio chunks every 100ms
-      // IMPORTANT: Always send SOMETHING to keep the server's audio stream alive
-      // This prevents DEADLINE_EXCEEDED timeouts when STT is waiting for audio
       let chunksSent = 0;
-      const SILENT_CHUNK_SIZE = 1600; // 100ms at 16kHz
-      
       this.audioInterval = window.setInterval(() => {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          let dataToSend: Float32Array[];
+        if (audioBuffer.length > 0 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+          // Calculate total samples and check audio levels
+          const totalSamples = audioBuffer.reduce((sum, arr) => sum + arr.length, 0);
           
-          if (audioBuffer.length > 0) {
-            // We have real audio data
-            dataToSend = audioBuffer;
-            
-            // Check audio level (RMS) of first buffer to detect if mic is actually capturing
-            if (chunksSent === 0) {
-              const samples = audioBuffer[0];
-              let sumSquares = 0;
-              for (let i = 0; i < samples.length; i++) {
-                sumSquares += samples[i] * samples[i];
-              }
-              const rms = Math.sqrt(sumSquares / samples.length);
-              const totalSamples = audioBuffer.reduce((sum, arr) => sum + arr.length, 0);
-              console.log(`🎙️ First audio chunk - RMS level: ${rms.toFixed(4)}, samples: ${totalSamples}`);
+          // Check audio level (RMS) of first buffer to detect if mic is actually capturing
+          if (chunksSent === 0 && audioBuffer.length > 0) {
+            const samples = audioBuffer[0];
+            let sumSquares = 0;
+            for (let i = 0; i < samples.length; i++) {
+              sumSquares += samples[i] * samples[i];
             }
-            
-            audioBuffer = [];
-          } else {
-            // No audio data - send silent chunk to keep stream alive
-            // This is crucial for preventing timeout when user is listening to TTS
-            dataToSend = [new Float32Array(SILENT_CHUNK_SIZE)]; // All zeros = silence
+            const rms = Math.sqrt(sumSquares / samples.length);
+            console.log(`🎙️ First audio chunk - RMS level: ${rms.toFixed(4)}, samples: ${totalSamples}`);
           }
           
           this.ws.send(JSON.stringify({
             type: 'audio',
-            audio: dataToSend,
+            audio: audioBuffer,
           }));
+          audioBuffer = [];
           chunksSent++;
         }
       }, 100);

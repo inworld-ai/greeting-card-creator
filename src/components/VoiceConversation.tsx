@@ -285,18 +285,36 @@ Guidelines:
       },
       onInteractionEnd: async (interactionId) => {
         console.log('✅ Interaction ended:', interactionId)
-        // Elf finished speaking - allow user to speak again
+        // Elf finished speaking
         setIsProcessing(false)
         
-        // Recording now starts immediately when session connects,
-        // so we just need to update the UI state
-        if (voiceSessionRef.current && !generationStartedRef.current) {
-          if (voiceSessionRef.current.isRecordingActive()) {
+        // For the FIRST interaction (initial greeting), enable mic here
+        // Subsequent turns will re-enable mic via onTurnComplete
+        if (!autoMicEnabledRef.current && voiceSessionRef.current && !generationStartedRef.current) {
+          try {
+            await voiceSessionRef.current.startRecording()
             setIsRecording(true)
-            if (!autoMicEnabledRef.current) {
-              autoMicEnabledRef.current = true
-              console.log('🎤 Mic active (started on session connect)')
-            }
+            autoMicEnabledRef.current = true
+            console.log('🎤 Mic enabled after initial greeting')
+          } catch (err: any) {
+            console.error('Failed to enable mic:', err)
+          }
+        }
+      },
+      onTurnComplete: async () => {
+        console.log('🔄 Turn complete - re-enabling mic for next turn')
+        
+        // Small delay to ensure cleanup is complete
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Re-enable mic for the next turn (creates fresh graph on server)
+        if (voiceSessionRef.current && !generationStartedRef.current) {
+          try {
+            await voiceSessionRef.current.startRecording()
+            setIsRecording(true)
+            console.log('🎤 Mic re-enabled for next turn')
+          } catch (err: any) {
+            console.error('Failed to re-enable mic:', err)
           }
         }
       },
@@ -360,9 +378,9 @@ Guidelines:
       await session.start()
       setHasStarted(true)
       setIsProcessing(true) // Set to true - elf is speaking first
-      setIsRecording(true)  // Recording starts immediately on connect
       
-      console.log('🎤 Session started - mic recording immediately to keep audio stream alive')
+      // Mic will auto-enable after elf finishes speaking (in onInteractionEnd)
+      console.log('🎤 Waiting for elf to finish speaking before enabling mic...')
     } catch (err: any) {
       console.error('Failed to start voice session:', err)
       setError(err.message || 'Failed to connect')

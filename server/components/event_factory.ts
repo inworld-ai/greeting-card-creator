@@ -86,4 +86,12 @@ export class EventFactory {
       packetId: { interactionId },
     };
   }
+
+  static turnComplete(sessionId: string) {
+    return {
+      type: 'TURN_COMPLETE',
+      date: new Date(),
+      sessionId,
+    };
+  }
 }
