@@ -1,11 +1,12 @@
 {
   "name": "christmas-voice-server",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node index.ts",
-    "dev": "nodemon index.ts",
+    "start": "node --loader ts-node/esm index.ts",
+    "dev": "nodemon --exec 'node --loader ts-node/esm' index.ts",
     "build": "tsc",
     "start:prod": "node dist/index.js"
   },

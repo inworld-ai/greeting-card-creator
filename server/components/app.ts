@@ -1,7 +1,7 @@
 import { stopInworldRuntime } from '@inworld/runtime';
 import { VADFactory } from '@inworld/runtime/primitives/vad';
 import { v4 } from 'uuid';
-const { validationResult } = require('express-validator');
+import { validationResult } from 'express-validator';
 
 import { DEFAULT_VOICE_ID } from '../constants';
 import { parseEnvironmentVariables } from '../helpers';

@@ -1,10 +1,15 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 import {
   DEFAULT_LLM_MODEL_NAME,
   DEFAULT_PROVIDER,
   DEFAULT_TTS_MODEL_ID,
-} from './constants';
+} from './constants.js';
+
+// ESM equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const parseEnvironmentVariables = () => {
   if (!process.env.INWORLD_API_KEY) {

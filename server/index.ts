@@ -1,20 +1,22 @@
 import 'dotenv/config';
 
-// Import InworldError if available, otherwise use a fallback
-let InworldError: any;
-try {
-  InworldError = require('@inworld/runtime/common').InworldError;
-} catch {
-  InworldError = class extends Error { context?: any; };
-}
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
 import { parse } from 'url';
 import { RawData, WebSocketServer } from 'ws';
+import { query, body } from 'express-validator';
 
-const { query } = require('express-validator');
-import { body } from 'express-validator';
+// Import InworldError dynamically (may not be available in all environments)
+let InworldError: any = class extends Error { context?: any; };
+try {
+  const runtime = await import('@inworld/runtime/common');
+  if (runtime.InworldError) {
+    InworldError = runtime.InworldError;
+  }
+} catch {
+  // Use fallback class defined above
+}
 
 import { WS_APP_PORT } from './constants';
 import { InworldApp } from './components/app';
@@ -555,7 +557,7 @@ app.post('/api/tts', async (req, res) => {
     const selectedVoiceId = voiceId || 'christmas_story_generator__male_elf_narrator';
     console.log(`🎵 TTS - Voice: "${selectedVoiceId}", Text length: ${text.length}`);
 
-    const { RemoteTTSNode, SequentialGraphBuilder } = require('@inworld/runtime/graph');
+    const { RemoteTTSNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
 
     const graphBuilder = new SequentialGraphBuilder({
       id: `tts-${Date.now()}`,
