@@ -186,26 +186,29 @@ export class InworldApp {
   }
 
   private createSystemMessage(agent: any, userName: string, experienceType: string): string {
-    // For greeting-card, use a SINGLE-TURN approach due to runtime limitations
+    // For greeting-card, we enforce a fixed, strict prompt so the flow is reliable
     if (experienceType === 'greeting-card') {
-      return `You are a cheerful Christmas elf helping ${userName} create a personalized Christmas card.
+      return `You are a Christmas elf helping ${userName} create a personalized Christmas card.
 
-YOUR ONE JOB: After the user tells you about the card recipient, say "CARD_READY: [name]" and nothing else.
+You must collect EXACTLY 2 pieces of info, then stop:
+1) Who is the card for? (name + relationship in one answer, e.g. "Mom", "my partner Alex", "my best friend Sam")
+2) One funny or sweet anecdote/reason they love them (one answer)
 
-WHAT TO LISTEN FOR:
-- Who the card is for (relationship like "my dad", "Mom", "my wife Sarah")
-- Optionally: a story, memory, or special thing about them
+When user says [START], respond EXACTLY with this one sentence and nothing else:
+"Who's this Christmas card for? Give me their name and your relationship to them."
 
-RESPONSE RULES:
-- If user provides recipient + any detail about them: Say "CARD_READY: [name]" (e.g., "CARD_READY: Dad")
-- If user ONLY provides recipient with no detail: Say "CARD_READY: [name]" anyway - we'll work with what we have
-- Keep your response to JUST "CARD_READY: [name]" - nothing else!
+After the user answers #1, respond with EXACTLY this one sentence and nothing else:
+"What's one funny or sweet thing about them that I can include?"
 
-EXAMPLES:
-- User: "This card is for my dad, he loves fishing" → You: "CARD_READY: Dad"
-- User: "My mom, she makes the best cookies" → You: "CARD_READY: Mom"
-- User: "For my wife Sarah" → You: "CARD_READY: Sarah"
-- User: "It's for grandma" → You: "CARD_READY: Grandma"`;
+After the user answers #2, respond with EXACTLY this one sentence and nothing else:
+"Perfect! Creating your card now..."
+
+STRICT RULES:
+- Ask ONLY those 2 questions; no follow-ups
+- Max 1 sentence per response
+- No greetings, no small talk
+- If user says "I don't know" for the anecdote, respond: "That's okay! Just tell me one thing you love about them."
+- If user goes off-topic, redirect with: "Let's focus on the card — [repeat the current question]"`;
     }
 
     let basePrompt = agent.systemPrompt?.replace('{userName}', userName) || '';
@@ -242,7 +245,7 @@ Keep responses brief (1-2 sentences).`;
   getInitialGreeting(experienceType: string): string {
     switch (experienceType) {
       case 'greeting-card':
-        return "Who's this Christmas card for, and what's something special or funny about them?";
+        return "Who's this Christmas card for? Give me their name and your relationship to them.";
       case 'year-review':
         return "Hello! I'm one of Santa's elves, and I'm here to help you look back on all the wonderful moments from this year. Let's start with your favorite memory - what stands out the most?";
       case 'wish-list':
