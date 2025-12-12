@@ -1,6 +1,12 @@
 import 'dotenv/config';
 
-import { InworldError } from '@inworld/runtime/common';
+// Import InworldError if available, otherwise use a fallback
+let InworldError: any;
+try {
+  InworldError = require('@inworld/runtime/common').InworldError;
+} catch {
+  InworldError = class extends Error { context?: any; };
+}
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
@@ -707,14 +713,16 @@ function done() {
 process.on('SIGINT', done);
 process.on('SIGTERM', done);
 process.on('SIGUSR2', done);
-process.on('unhandledRejection', (err: Error) => {
-  if (err instanceof InworldError) {
+process.on('unhandledRejection', (err: any) => {
+  if (InworldError && err instanceof InworldError) {
     console.error('Inworld Error:', {
       message: err.message,
-      context: err.context,
+      context: err.context || {},
     });
+  } else if (err instanceof Error) {
+    console.error('Unhandled rejection:', err.message);
   } else {
-    console.error(err.message);
+    console.error('Unhandled rejection:', err);
   }
   process.exit(1);
 });
