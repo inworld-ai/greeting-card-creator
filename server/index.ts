@@ -871,11 +871,12 @@ app.post('/api/generate-story-image', async (req, res) => {
   console.log('\n🎨 STORY IMAGE GENERATION');
   
   try {
-    const { storyText, childName, storyType } = req.body;
+    const { storyType, childName, storyText } = req.body;
 
-    if (!storyText || !childName) {
+    // storyType and childName are required; storyText is optional
+    if (!storyType || !childName) {
       return res.status(400).json({ 
-        error: 'Missing required fields: storyText and childName' 
+        error: 'Missing required fields: storyType, childName' 
       });
     }
 
@@ -885,18 +886,20 @@ app.post('/api/generate-story-image', async (req, res) => {
       });
     }
 
-    const imagePrompt = `Create a beautiful, colorful illustration for a children's Christmas story.
+    console.log(`🎨 Child name: ${childName}`);
+    console.log(`🎨 Story type: ${storyType}`);
 
-The story is about a child named ${childName} and involves: ${storyType || 'Christmas magic'}.
-
-Story excerpt: ${storyText.substring(0, 300)}
-
-Style requirements:
-- Cheerful, colorful, child-friendly illustration style
-- Christmas theme with festive elements (snow, presents, decorations, etc.)
-- Square 1:1 aspect ratio
-- CRITICAL: Do NOT show any people, faces, or human figures - only show festive objects, landscapes, and decorations
-- Whimsical, magical atmosphere`;
+    // Build image prompt based on story type and character name
+    let imagePrompt = `Create a beautiful children's Christmas story book cover illustration. `;
+    imagePrompt += `Story theme: ${storyType}. `;
+    imagePrompt += `The illustration should be related to the story plot and theme, but do NOT include the story title as text on the cover. `;
+    imagePrompt += `Include the name "${childName}" somewhere naturally in the image (for example, on a letter, name tag, or sign), but NOT as a large title. `;
+    imagePrompt += `CRITICAL: Do NOT depict or show the main character ${childName} in the image. `;
+    imagePrompt += `It is okay to include Santa Claus, elves, reindeer, Christmas decorations, magical elements, and other story-related items, but absolutely NO depiction of the main character. `;
+    imagePrompt += `The image should be a scene related to the ${storyType} story theme, showing the setting, magical elements, and supporting characters (like Santa or elves), but never the main character. `;
+    imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `;
+    imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook. `;
+    imagePrompt += `Make it visually appealing and related to the story theme without showing any human main character.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
@@ -932,14 +935,13 @@ Style requirements:
         if (part.inlineData?.data) {
           const mimeType = part.inlineData.mimeType || 'image/png';
           imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+          console.log(`✅ Generated story image (${imageUrl.length} chars)`);
           break;
         }
       }
     }
 
-    if (imageUrl) {
-      console.log('✅ Generated story image');
-    } else {
+    if (!imageUrl) {
       console.warn('⚠️ No image data in response');
     }
     
