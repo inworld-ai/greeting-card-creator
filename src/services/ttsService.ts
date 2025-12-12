@@ -1,6 +1,47 @@
 // Backend API URL - use relative URLs in production (Vercel), localhost in development
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
 
+/**
+ * Creates a WAV header for PCM float32 audio data
+ */
+function createWavHeader(dataLength: number, sampleRate: number = 24000): ArrayBuffer {
+  const numChannels = 1
+  const bitsPerSample = 32
+  const bytesPerSample = bitsPerSample / 8
+  const blockAlign = numChannels * bytesPerSample
+  const byteRate = sampleRate * blockAlign
+  const headerSize = 44
+  const buffer = new ArrayBuffer(headerSize)
+  const view = new DataView(buffer)
+  
+  // RIFF header
+  writeString(view, 0, 'RIFF')
+  view.setUint32(4, 36 + dataLength, true)
+  writeString(view, 8, 'WAVE')
+  
+  // fmt chunk
+  writeString(view, 12, 'fmt ')
+  view.setUint32(16, 16, true) // chunk size
+  view.setUint16(20, 3, true) // audio format (3 = IEEE float)
+  view.setUint16(22, numChannels, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, byteRate, true)
+  view.setUint16(32, blockAlign, true)
+  view.setUint16(34, bitsPerSample, true)
+  
+  // data chunk
+  writeString(view, 36, 'data')
+  view.setUint32(40, dataLength, true)
+  
+  return buffer
+}
+
+function writeString(view: DataView, offset: number, string: string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i))
+  }
+}
+
 export interface TTSOptions {
   voiceId?: string
   apiKey?: string
@@ -66,16 +107,14 @@ function splitTextIntoChunks(text: string, maxLength: number = 1900): string[] {
 }
 
 /**
- * Creates an HTMLAudioElement from progressive WAV chunks
- * Receives newline-delimited JSON with base64-encoded WAV chunks
- * Chains chunks together for seamless playback with low latency
- * 
- * @param onFirstChunkReady Optional callback that fires when the first WAV chunk is ready
+ * Creates an HTMLAudioElement from PCM audio stream
+ * Receives newline-delimited JSON with base64-encoded raw PCM float32 data
+ * Accumulates all chunks and creates a single WAV file for reliable playback
  */
 async function createAudioFromWAVStream(
   response: Response,
   onFirstChunkReady?: (firstAudio: HTMLAudioElement) => void,
-  onAllChunksCreated?: (allChunks: HTMLAudioElement[]) => void
+  _onAllChunksCreated?: (allChunks: HTMLAudioElement[]) => void
 ): Promise<HTMLAudioElement> {
   const reader = response.body?.getReader()
   if (!reader) {
@@ -84,103 +123,15 @@ async function createAudioFromWAVStream(
 
   const textDecoder = new TextDecoder()
   let buffer = ''
-  const audioChunks: HTMLAudioElement[] = []
-  let firstChunkTime: number | null = null
-  let isStreamComplete = false
-
-  // Store handler references so we can remove them when re-chaining
-  const handlerMap = new Map<HTMLAudioElement, () => void>()
+  const pcmChunks: Uint8Array[] = []
+  let totalBytes = 0
   
-  // Helper to chain a chunk to the previous one
-  const chainChunk = (currentAudio: HTMLAudioElement, nextAudio: HTMLAudioElement, index: number) => {
-    // Remove any existing ended handlers to prevent conflicts
-    // First, remove the stored handler if it exists
-    const existingHandler = handlerMap.get(currentAudio)
-    if (existingHandler) {
-      currentAudio.removeEventListener('ended', existingHandler)
-      handlerMap.delete(currentAudio)
-    }
-    
-    // Clear the onended property (for handlers set via property)
-    currentAudio.onended = null
-    
-    // Create new handler
-    const handler = () => {
-      console.log(`🟡 Chunk ${index} ended, attempting to play chunk ${index + 1}...`)
-      console.log(`   Next chunk readyState: ${nextAudio.readyState}, paused: ${nextAudio.paused}, src exists: ${!!nextAudio.src}`)
-      
-      // Validate nextAudio is still valid
-      if (!nextAudio || !nextAudio.src) {
-        console.error(`❌ Chunk ${index + 1} is invalid or missing src`)
-        return
-      }
-      
-      // Function to attempt playing the next chunk
-      const tryPlayNext = () => {
-        if (nextAudio.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-          const playPromise = nextAudio.play()
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              console.log(`✅ Chunk ${index + 1} started playing successfully`)
-            }).catch(err => {
-              console.error(`❌ Error playing chunk ${index + 1}:`, err)
-              // Retry after a short delay
-              setTimeout(() => {
-                console.log(`🔄 Retrying chunk ${index + 1}...`)
-                nextAudio.play().catch(e => {
-                  console.error(`❌ Retry failed for chunk ${index + 1}:`, e)
-                })
-              }, 200)
-            })
-          } else {
-            console.log(`✅ Chunk ${index + 1} play() returned undefined (may already be playing)`)
-          }
-        } else {
-          // Wait for next chunk to be ready
-          console.log(`⏳ Chunk ${index + 1} not ready yet (readyState: ${nextAudio.readyState}), waiting...`)
-          const onCanPlay = () => {
-            nextAudio.removeEventListener('canplay', onCanPlay)
-            nextAudio.removeEventListener('loadeddata', onCanPlay)
-            nextAudio.removeEventListener('canplaythrough', onCanPlay)
-            console.log(`✅ Chunk ${index + 1} is now ready (readyState: ${nextAudio.readyState}), playing...`)
-            nextAudio.play().then(() => {
-              console.log(`✅ Chunk ${index + 1} started playing after waiting`)
-            }).catch(err => {
-              console.error(`❌ Error playing chunk ${index + 1} after waiting:`, err)
-            })
-          }
-          nextAudio.addEventListener('canplay', onCanPlay, { once: true })
-          nextAudio.addEventListener('loadeddata', onCanPlay, { once: true })
-          nextAudio.addEventListener('canplaythrough', onCanPlay, { once: true })
-          
-          // Fallback: try to play anyway after a delay
-          setTimeout(() => {
-            if (nextAudio.paused && nextAudio.readyState >= 1) {
-              console.log(`🔄 Fallback: attempting to play chunk ${index + 1} (readyState: ${nextAudio.readyState})...`)
-              nextAudio.play().catch(err => {
-                console.error(`❌ Error playing chunk ${index + 1} (fallback):`, err)
-              })
-            }
-          }, 500)
-        }
-      }
-      
-      tryPlayNext()
-    }
-    
-    // Store handler reference and add listener
-    handlerMap.set(currentAudio, handler)
-    currentAudio.addEventListener('ended', handler, { once: true })
-    console.log(`🔗 Chained chunk ${index} → ${index + 1}`)
-  }
+  console.log('🎵 Starting TTS audio stream...')
 
   // Read stream and parse newline-delimited JSON
   while (true) {
     const { value, done } = await reader.read()
-    if (done) {
-      isStreamComplete = true
-      break
-    }
+    if (done) break
     
     if (value) {
       buffer += textDecoder.decode(value, { stream: true })
@@ -197,134 +148,71 @@ async function createAudioFromWAVStream(
           
           // Check for end marker
           if (chunkData.end === true) {
-            console.log(`✅ Received end marker, total chunks: ${audioChunks.length}`)
-            isStreamComplete = true
+            console.log(`✅ TTS stream complete, total PCM data: ${totalBytes} bytes`)
             break
           }
           
-          // Decode base64 WAV data
-          const wavData = Uint8Array.from(atob(chunkData.data), c => c.charCodeAt(0))
-          
-          if (firstChunkTime === null) {
-            firstChunkTime = Date.now()
-            console.log(`⏱️ First WAV chunk received in ${Date.now()}ms`)
-          }
-          
-          // Create audio element from WAV blob
-          const blob = new Blob([wavData], { type: 'audio/wav' })
-          const url = URL.createObjectURL(blob)
-          const audio = new Audio(url)
-          
-          // Preload the audio
-          audio.preload = 'auto'
-          
-          // Wait for metadata to load
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Audio chunk metadata loading timeout'))
-            }, 5000)
-            
-            const onLoadedMetadata = () => {
-              clearTimeout(timeout)
-              audio.removeEventListener('error', onError)
-              resolve(undefined)
-            }
-            
-            const onError = () => {
-              clearTimeout(timeout)
-              reject(new Error('Failed to load audio chunk'))
-            }
-            
-            audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
-            audio.addEventListener('error', onError, { once: true })
-          })
-          
-          const chunkIndex = audioChunks.length
-          audioChunks.push(audio)
-          console.log(`🎵 Loaded WAV chunk ${chunkData.index}: ${wavData.length} bytes (${chunkData.samples} samples)`)
-          
-          // If this is the first chunk and we have a callback, notify immediately
-          // This allows chaining to start before all chunks are received
-          if (chunkIndex === 0 && onFirstChunkReady) {
-            onFirstChunkReady(audio)
-          }
-          
-          // Chain to previous chunk immediately (progressive chaining for low latency)
-          // This ensures chunks can start playing as soon as they're ready
-          if (chunkIndex > 0) {
-            chainChunk(audioChunks[chunkIndex - 1], audio, chunkIndex - 1)
-          }
-          
-          // Clean up URL when chunk ends
-          audio.addEventListener('ended', () => {
-            URL.revokeObjectURL(url)
-          }, { once: true })
+          // Decode base64 PCM data
+          const pcmData = Uint8Array.from(atob(chunkData.data), c => c.charCodeAt(0))
+          pcmChunks.push(pcmData)
+          totalBytes += pcmData.length
           
         } catch (err) {
-          console.error('Error parsing chunk:', err, 'Line:', line.substring(0, 100))
+          // Silently skip malformed chunks
         }
       }
     }
   }
 
-  if (audioChunks.length === 0) {
-    throw new Error('No audio chunks received from server')
+  if (totalBytes === 0) {
+    throw new Error('No audio data received from server')
   }
 
-  // Re-chain all chunks at the end to ensure everything is properly connected
-  // This handles cases where chunks arrived after initial chaining or if progressive chaining failed
-  console.log(`🔗 Re-chaining all ${audioChunks.length} chunks to ensure proper connection...`)
-  for (let i = 0; i < audioChunks.length - 1; i++) {
-    const currentAudio = audioChunks[i]
-    const nextAudio = audioChunks[i + 1]
-    
-    // Validate both chunks exist and are valid
-    if (!currentAudio || !nextAudio) {
-      console.error(`❌ Invalid chunks at index ${i}: current=${!!currentAudio}, next=${!!nextAudio}`)
-      continue
-    }
-    
-    if (!currentAudio.src || !nextAudio.src) {
-      console.error(`❌ Chunks at index ${i} missing src: current=${!!currentAudio.src}, next=${!!nextAudio.src}`)
-      continue
-    }
-    
-    // Always re-chain (chainChunk removes old handlers first)
-    chainChunk(currentAudio, nextAudio, i)
+  // Combine all PCM chunks
+  const combinedPCM = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of pcmChunks) {
+    combinedPCM.set(chunk, offset)
+    offset += chunk.length
   }
-  
-  // Set up ended handler on the LAST chunk to detect when all audio has finished
-  // This will be used by StoryNarration to update state
-  if (audioChunks.length > 0) {
-    const lastChunk = audioChunks[audioChunks.length - 1]
-    // Mark this as the last chunk so StoryNarration can set up a handler
-    ;(lastChunk as any).__isLastWavChunk = true
-    console.log(`🟡 Marked chunk ${audioChunks.length - 1} as last WAV chunk`)
-  }
-  
-  console.log(`✅ Re-chained all ${audioChunks.length} chunks`)
 
-  console.log(`✅ Created ${audioChunks.length} chained WAV chunks (stream complete: ${isStreamComplete})`)
+  // Create WAV file with header (24kHz, float32, mono)
+  const wavHeader = createWavHeader(totalBytes, 24000)
+  const wavFile = new Uint8Array(wavHeader.byteLength + totalBytes)
+  wavFile.set(new Uint8Array(wavHeader), 0)
+  wavFile.set(combinedPCM, wavHeader.byteLength)
+
+  // Create audio element
+  const blob = new Blob([wavFile], { type: 'audio/wav' })
+  const url = URL.createObjectURL(blob)
+  const audio = new Audio(url)
+  audio.preload = 'auto'
+
+  // Wait for audio to be ready
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 10000)
+    audio.addEventListener('canplaythrough', () => {
+      clearTimeout(timeout)
+      resolve()
+    }, { once: true })
+    audio.addEventListener('error', () => {
+      clearTimeout(timeout)
+      reject(new Error('Failed to load audio'))
+    }, { once: true })
+    audio.load()
+  })
+
+  console.log(`✅ Audio ready: ${(totalBytes / 1024).toFixed(1)}KB, duration: ${audio.duration?.toFixed(1)}s`)
   
-  // Notify callback with all chunks so they can be tracked
-  if (onAllChunksCreated) {
-    onAllChunksCreated(audioChunks)
+  // Notify callback
+  if (onFirstChunkReady) {
+    onFirstChunkReady(audio)
   }
-  
-  // Return first audio element (will trigger chain)
-  // Also attach a reference to the last chunk for chaining between text chunks
-  const firstAudio = audioChunks[0]
-  const lastAudio = audioChunks[audioChunks.length - 1]
-  
-  // Attach lastAudio as a property so we can access it when chaining text chunks
-  ;(firstAudio as any).__lastChunk = lastAudio
-  // Also attach all chunks for tracking
-  ;(firstAudio as any).__allChunks = audioChunks
-  
-  // Don't autoplay here - let StoryNarration handle it to avoid conflicts
-  // The first chunk will be played by StoryNarration when ready
-  
-  return firstAudio
+
+  // Clean up URL when done
+  audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true })
+
+  return audio
 }
 
 export async function synthesizeSpeech(text: string, options: TTSOptions = {}): Promise<HTMLAudioElement> {

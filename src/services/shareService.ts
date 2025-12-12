@@ -54,6 +54,213 @@ export async function shareStory(data: ShareStoryData): Promise<ShareStoryRespon
   }
 }
 
+/**
+ * Share a URL using the Web Share API (mobile) or show share options (desktop)
+ */
+export async function shareUrl(url: string, title?: string, text?: string): Promise<void> {
+  const shareTitle = title || 'Check this out!'
+  const shareText = text || ''
+  
+  // Check if Web Share API is available (mobile browsers)
+  if (typeof navigator !== 'undefined' && 'share' in navigator && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: url
+      })
+      return // Successfully shared via native share
+    } catch (error: any) {
+      // User cancelled or share failed, fall through to options
+      if (error.name === 'AbortError') {
+        return // User cancelled, don't show error
+      }
+      console.warn('Web Share API failed, falling back to share options:', error)
+    }
+  }
+  
+  // Desktop fallback: show share options modal
+  showShareOptionsModal(url, shareTitle, shareText)
+}
+
+/**
+ * Shows a modal with various share options for desktop
+ */
+function showShareOptionsModal(url: string, title: string, text: string): void {
+  // Remove any existing modal
+  const existingModal = document.getElementById('share-modal-overlay')
+  if (existingModal) {
+    existingModal.remove()
+  }
+  
+  const encodedUrl = encodeURIComponent(url)
+  const encodedText = encodeURIComponent(`${text} ${url}`)
+  const encodedTitle = encodeURIComponent(title)
+  
+  // Create modal overlay
+  const overlay = document.createElement('div')
+  overlay.id = 'share-modal-overlay'
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease-out;
+  `
+  
+  // Create modal content
+  const modal = document.createElement('div')
+  modal.style.cssText = `
+    background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.3s ease-out;
+  `
+  
+  // Share options
+  const shareOptions = [
+    { 
+      name: 'Copy Link', 
+      icon: '📋', 
+      action: async () => {
+        try {
+          await navigator.clipboard.writeText(url)
+          alert('Link copied to clipboard!')
+        } catch {
+          prompt('Copy this link:', url)
+        }
+        overlay.remove()
+      }
+    },
+    { 
+      name: 'Email', 
+      icon: '✉️', 
+      action: () => {
+        window.open(`mailto:?subject=${encodedTitle}&body=${encodedText}`, '_blank')
+        overlay.remove()
+      }
+    },
+    { 
+      name: 'WhatsApp', 
+      icon: '💬', 
+      action: () => {
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank')
+        overlay.remove()
+      }
+    },
+    { 
+      name: 'Facebook', 
+      icon: '👤', 
+      action: () => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank', 'width=600,height=400')
+        overlay.remove()
+      }
+    },
+    { 
+      name: 'X (Twitter)', 
+      icon: '🐦', 
+      action: () => {
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodedUrl}`, '_blank', 'width=600,height=400')
+        overlay.remove()
+      }
+    },
+    { 
+      name: 'SMS', 
+      icon: '💬', 
+      action: () => {
+        // SMS link works on both mobile and desktop (if SMS app is available)
+        window.open(`sms:?body=${encodedText}`, '_self')
+        overlay.remove()
+      }
+    }
+  ]
+  
+  modal.innerHTML = `
+    <h3 style="margin: 0 0 16px 0; color: #fff; text-align: center; font-size: 1.3rem;">
+      🎄 Share Your Card
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+      ${shareOptions.map((opt, i) => `
+        <button id="share-opt-${i}" style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          padding: 12px 8px;
+          border: none;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.85rem;
+        " onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+          <span style="font-size: 1.5rem;">${opt.icon}</span>
+          <span>${opt.name}</span>
+        </button>
+      `).join('')}
+    </div>
+    <button id="share-cancel" style="
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    " onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+      Cancel
+    </button>
+  `
+  
+  // Add animation styles
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  `
+  document.head.appendChild(style)
+  
+  overlay.appendChild(modal)
+  document.body.appendChild(overlay)
+  
+  // Add event listeners
+  shareOptions.forEach((opt, i) => {
+    document.getElementById(`share-opt-${i}`)?.addEventListener('click', opt.action)
+  })
+  
+  document.getElementById('share-cancel')?.addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove()
+  })
+  
+  // Close on escape
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      overlay.remove()
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }
+  document.addEventListener('keydown', handleEscape)
+}
+
 export async function getSharedStory(storyId: string): Promise<ShareStoryData & { createdAt?: string }> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/story/${storyId}`, {

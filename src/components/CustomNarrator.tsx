@@ -303,7 +303,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
                       cursor: isProcessing ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {isProcessing ? '🔄 Cloning Voice...' : 'Create Narrator'}
+                    {isProcessing ? '🔄 Creating Custom Narrator...' : 'Create Narrator'}
                   </button>
                 </div>
               </div>

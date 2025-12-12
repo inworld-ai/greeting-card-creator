@@ -7,8 +7,8 @@ This guide explains how the app uses URL-based routing to provide separate exper
 - **Single Vercel Project**: One deployment handles all routes
 - **URL Structure**:
   - `/` - Landing page with both options
-  - `/storyteller` - Christmas Story Generator experience
-  - `/greetingcard` - Personalized Greeting Card experience
+  - `/storyteller` - Christmas Story Creator experience
+  - `/greetingcard` - Christmas Card Creator experience
   - `/share/:storyId` - Shared story/card view
 - **Backend**: Single Railway instance handles both experiences
 
@@ -20,12 +20,12 @@ This guide explains how the app uses URL-based routing to provide separate exper
 
 ### Story Generator
 - **URL**: `https://inworld-christmas.vercel.app/storyteller`
-  - Directly starts the Christmas Story Generator flow
+  - Directly starts the Christmas Story Creator flow
   - Skips landing page, goes straight to story type selection
 
 ### Greeting Card
 - **URL**: `https://inworld-christmas.vercel.app/greetingcard`
-  - Directly starts the Personalized Greeting Card flow
+  - Directly starts the Christmas Card Creator flow
   - Skips landing page, goes straight to name entry
 
 ### Shared Links

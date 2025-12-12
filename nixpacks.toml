@@ -2,11 +2,11 @@
 nixPkgs = ["nodejs_20", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm ci --production=false"]
+cmds = ["cd server && npm ci --production=false"]
 
 [phases.build]
-cmds = ["echo 'Skipping frontend build - backend only'"]
+cmds = ["echo 'Server is TypeScript - using ts-node at runtime'"]
 
 [start]
-cmd = "node server.js"
+cmd = "cd server && npm start"
 

@@ -25,12 +25,14 @@
   "homepage": "https://github.com/inworld-ai/personalized-christmas-storyteller#readme",
   "scripts": {
     "dev": "vite",
-    "dev:server": "node server.js",
+    "dev:server": "cd server && npm start",
+    "dev:server:old": "node server.js",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "tsc && vite build",
-    "build:backend": "echo 'Backend does not require build step'",
-    "start": "node server.js",
-    "preview": "vite preview"
+    "build:backend": "cd server && npm install",
+    "start": "cd server && npm start",
+    "preview": "vite preview",
+    "install:server": "cd server && npm install"
   },
   "dependencies": {
     "@inworld/runtime": "^0.8.0",

@@ -26,7 +26,7 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
           onClick={handleStoryClick}
         >
           <div className="landing-option-icon">📖</div>
-          <h2 className="landing-option-title">Christmas Story Generator</h2>
+          <h2 className="landing-option-title">Christmas Story Creator</h2>
           <p className="landing-option-description">
             Create a personalized Christmas story with your own voice as the narrator
           </p>
@@ -37,7 +37,7 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
           onClick={handleGreetingCardClick}
         >
           <div className="landing-option-icon">💌</div>
-          <h2 className="landing-option-title">Personalized Christmas Card</h2>
+          <h2 className="landing-option-title">Christmas Card Creator</h2>
           <p className="landing-option-description">
             Create a fun, comical personalized Christmas card with AI-generated image and message
           </p>

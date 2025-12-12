@@ -15,7 +15,7 @@ const VOICES: { id: VoiceId | 'custom'; label: string | JSX.Element; description
   { id: 'christmas_story_generator__male_elf_narrator', label: <>Clark<br />the Elf</>, description: '' },
 ]
 
-function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
+function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) {
   const [name, setName] = useState('')
   const [voiceId, setVoiceId] = useState<VoiceId | 'custom' | null>(null)
 
@@ -32,14 +32,11 @@ function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
   return (
     <div className="name-input">
       <p className="prompt-text">
-        Great choice! Your story will be about <strong>{storyType}</strong>! 🌟
-      </p>
-      <p className="prompt-text">
         What's the name of your story's main character?
       </p>
       
       <div className="input-group">
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div className="name-input-container">
           <input
             type="text"
             value={name}
@@ -48,13 +45,12 @@ function NameInput({ storyType, onSubmit, onBack }: NameInputProps) {
             placeholder="Enter your character's name..."
             className="name-input-field"
             autoFocus
-            style={{ flex: 1 }}
           />
           <MicrophoneButton onTranscript={handleVoiceTranscript} />
         </div>
         
         <div className="voice-selection">
-          <label className="voice-selection-label">Choose a voice:</label>
+          <label className="voice-selection-label">Select a narrator:</label>
           <div className="voice-options">
             {VOICES.map((voice) => (
               <button

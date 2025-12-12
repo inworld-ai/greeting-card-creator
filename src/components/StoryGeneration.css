@@ -28,15 +28,13 @@
 }
 
 .loading-title {
-  color: #0f5132;
+  color: #1a1a1a;
   font-size: 2rem;
   text-align: center;
   margin: 0;
-  font-family: 'Cinzel', serif;
-  text-shadow: 
-    2px 2px 0px rgba(196, 30, 58, 0.3),
-    4px 4px 8px rgba(0, 0, 0, 0.2);
-  letter-spacing: 1px;
+  font-family: 'Playfair Display', 'Georgia', serif;
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
 .loading-text {

@@ -1116,7 +1116,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             {isGeneratingAudio 
               ? 'Starting Narration...' 
               : hasStartedNarration 
-                ? 'Restart Story 🧝' 
+                ? (experienceType === 'greeting-card' ? 'Restart Narrator 🧝' : 'Restart Story 🧝')
                 : 'Start Narration 🧝'}
           </button>
         

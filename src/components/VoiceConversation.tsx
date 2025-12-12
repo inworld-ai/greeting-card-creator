@@ -1,0 +1,525 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { VoiceSession, VoiceSessionConfig } from '../services/voiceSessionService'
+import './ConversationalQuestionnaire.css'
+
+interface VoiceConversationProps {
+  experienceType: 'year-review' | 'wish-list' | 'greeting-card'
+  userName?: string
+  onSubmit: (answers: {
+    favoriteMemory?: string
+    newThing?: string
+    lookingForward?: string
+    dreamGift?: string
+    experience?: string
+    practicalNeed?: string
+    recipientName?: string
+    relationship?: string
+    specialAboutThem?: string
+    funnyStory?: string
+  }) => void
+  onBack: () => void
+}
+
+interface ConversationMessage {
+  role: 'assistant' | 'user'
+  content: string
+  interactionId?: string
+}
+
+// Progress steps for greeting card
+const STEPS = {
+  'greeting-card': [
+    { key: 'name', label: 'Name & Relationship' },
+    { key: 'story', label: 'Funny Story' },
+    { key: 'generating', label: 'Creating Card' }
+  ]
+}
+
+// Smart detection: check if conversation contains recipient info AND funny story
+function hasCollectedGreetingCardInfo(messages: ConversationMessage[]): { hasRecipient: boolean; hasStory: boolean } {
+  const userMessages = messages.filter(m => m.role === 'user')
+  const assistantMessages = messages.filter(m => m.role === 'assistant')
+  
+  // We need at least 2 user messages
+  if (userMessages.length < 2) {
+    return { hasRecipient: userMessages.length >= 1, hasStory: false }
+  }
+  
+  // Check the agent's questions to understand what was asked
+  const allAgentText = assistantMessages.map(m => m.content.toLowerCase()).join(' ')
+  const allUserText = userMessages.map(m => m.content).join(' ')
+  
+  // First user response after agent asks about recipient
+  const hasRecipient = userMessages.length >= 1 && userMessages[0].content.length > 2
+  
+  // Second user response should be the funny story/anecdote
+  // Verify agent asked about story/anecdote/funny thing before user's second message
+  const askedAboutStory = allAgentText.includes('funny') || 
+                          allAgentText.includes('anecdote') || 
+                          allAgentText.includes('story') ||
+                          allAgentText.includes('sweet') ||
+                          allAgentText.includes('special') ||
+                          allAgentText.includes('love about')
+  
+  const hasStory = userMessages.length >= 2 && 
+                   userMessages[1].content.length > 15 && // Story should be substantive (more than just 2-3 words)
+                   askedAboutStory
+  
+  return { hasRecipient, hasStory }
+}
+
+export default function VoiceConversation({ experienceType, userName = 'Friend', onSubmit, onBack }: VoiceConversationProps) {
+  const [hasStarted, setHasStarted] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isComplete, setIsComplete] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
+  const [currentTranscript, setCurrentTranscript] = useState('')
+  const [currentStep, setCurrentStep] = useState(0) // 0=name, 1=story, 2=generating
+  
+  const voiceSessionRef = useRef<VoiceSession | null>(null)
+  const answersRef = useRef<Record<string, string>>({})
+  const autoMicEnabledRef = useRef(false)
+  const triggerDetectedRef = useRef(false)
+  const fullAgentTextRef = useRef('') // Accumulate agent text for trigger detection
+  const generationStartedRef = useRef(false) // Prevent duplicate generation
+  
+  // Questions based on experience type
+  const questions = experienceType === 'year-review'
+    ? [
+        { key: 'favoriteMemory', question: "What was your favorite memory from 2025?" },
+        { key: 'newThing', question: "What's something new you tried or learned?" },
+        { key: 'lookingForward', question: "What are you most looking forward to in 2026?" }
+      ]
+    : experienceType === 'greeting-card'
+    ? [
+        { key: 'recipientName', question: "Who is this card for and what's their relationship to you?" },
+        { key: 'funnyStory', question: "What's a funny or heartwarming anecdote about them?" }
+      ]
+    : [
+        { key: 'dreamGift', question: "What's the one gift you've been thinking about all year?" },
+        { key: 'experience', question: "What's an experience you'd love to have?" },
+        { key: 'practicalNeed', question: "What's something practical you actually need?" }
+      ]
+
+  const getSystemPrompt = useCallback(() => {
+    if (experienceType === 'greeting-card') {
+      // Important: greeting-card flow is enforced server-side (fixed prompt),
+      // so we do not send a client prompt that could override it.
+      return ''
+    } else if (experienceType === 'year-review') {
+      return `You are Olivia - a warm, friendly AI assistant helping ${userName} reflect on their year.
+
+Your role:
+1. Ask about their favorite memory from 2025
+2. Ask about something new they tried or learned
+3. Ask what they're looking forward to in 2026
+
+Guidelines:
+- Ask ONE question at a time
+- React positively to their answers before continuing
+- Keep responses brief
+- When done, say "Thank you for sharing! I'll create your Year In Review now."`
+    } else {
+      return `You are Olivia - a warm AI assistant helping ${userName} create their Christmas wish list.
+
+Your role:
+1. Ask about their dream gift
+2. Ask about an experience they'd love
+3. Ask about something practical they need
+
+Guidelines:
+- Ask ONE question at a time
+- Keep responses brief
+- When done, say "Thank you! I'll create your Christmas Wish List now."`
+    }
+  }, [experienceType, userName])
+
+  // Parse AI responses to detect answers
+  const parseForAnswers = useCallback((agentText: string, userText: string) => {
+    const lowerAgent = agentText.toLowerCase()
+    const answers = { ...answersRef.current }
+    
+    // Detect if conversation is complete
+    const isWrappingUp = lowerAgent.includes('all set') ||
+      lowerAgent.includes("i'll create your") ||
+      lowerAgent.includes('thank you for sharing') ||
+      (lowerAgent.includes('thank') && lowerAgent.includes('create'))
+    
+    // Determine which question was just answered based on conversation flow
+    const answeredCount = Object.keys(answers).filter(k => answers[k]).length
+    
+    if (answeredCount < questions.length && userText) {
+      const currentQuestion = questions[answeredCount]
+      if (currentQuestion && !answers[currentQuestion.key]) {
+        answers[currentQuestion.key] = userText
+        answersRef.current = answers
+        console.log(`📝 Detected answer for ${currentQuestion.key}:`, userText.substring(0, 50))
+      }
+    }
+    
+    if (isWrappingUp) {
+      setIsComplete(true)
+    }
+    
+    return answers
+  }, [questions])
+
+  const startSession = useCallback(async () => {
+    if (voiceSessionRef.current) return
+    
+    setIsProcessing(true)
+    setError(null)
+    
+    const config: VoiceSessionConfig = {
+      experienceType,
+      userName,
+      // Force female elf voice for greeting card conversations
+      ...(experienceType === 'greeting-card'
+        ? { voiceId: 'christmas_story_generator__female_elf_narrator' }
+        : {}),
+      systemPrompt: getSystemPrompt(),
+      onAgentText: (text, interactionId) => {
+        console.log('🤖 Agent:', text)
+
+        // Elf is speaking - show "Elf is speaking..." in UI
+        setIsProcessing(true)
+
+        // Once we start generating, ignore further agent chatter.
+        if (isGenerating || triggerDetectedRef.current) {
+          return
+        }
+        
+        // Accumulate agent text for better trigger detection
+        fullAgentTextRef.current += ' ' + text
+        
+        setConversationHistory(prev => {
+          const exists = prev.some(m => m.role === 'assistant' && m.interactionId === interactionId)
+          if (exists) return prev
+          const updated = [...prev, { role: 'assistant', content: text, interactionId }]
+          
+          // Update step based on conversation progress
+          const userMessages = updated.filter(m => m.role === 'user').length
+          if (userMessages >= 1 && currentStep === 0) {
+            setCurrentStep(1) // Got name, now asking for story
+          }
+          
+          // Check for trigger phrase - agent is done collecting info
+          const fullText = fullAgentTextRef.current.toLowerCase()
+          if (!triggerDetectedRef.current && (
+              fullText.includes('creating your christmas card') ||
+              fullText.includes('calling my buddy elves') ||
+              fullText.includes('let me generate a christmas card for you') ||
+              fullText.includes('let me create') ||
+              fullText.includes('generate your card') ||
+              fullText.includes('make your card'))) {
+            triggerDetectedRef.current = true
+            console.log('🎄 Trigger phrase detected - starting generation')
+            setCurrentStep(2) // Generating
+            setIsGenerating(true)
+            
+            // Stop recording and trigger generation
+            setTimeout(() => {
+              if (voiceSessionRef.current) {
+                voiceSessionRef.current.stopRecording()
+                voiceSessionRef.current.stop()
+              }
+              setIsRecording(false)
+              setIsComplete(true)
+              // Pass conversation history for generation
+              onSubmit({ conversationHistory: updated } as any)
+            }, 3000) // Wait 3s for TTS to finish saying the phrase
+          }
+          
+          return updated
+        })
+      },
+      onUserText: (text, interactionId) => {
+        // Ignore synthetic/session control messages and very short noise
+        const cleaned = (text || '').trim()
+        if (!cleaned || cleaned.toLowerCase() === '[start]' || cleaned.length < 2) {
+          setIsProcessing(false)
+          return
+        }
+
+        // Show partial transcript in UI
+        setCurrentTranscript(cleaned)
+
+        // Update conversation history with latest transcript for this interactionId
+        // NOTE: Don't trigger generation here - wait for onSpeechComplete
+        setConversationHistory(prev => {
+          // Find existing message with this interactionId
+          const existingIdx = prev.findIndex(m => m.role === 'user' && m.interactionId === interactionId)
+          
+          if (existingIdx >= 0) {
+            // UPDATE existing message with longer/newer text (this is a partial update)
+            const existing = prev[existingIdx]
+            // Only update if new text is longer (more complete)
+            if (cleaned.length > existing.content.length) {
+              const updated = [...prev]
+              updated[existingIdx] = { ...existing, content: cleaned }
+              console.log('👤 User (updated):', cleaned)
+              return updated
+            }
+            return prev // No change needed
+          } else {
+            // New message for this interactionId
+            console.log('👤 User:', cleaned)
+            return [...prev, { role: 'user', content: cleaned, interactionId }]
+          }
+        })
+        // Don't set isProcessing here - that's for when elf is speaking
+      },
+      onAudioChunk: (_audioData, _interactionId) => {
+        // Audio is handled by the voiceSessionService
+      },
+      onError: (errorMsg) => {
+        console.error('❌ Voice session error:', errorMsg)
+        setError(errorMsg)
+        setIsProcessing(false)
+      },
+      onInteractionEnd: async (interactionId) => {
+        console.log('✅ Interaction ended:', interactionId)
+        // Elf finished speaking - allow user to speak again
+        setIsProcessing(false)
+        
+        // Auto-enable mic AFTER elf finishes speaking (not during)
+        if (!autoMicEnabledRef.current && voiceSessionRef.current) {
+          autoMicEnabledRef.current = true
+          try {
+            await voiceSessionRef.current.startRecording()
+            setIsRecording(true)
+            console.log('🎤 Mic auto-enabled after elf finished speaking')
+          } catch (err: any) {
+            console.error('Failed to auto-enable mic:', err)
+          }
+        }
+      },
+      onSpeechComplete: (interactionId) => {
+        console.log('🎙️ User speech complete:', interactionId)
+        
+        // Clear partial transcript display
+        setCurrentTranscript('')
+        fullAgentTextRef.current = '' // Reset agent text accumulator for next response
+        
+        // Wait a bit for any final transcript to arrive before checking
+        // The STT sometimes sends the final transcript AFTER the speech complete event
+        setTimeout(() => {
+          // Check if we've collected all info (user finished speaking)
+          setConversationHistory(prev => {
+            if (experienceType === 'greeting-card') {
+              const { hasRecipient, hasStory } = hasCollectedGreetingCardInfo(prev)
+              
+              // Update step based on what we've collected
+              if (hasRecipient && !hasStory) {
+                setCurrentStep(1) // Got name, waiting for story
+              }
+              
+              // If we have both pieces AND haven't already started generation
+              if (hasRecipient && hasStory && !generationStartedRef.current) {
+                console.log('🎄 User finished speaking - both pieces collected, starting generation')
+                console.log('📝 Final conversation:', prev.map(m => `${m.role}: ${m.content}`).join('\n'))
+                generationStartedRef.current = true
+                triggerDetectedRef.current = true
+                setCurrentStep(2) // Creating Card
+                setIsGenerating(true)
+
+                // Stop recording/session and begin generation
+                setTimeout(() => {
+                  try {
+                    voiceSessionRef.current?.stopRecording()
+                    voiceSessionRef.current?.stop()
+                  } finally {
+                    setIsRecording(false)
+                    setIsComplete(true)
+                    onSubmit({ conversationHistory: prev } as any)
+                  }
+                }, 250)
+              }
+            } else {
+              // For other experience types, keep simple counting
+              const userCount = prev.filter(m => m.role === 'user').length
+              if (userCount === 1) {
+                setCurrentStep(1)
+              }
+            }
+            return prev // Don't modify, just read
+          })
+        }, 800) // Wait 800ms for final transcript to arrive
+      },
+    }
+    
+    try {
+      const session = new VoiceSession(config)
+      voiceSessionRef.current = session
+      await session.start()
+      setHasStarted(true)
+      setIsProcessing(true) // Set to true - elf is speaking first
+      
+      // Mic will auto-enable after elf finishes speaking (in onInteractionEnd)
+      console.log('🎤 Waiting for elf to finish speaking before enabling mic...')
+    } catch (err: any) {
+      console.error('Failed to start voice session:', err)
+      setError(err.message || 'Failed to connect')
+      setIsProcessing(false)
+      voiceSessionRef.current = null
+    }
+  }, [experienceType, userName, getSystemPrompt, parseForAnswers, conversationHistory])
+
+  const handleSubmit = useCallback(() => {
+    // Stop session
+    if (voiceSessionRef.current) {
+      voiceSessionRef.current.stop()
+      voiceSessionRef.current = null
+    }
+    
+    const answers = answersRef.current
+    console.log('📤 Submitting answers:', answers)
+    
+    if (experienceType === 'year-review') {
+      onSubmit({
+        favoriteMemory: answers.favoriteMemory || 'Not specified',
+        newThing: answers.newThing || 'Not specified',
+        lookingForward: answers.lookingForward || 'Not specified'
+      })
+    } else if (experienceType === 'greeting-card') {
+      onSubmit({
+        recipientName: answers.recipientName || 'Friend',
+        relationship: answers.relationship || '',
+        specialAboutThem: answers.specialAboutThem || '',
+        funnyStory: answers.funnyStory || 'They are wonderful'
+      })
+    } else {
+      onSubmit({
+        dreamGift: answers.dreamGift || 'Not specified',
+        experience: answers.experience || 'Not specified',
+        practicalNeed: answers.practicalNeed || 'Not specified'
+      })
+    }
+  }, [experienceType, onSubmit])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (voiceSessionRef.current) {
+        voiceSessionRef.current.stop()
+      }
+    }
+  }, [])
+
+  // Calculate progress
+  const totalQuestions = questions.length
+  const answeredCount = Object.keys(answersRef.current).filter(k => answersRef.current[k]).length
+  const progress = (answeredCount / totalQuestions) * 100
+  const steps = STEPS['greeting-card'] || []
+
+  // Don't show anything when generating - let the parent component handle the transition
+  // to GreetingCardGeneration which has its own loading screen
+  if (isGenerating) {
+    return null
+  }
+
+  return (
+    <div className={`conversational-questionnaire ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
+      <div className="conversational-header">
+        {experienceType !== 'greeting-card' && (
+          <h2 className="conversational-title">
+            {experienceType === 'year-review' ? 'Year In Review' : 'Christmas Wish List'}
+          </h2>
+        )}
+      </div>
+
+      {/* Progress bar for greeting card */}
+      {experienceType === 'greeting-card' && hasStarted && !isComplete && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: '0.75rem', 
+          marginBottom: '1.5rem',
+          padding: '0 1rem'
+        }}>
+          {steps.slice(0, 2).map((step, i) => (
+            <div key={step.key} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.4rem',
+              opacity: i <= currentStep ? 1 : 0.4
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: i < currentStep ? '#22c55e' : i === currentStep ? '#eab308' : '#d1d5db',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem'
+              }}>
+                {i < currentStep ? '✓' : i + 1}
+              </div>
+              <span style={{ 
+                fontSize: '0.75rem',
+                color: i <= currentStep ? '#166534' : '#9ca3af'
+              }}>
+                {step.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="conversational-content">
+        {error && (
+          <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {hasStarted && (
+          <div className="olivia-blob-container">
+            <div className={`olivia-blob ${isComplete ? 'complete' : isRecording ? 'listening' : isProcessing ? 'processing' : 'idle'} ${experienceType === 'greeting-card' ? 'greeting-card' : ''}`}>
+              <div className="blob-inner"></div>
+              {!isComplete && <div className="blob-pulse"></div>}
+              {isComplete && (
+                <div className="complete-overlay">
+                  <div className="checkmark">✓</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="listening-indicator">
+          {isComplete ? (
+            <div className="complete">
+              <p style={{ color: '#166534', marginBottom: '1rem' }}>✨ Info collected!</p>
+            </div>
+          ) : !hasStarted ? (
+            <button
+              className="btn btn-primary start-listening-btn"
+              onClick={startSession}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Connecting...' : 'Start Conversation'}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Hide back button for greeting card experience */}
+      {experienceType !== 'greeting-card' && (
+        <button 
+          className="btn btn-secondary" 
+          onClick={onBack}
+          style={{ marginTop: '2rem' }}
+        >
+          ← Back
+        </button>
+      )}
+    </div>
+  )
+}

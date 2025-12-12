@@ -6,7 +6,7 @@ import NameInput from './components/NameInput'
 import SimpleNameInput from './components/SimpleNameInput'
 import VoiceSelection from './components/VoiceSelection'
 import QuestionnaireTypeSelection from './components/QuestionnaireTypeSelection'
-import ConversationalQuestionnaire from './components/ConversationalQuestionnaire'
+import VoiceConversation from './components/VoiceConversation'
 import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
 import WishListQuestionnaire from './components/WishListQuestionnaire'
 import CustomNarrator from './components/CustomNarrator'
@@ -42,6 +42,7 @@ export interface StoryData {
     funnyStory: string
     cardMessage?: string
     generatedImageUrl?: string | null
+    conversationHistory?: Array<{ role: string; content: string }>
   }
   // Legacy support for year-review and wish-list (kept for backward compatibility)
   yearReviewAnswers?: {
@@ -298,12 +299,31 @@ function App() {
     relationship?: string
     specialAboutThem?: string
     funnyStory?: string
+    conversationHistory?: Array<{ role: string; content: string }>
   }) => {
+    // If we have conversation history (from voice), use it directly
+    if (answers.conversationHistory) {
+      const senderName = storyData.greetingCardData?.senderName || 'Friend'
+      setStoryData(prev => ({
+        ...prev,
+        greetingCardData: {
+          senderName,
+          recipientName: 'Friend', // Will be extracted by Claude
+          relationship: '',
+          specialAboutThem: '',
+          funnyStory: '',
+          conversationHistory: answers.conversationHistory
+        }
+      }))
+      setStep('greeting-card-generating')
+      return
+    }
+    
+    // Legacy path - individual answers
     if (!answers.recipientName || !answers.funnyStory) {
       alert('Please answer all questions before continuing.')
       return
     }
-    // Extract sender name from storyData if available, otherwise use a default
     const senderName = storyData.greetingCardData?.senderName || 'Friend'
     
     setStoryData(prev => ({
@@ -493,6 +513,7 @@ function App() {
       if (storyData.experienceType === 'story') return 'name-input'
       if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
       if (storyData.experienceType === 'wish-list') return 'wish-list-voice-selection'
+      if (storyData.experienceType === 'greeting-card') return 'greeting-card-display'
     }
     if (step === 'image-upload') {
       if (storyData.customApiKey || storyData.customVoiceId) return 'custom-narrator'
@@ -553,10 +574,9 @@ function App() {
         )}
 
         {step === 'greeting-card-questionnaire-voice' && (
-          <ConversationalQuestionnaire
+          <VoiceConversation
             experienceType="greeting-card"
-            recipientName={undefined}
-            relationship={undefined}
+            userName="Friend"
             onSubmit={handleGreetingCardQuestionnaireSubmitted}
             onBack={() => experienceFromPath ? navigate('/') : setStep('landing')}
           />
@@ -570,6 +590,7 @@ function App() {
             specialAboutThem={storyData.greetingCardData.specialAboutThem}
             funnyStory={storyData.greetingCardData.funnyStory}
             uploadedImageUrl={storyData.imageUrl || null}
+            conversationHistory={storyData.greetingCardData.conversationHistory}
             onCardGenerated={handleGreetingCardGenerated}
             onError={handleGreetingCardGenerationError}
           />
@@ -580,7 +601,7 @@ function App() {
             coverImageUrl={storyData.imageUrl || storyData.greetingCardData.generatedImageUrl || null}
             message={storyData.greetingCardData.cardMessage || ''}
             recipientName={storyData.greetingCardData.recipientName}
-            onAddNarration={() => setStep('greeting-card-voice-selection')}
+            onAddNarration={() => setStep('custom-narrator')}
             onShareAsIs={async () => {
               try {
                 const apiUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
@@ -659,16 +680,18 @@ function App() {
         )}
 
         {step === 'year-review-questionnaire-voice' && (
-          <ConversationalQuestionnaire
+          <VoiceConversation
             experienceType="year-review"
+            userName="Friend"
             onSubmit={handleYearReviewSubmitted}
             onBack={() => setStep('year-review-questionnaire-type')}
           />
         )}
 
         {step === 'wish-list-questionnaire-voice' && (
-          <ConversationalQuestionnaire
+          <VoiceConversation
             experienceType="wish-list"
+            userName="Friend"
             onSubmit={handleWishListSubmitted}
             onBack={() => setStep('wish-list-questionnaire-type')}
           />
