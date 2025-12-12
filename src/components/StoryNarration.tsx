@@ -103,6 +103,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   const narrationTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Track the narration start timeout so we can cancel it
   const shouldStopAllAudioRef = useRef<boolean>(false) // Global flag to stop all audio immediately
   const allAudioElementsRef = useRef<Set<HTMLAudioElement>>(new Set()) // Track all audio elements created
+  const preloadedAudioRef = useRef<HTMLAudioElement | null>(null) // Preloaded audio ready to play
+  const isPreloadingRef = useRef<boolean>(false) // Track if we're currently preloading
+  const preloadedChunksRef = useRef<HTMLAudioElement[]>([]) // All preloaded audio chunks
 
   useEffect(() => {
     return () => {
@@ -404,6 +407,94 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }, 100)
     
     console.log('✅ Audio cleanup complete')
+  }
+
+  // Preload audio in the background without playing
+  // This allows audio to start instantly when user opens the card
+  const preloadAudio = async (textToSpeak?: string) => {
+    const text = textToSpeak || storyText
+    
+    // Prevent multiple simultaneous preloads
+    if (isPreloadingRef.current) {
+      console.log('🎵 Audio preload already in progress, skipping duplicate call')
+      return
+    }
+    
+    // Don't preload if we already have audio ready
+    if (preloadedAudioRef.current) {
+      console.log('🎵 Audio already preloaded, skipping')
+      return
+    }
+    
+    console.log('🎵 Starting audio preload in background...')
+    isPreloadingRef.current = true
+    setIsGeneratingAudio(true)
+
+    try {
+      // Extract title for TTS
+      const [title] = extractTitleAndStory(text)
+      
+      // Split story into chunks
+      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300)
+      console.log(`🟡 Preloading ${storyChunks.length} audio chunks in background...`)
+
+      // Add title to the first chunk
+      const firstChunkWithTitle = title ? `${title}. ${storyChunks[0]}` : storyChunks[0]
+      
+      // Generate first chunk audio
+      const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
+        voiceId: customVoiceId || voiceId,
+        apiKey: customApiKey || undefined,
+        onAllChunksCreated: (allChunks) => {
+          allChunks.forEach(chunk => {
+            allAudioElementsRef.current.add(chunk)
+            preloadedChunksRef.current.push(chunk)
+          })
+          console.log(`🟡 Preloaded ${allChunks.length} WAV chunks from first text chunk`)
+        }
+      })
+      
+      // Store the preloaded audio
+      preloadedAudioRef.current = firstAudio
+      allAudioElementsRef.current.add(firstAudio)
+      preloadedChunksRef.current.push(firstAudio)
+      
+      // Generate remaining chunks in parallel
+      const remainingChunks = storyChunks.slice(1)
+      if (remainingChunks.length > 0) {
+        const audioPromises = remainingChunks.map((chunk, chunkIndex) => {
+          return synthesizeSpeech(chunk, { 
+            voiceId: customVoiceId || voiceId, 
+            apiKey: customApiKey || undefined,
+            onAllChunksCreated: (allChunks) => {
+              allChunks.forEach(wavChunk => {
+                allAudioElementsRef.current.add(wavChunk)
+                preloadedChunksRef.current.push(wavChunk)
+              })
+              console.log(`🟡 Preloaded ${allChunks.length} WAV chunks from text chunk ${chunkIndex + 2}`)
+            }
+          })
+        })
+        
+        const audioChunks = await Promise.all(audioPromises)
+        audioChunks.forEach(audio => {
+          allAudioElementsRef.current.add(audio)
+          preloadedChunksRef.current.push(audio)
+        })
+        
+        console.log(`✅ All ${audioChunks.length + 1} audio chunks preloaded and ready!`)
+      }
+      
+      setIsGeneratingAudio(false)
+      isPreloadingRef.current = false
+      console.log('✅ Audio preload complete - ready to play instantly when card opens')
+      
+    } catch (err: any) {
+      console.error('Error preloading audio:', err)
+      setIsGeneratingAudio(false)
+      isPreloadingRef.current = false
+      // Don't set error - preload failure shouldn't block the user
+    }
   }
 
   const handleStartNarration = async (textToSpeak?: string) => {
@@ -994,6 +1085,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
   }, [storyText, isProgressive, onFullStoryReady])
 
+  // For story experience: preload audio in background when image is ready
+  // This allows instant playback when user clicks to open the card
+  useEffect(() => {
+    if (experienceType === 'story' && imageUrl && storyText && !preloadedAudioRef.current && !isPreloadingRef.current) {
+      console.log('🎵 Image ready - starting background audio preload for story...')
+      preloadAudio(storyText)
+    }
+  }, [experienceType, imageUrl, storyText])
+
   // Auto-start narration when storyText changes
   useEffect(() => {
     // Don't auto-start if there's no story text
@@ -1091,8 +1191,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       {/* REMOVED: "Almost ready!" message - story page shows immediately */}
       
       {/* Start Narration button at the top */}
-      {/* For story experience, only show button when image is ready */}
-      {(experienceType !== 'story' || imageUrl) && (
+      {/* For story experience, narration auto-starts when card is opened - no button needed */}
+      {/* For other experience types, show button when ready */}
+      {experienceType !== 'story' && (
         <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
           {/* Start Story button - more prominent, comes first */}
           <button 
@@ -1121,7 +1222,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           </button>
         
         {/* For greeting cards and stories, Share and Make Another buttons go below the text */}
-        {experienceType !== 'greeting-card' && experienceType !== 'story' && !isShared && (
+        {experienceType !== 'greeting-card' && !isShared && (
           <>
             {!shareUrl ? (
               <button 
@@ -1211,7 +1312,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       )}
           </>
         )}
-        {experienceType !== 'greeting-card' && experienceType !== 'story' && (
+        {experienceType !== 'greeting-card' && (
           <button 
             onClick={() => {
               // Use browser refresh to ensure all audio stops completely
@@ -1298,12 +1399,73 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               </div>
             )
           }
+          
+          // Handler for when user clicks to open the card (starts audio playback)
+          const handleCardOpen = async () => {
+            console.log('🎵 Card opened - starting narration...')
+            // Use preloaded audio if available, otherwise generate and play
+            if (preloadedAudioRef.current && preloadedChunksRef.current.length > 0) {
+              console.log('🎵 Using preloaded audio - instant playback!')
+              
+              // Set up the audio refs and chain all preloaded chunks
+              audioRef.current = preloadedAudioRef.current
+              
+              // Set up chaining for all preloaded chunks
+              const allChunks = preloadedChunksRef.current
+              for (let i = 0; i < allChunks.length - 1; i++) {
+                const currentChunk = allChunks[i]
+                const nextChunk = allChunks[i + 1]
+                
+                currentChunk.onended = async () => {
+                  if (!shouldStopAllAudioRef.current) {
+                    try {
+                      await nextChunk.play()
+                    } catch (err) {
+                      console.error('Error playing next chunk:', err)
+                    }
+                  }
+                }
+              }
+              
+              // Set up final chunk handler
+              const lastChunk = allChunks[allChunks.length - 1]
+              lastChunk.onended = () => {
+                console.log('🎵 All audio playback complete')
+                setIsAudioPlaying(false)
+                isNarrationInProgressRef.current = false
+              }
+              
+              // Start playing the first chunk
+              try {
+                await preloadedAudioRef.current.play()
+                setHasStartedNarration(true)
+                setIsAudioPlaying(true)
+                isNarrationInProgressRef.current = true
+                startPollingForAudioEnd()
+                console.log('🎵 Preloaded audio started playing!')
+              } catch (err: any) {
+                console.error('Error playing preloaded audio:', err)
+                if (err.name === 'NotAllowedError') {
+                  setNeedsUserInteraction(true)
+                } else {
+                  // Fall back to generating audio
+                  await handleStartNarration(storyText)
+                }
+              }
+            } else {
+              // No preloaded audio, generate and play
+              console.log('🎵 No preloaded audio, generating now...')
+              await handleStartNarration(storyText)
+            }
+          }
+          
           return (
             <ChristmasCard
               imageUrl={imageUrl || null}
               title={title || ''}
               content={fullStoryText}
               childName={childName}
+              onCardOpen={experienceType === 'story' ? handleCardOpen : undefined}
             />
           )
         } else {

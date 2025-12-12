@@ -6,14 +6,19 @@ interface ChristmasCardProps {
   title: string
   content: string
   childName: string
+  onCardOpen?: () => void // Callback when user clicks to open the card
 }
 
-function ChristmasCard({ imageUrl, title, content, childName: _childName }: ChristmasCardProps) {
+function ChristmasCard({ imageUrl, title, content, childName: _childName, onCardOpen }: ChristmasCardProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleCardClick = () => {
     if (!isOpen) {
       setIsOpen(true)
+      // Notify parent that card was opened (triggers audio playback)
+      if (onCardOpen) {
+        onCardOpen()
+      }
     }
   }
 
