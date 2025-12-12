@@ -47,7 +47,6 @@ function hasCollectedGreetingCardInfo(messages: ConversationMessage[]): { hasRec
   
   // Check the agent's questions to understand what was asked
   const allAgentText = assistantMessages.map(m => m.content.toLowerCase()).join(' ')
-  const allUserText = userMessages.map(m => m.content).join(' ')
   
   // First user response after agent asks about recipient
   const hasRecipient = userMessages.length >= 1 && userMessages[0].content.length > 2
@@ -76,8 +75,11 @@ export default function VoiceConversation({ experienceType, userName = 'Friend',
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([])
-  const [currentTranscript, setCurrentTranscript] = useState('')
+  const [_currentTranscript, setCurrentTranscript] = useState('')
   const [currentStep, setCurrentStep] = useState(0) // 0=name, 1=story, 2=generating
+  
+  // Suppress unused variable warning (tracked for future UI display)
+  void _currentTranscript
   
   const voiceSessionRef = useRef<VoiceSession | null>(null)
   const answersRef = useRef<Record<string, string>>({})
@@ -198,7 +200,7 @@ Guidelines:
         setConversationHistory(prev => {
           const exists = prev.some(m => m.role === 'assistant' && m.interactionId === interactionId)
           if (exists) return prev
-          const updated = [...prev, { role: 'assistant', content: text, interactionId }]
+          const updated: ConversationMessage[] = [...prev, { role: 'assistant' as const, content: text, interactionId }]
           
           // Update step based on conversation progress
           const userMessages = updated.filter(m => m.role === 'user').length
@@ -368,7 +370,8 @@ Guidelines:
     }
   }, [experienceType, userName, getSystemPrompt, parseForAnswers, conversationHistory])
 
-  const handleSubmit = useCallback(() => {
+  // Manual submit handler (kept for non-voice flows)
+  const _handleSubmit = useCallback(() => {
     // Stop session
     if (voiceSessionRef.current) {
       voiceSessionRef.current.stop()
@@ -399,6 +402,9 @@ Guidelines:
       })
     }
   }, [experienceType, onSubmit])
+  
+  // Suppress unused warning (kept for future manual submit button)
+  void _handleSubmit
 
   // Cleanup on unmount
   useEffect(() => {
@@ -409,11 +415,16 @@ Guidelines:
     }
   }, [])
 
-  // Calculate progress
+  // Calculate progress (for potential future progress bar)
   const totalQuestions = questions.length
   const answeredCount = Object.keys(answersRef.current).filter(k => answersRef.current[k]).length
-  const progress = (answeredCount / totalQuestions) * 100
+  const _progress = (answeredCount / totalQuestions) * 100
   const steps = STEPS['greeting-card'] || []
+  
+  // Suppress unused warnings (kept for future progress UI)
+  void totalQuestions
+  void answeredCount
+  void _progress
 
   // Don't show anything when generating - let the parent component handle the transition
   // to GreetingCardGeneration which has its own loading screen

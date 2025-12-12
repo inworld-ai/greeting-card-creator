@@ -12,10 +12,14 @@ interface GreetingCardDisplayProps {
 
 function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarration, onShareAsIs }: GreetingCardDisplayProps) {
   const [isFlipped, setIsFlipped] = useState(false)
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [_isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
-  const [isAudioReady, setIsAudioReady] = useState(false)
+  const [_isAudioReady, setIsAudioReady] = useState(false)
+  
+  // Suppress unused variable warnings (values tracked for future UI enhancements)
+  void _isPlayingAudio
+  void _isAudioReady
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null)
   const preloadedFollowUpRef = useRef<HTMLAudioElement | null>(null)
