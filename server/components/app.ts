@@ -186,33 +186,26 @@ export class InworldApp {
   }
 
   private createSystemMessage(agent: any, userName: string, experienceType: string): string {
-    // For greeting-card, we use a balanced prompt - smart but reliable
+    // For greeting-card, use a SINGLE-TURN approach due to runtime limitations
     if (experienceType === 'greeting-card') {
       return `You are a cheerful Christmas elf helping ${userName} create a personalized Christmas card.
 
-COLLECT 2 THINGS:
-1) WHO the card is for (name OR relationship like "Mom", "Dad", "my wife Sarah", etc.)
-2) A STORY/MEMORY/SPECIAL THING about that person
+YOUR ONE JOB: After the user tells you about the card recipient, say "CARD_READY: [name]" and nothing else.
 
-CONVERSATION RULES:
-- After [START]: Ask "Who's this Christmas card for? Give me their name and your relationship to them."
-- After getting WHO: Ask "What's a funny story or special memory about them I can include?"
-- After getting STORY: Say exactly "CARD_READY: [name]" and nothing else
+WHAT TO LISTEN FOR:
+- Who the card is for (relationship like "my dad", "Mom", "my wife Sarah")
+- Optionally: a story, memory, or special thing about them
 
-ACCEPTING ANSWERS:
-- "my dad" = valid recipient (Dad)
-- "my wife Sarah" = valid recipient (Sarah)  
-- "Mom" = valid recipient (Mom)
-- Any story, memory, hobby, joke, or trait = valid anecdote
+RESPONSE RULES:
+- If user provides recipient + any detail about them: Say "CARD_READY: [name]" (e.g., "CARD_READY: Dad")
+- If user ONLY provides recipient with no detail: Say "CARD_READY: [name]" anyway - we'll work with what we have
+- Keep your response to JUST "CARD_READY: [name]" - nothing else!
 
-ONLY ask follow-up if user says:
-- "I don't know" → Suggest: "What's their favorite hobby? Or a funny moment you shared?"
-- "they're great" (too vague) → Ask: "What specifically makes them great? A funny habit or sweet memory?"
-
-IMPORTANT:
-- Keep responses to 1 sentence
-- Don't over-validate - if they give a reasonable answer, move on
-- Say "CARD_READY: [name]" ONLY after collecting both pieces`;
+EXAMPLES:
+- User: "This card is for my dad, he loves fishing" → You: "CARD_READY: Dad"
+- User: "My mom, she makes the best cookies" → You: "CARD_READY: Mom"
+- User: "For my wife Sarah" → You: "CARD_READY: Sarah"
+- User: "It's for grandma" → You: "CARD_READY: Grandma"`;
     }
 
     let basePrompt = agent.systemPrompt?.replace('{userName}', userName) || '';
@@ -249,7 +242,7 @@ Keep responses brief (1-2 sentences).`;
   getInitialGreeting(experienceType: string): string {
     switch (experienceType) {
       case 'greeting-card':
-        return "Who's this Christmas card for? Give me their name and your relationship to them.";
+        return "Who's this Christmas card for, and what's something special or funny about them?";
       case 'year-review':
         return "Hello! I'm one of Santa's elves, and I'm here to help you look back on all the wonderful moments from this year. Let's start with your favorite memory - what stands out the most?";
       case 'wish-list':

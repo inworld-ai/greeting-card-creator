@@ -26,11 +26,10 @@ interface ConversationMessage {
   interactionId?: string
 }
 
-// Progress steps for greeting card
+// Progress steps for greeting card (single-turn conversation)
 const STEPS = {
   'greeting-card': [
-    { key: 'name', label: 'Name & Relationship' },
-    { key: 'story', label: 'Funny Story' },
+    { key: 'listening', label: 'Tell Me About Them' },
     { key: 'generating', label: 'Creating Card' }
   ]
 }
@@ -320,20 +319,15 @@ Guidelines:
           // Check if we've collected all info (user finished speaking)
           setConversationHistory(prev => {
             if (experienceType === 'greeting-card') {
-              const { hasRecipient, isComplete } = hasCollectedGreetingCardInfo(prev)
+              const { isComplete } = hasCollectedGreetingCardInfo(prev)
               
-              // Update step based on what we've collected
-              if (hasRecipient && !isComplete) {
-                setCurrentStep(1) // Got name, waiting for story
-              }
-              
-              // If elf confirmed both pieces AND hasn't already started generation
+              // If elf confirmed CARD_READY AND hasn't already started generation
               if (isComplete && !generationStartedRef.current) {
                 console.log('🎄 Elf confirmed CARD_READY - starting generation')
                 console.log('📝 Final conversation:', prev.map(m => `${m.role}: ${m.content}`).join('\n'))
                 generationStartedRef.current = true
                 triggerDetectedRef.current = true
-                setCurrentStep(2) // Creating Card
+                setCurrentStep(1) // Creating Card (step index 1 in new 2-step flow)
                 setIsGenerating(true)
 
                 // Stop recording/session and begin generation
