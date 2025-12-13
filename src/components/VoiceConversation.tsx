@@ -214,6 +214,9 @@ Guidelines:
               fullText.includes('perfect! creating your card') ||
               fullText.includes('creating your christmas card') ||
               fullText.includes('creating your card now') ||
+              fullText.includes('sprinkle some christmas magic') ||
+              fullText.includes('christmas magic on your card') ||
+              fullText.includes('hold tight while i') ||
               fullText.includes('let me generate') ||
               fullText.includes('let me create') ||
               fullText.includes('generate your card') ||
