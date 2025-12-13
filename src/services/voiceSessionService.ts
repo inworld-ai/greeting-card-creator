@@ -199,9 +199,10 @@ export class VoiceSession {
 
   /**
    * Clean up audio session without sending audioSessionEnd
-   * Used between turns to prepare for a fresh graph
+   * Note: Not currently used with continuous audio stream architecture
+   * Kept for potential future use if we need to revert
    */
-  private cleanupAudioSession(): void {
+  private _cleanupAudioSession(): void {
     if (this.audioInterval) {
       clearInterval(this.audioInterval);
       this.audioInterval = null;
