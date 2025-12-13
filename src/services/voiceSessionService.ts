@@ -197,24 +197,6 @@ export class VoiceSession {
     }
   }
 
-  /**
-   * Clean up audio session without sending audioSessionEnd
-   * Note: Not currently used with continuous audio stream architecture
-   * Kept for potential future use if we need to revert
-   */
-  private _cleanupAudioSession(): void {
-    if (this.audioInterval) {
-      clearInterval(this.audioInterval);
-      this.audioInterval = null;
-    }
-    
-    this.mediaStream?.getTracks().forEach(track => track.stop());
-    this.audioWorkletNode?.disconnect();
-    this.silentGainNode?.disconnect();
-    this.silentGainNode = null;
-    this.isRecording = false;
-  }
-
   async startRecording(): Promise<void> {
     if (this.isRecording || !this.ws) return;
 
