@@ -209,8 +209,11 @@ export class InworldGraphWrapper {
             return !!(input.text && input.text.trim().length > 0);
           },
         })
-        // Loop back from StateUpdate to InteractionQueue for next turn
-        .addEdge(stateUpdateNode, interactionQueueNode)
+        // Loop back from StateUpdate to STT node to wait for next user turn
+        // This keeps the audio stream alive and processing
+        .addEdge(stateUpdateNode, assemblyAISTTNode, {
+          loop: true,
+        })
         .setStartNode(audioInputNode);
     } else {
       graphBuilder.setStartNode(textInputNode);
