@@ -291,30 +291,29 @@ Guidelines:
         // Elf finished speaking
         setIsProcessing(false)
         
-        // For the FIRST interaction (initial greeting), enable mic here
-        // Subsequent turns will re-enable mic via onTurnComplete
+        // Enable mic after initial greeting - it stays on continuously
+        // (continuous audio stream architecture - no need to restart between turns)
         if (!autoMicEnabledRef.current && voiceSessionRef.current && !generationStartedRef.current) {
           try {
             await voiceSessionRef.current.startRecording()
             setIsRecording(true)
             autoMicEnabledRef.current = true
-            console.log('🎤 Mic enabled after initial greeting')
+            console.log('🎤 Mic enabled after initial greeting (continuous mode)')
           } catch (err: any) {
             console.error('Failed to enable mic:', err)
           }
         }
       },
+      // Note: onTurnComplete no longer used - audio stream stays alive between turns
       onTurnComplete: async () => {
-        console.log('🔄 Turn complete - re-enabling mic for next turn')
+        // With continuous audio stream, we don't need to restart recording
+        // The mic stays on and the graph continues processing
+        console.log('🔄 Turn complete (continuous mode - mic stays active)')
         
-        // Small delay to ensure cleanup is complete
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
-        // Re-enable mic for the next turn (creates fresh graph on server)
+        // Just mark that we're ready for the next turn - don't restart recording
         if (voiceSessionRef.current && !generationStartedRef.current) {
-          try {
-            await voiceSessionRef.current.startRecording()
-            setIsRecording(true)
+          // Mic should already be recording - no action needed
+          setIsRecording(true)
             console.log('🎤 Mic re-enabled for next turn')
           } catch (err: any) {
             console.error('Failed to re-enable mic:', err)

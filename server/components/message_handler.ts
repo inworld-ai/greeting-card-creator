@@ -344,11 +344,11 @@ export class MessageHandler {
       let currentGraphInteractionId: string | undefined = undefined;
       let resultCount = 0;
 
-      // SINGLE-TURN: Process results until graph completes (no looping)
+      // CONTINUOUS: Process results as they come - graph loops for multi-turn
       for await (const result of outputStream) {
         resultCount++;
         console.log(
-          `[Session ${sessionId}] Processing result ${resultCount} from single-turn graph`,
+          `[Session ${sessionId}] Processing result ${resultCount} from continuous graph`,
         );
 
         // Check if result contains an error
@@ -382,28 +382,23 @@ export class MessageHandler {
         }
       }
 
+      // Graph ended (should only happen on session close or error)
       console.log(
-        `[Session ${sessionId}] ✅ Single-turn graph complete - processed ${resultCount} result(s)`,
+        `[Session ${sessionId}] Graph stream ended - processed ${resultCount} result(s)`,
       );
-      
-      // SINGLE-TURN: Signal to client that this turn is complete
-      // Client should stop recording and can start a new turn when ready
-      this.send(EventFactory.turnComplete(sessionId));
       
     } catch (error) {
       console.error('Error processing audio stream:', error);
       throw error;
     } finally {
-      // SINGLE-TURN: Clean up after each turn
-      console.log(`[Session ${sessionId}] 🧹 Cleaning up after single turn`);
+      // Only clean up when graph actually ends (session close or error)
+      // Don't clean up between turns - keep stream alive
+      console.log(`[Session ${sessionId}] 🧹 Audio graph execution ended`);
       
-      // End the audio stream
+      // Only end the audio stream if it's still active
       if (audioStreamManager && !audioStreamManager.isEnded()) {
         audioStreamManager.end();
       }
-      
-      // Destroy the graph so a fresh one is created for the next turn
-      this.inworldApp.clearGraphCache(sessionId);
       
       connection.audioStreamManager = undefined;
       connection.currentAudioGraphExecution = undefined;

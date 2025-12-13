@@ -190,9 +190,8 @@ export class VoiceSession {
         break;
 
       case 'TURN_COMPLETE':
-        console.log('🔄 Turn complete - ready for next turn');
-        // Clean up current audio session so a fresh graph can be created for next turn
-        this.cleanupAudioSession();
+        // With continuous audio stream, we don't clean up - just notify
+        console.log('🔄 Turn complete (continuous mode - audio stream stays alive)');
         this.config.onTurnComplete?.();
         break;
     }
