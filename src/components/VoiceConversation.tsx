@@ -309,16 +309,7 @@ Guidelines:
         // With continuous audio stream, we don't need to restart recording
         // The mic stays on and the graph continues processing
         console.log('🔄 Turn complete (continuous mode - mic stays active)')
-        
-        // Just mark that we're ready for the next turn - don't restart recording
-        if (voiceSessionRef.current && !generationStartedRef.current) {
-          // Mic should already be recording - no action needed
-          setIsRecording(true)
-            console.log('🎤 Mic re-enabled for next turn')
-          } catch (err: any) {
-            console.error('Failed to re-enable mic:', err)
-          }
-        }
+        // Mic should already be recording - no action needed
       },
       onSpeechComplete: (interactionId) => {
         console.log('🎙️ User speech complete:', interactionId)
