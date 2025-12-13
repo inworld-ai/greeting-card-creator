@@ -106,7 +106,7 @@ export class InworldGraphWrapper {
       speakerId: voiceId,
       modelId: ttsModelId,
       sampleRate: TTS_SAMPLE_RATE,
-      temperature: 0.8,
+      temperature: 1.1,
       speakingRate: 1,
     });
 
