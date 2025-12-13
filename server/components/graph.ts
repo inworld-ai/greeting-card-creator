@@ -217,9 +217,12 @@ export class InworldGraphWrapper {
         .setStartNode(audioInputNode);
     } else {
       graphBuilder.setStartNode(textInputNode);
+      // Text-only graph (no audio loop) - set end node so it completes after TTS
+      graphBuilder.setEndNode(ttsNode);
     }
 
-    graphBuilder.setEndNode(ttsNode);
+    // NOTE: For audio input graphs, we DON'T set an end node
+    // This allows the graph to keep running and loop back to STT for multi-turn conversations
 
     const graph = graphBuilder.build();
     if (props.graphVisualizationEnabled) {
