@@ -17,6 +17,7 @@ import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
 import GreetingCardGeneration from './components/GreetingCardGeneration'
 import GreetingCardDisplay from './components/GreetingCardDisplay'
+import TextBasedChristmasCard from './components/TextBasedChristmasCard'
 import './App.css'
 
 export type StoryType = string | null
@@ -88,6 +89,12 @@ function App() {
   const navigate = useNavigate()
   const path = location.pathname
   
+  // Text-based Christmas Card route (simple form, no voice agent)
+  // This is a completely separate experience that doesn't use the main app flow
+  if (path === '/christmascard') {
+    return <TextBasedChristmasCard />
+  }
+  
   // Determine experience type from URL path
   const getExperienceFromPath = (): ExperienceType | null => {
     if (path === '/storyteller') return 'story'
@@ -102,6 +109,8 @@ function App() {
     if (path === '/storyteller') {
       document.title = 'Christmas Story Creator'
     } else if (path === '/greetingcard') {
+      document.title = 'Christmas Card Creator'
+    } else if (path === '/christmascard') {
       document.title = 'Christmas Card Creator'
     } else {
       document.title = 'Inworld Christmas Creations'
