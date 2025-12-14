@@ -168,6 +168,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
     }
 
     let prompt: string;
+    let parsedRecipientName: string | null = null; // Will be set if we parse the name
 
     // If we have conversation history, extract info and generate from it
     if (conversationHistory && Array.isArray(conversationHistory)) {
@@ -244,16 +245,53 @@ CRITICAL OUTPUT RULES:
         });
       }
 
+      // Parse the recipientName field to extract name and relationship
+      // Examples: "my son Mac" -> name: "Mac", relationship: "son"
+      //           "my dad Ed" -> name: "Ed", relationship: "dad"  
+      //           "Sarah" -> name: "Sarah", relationship: null
+      let extractedName = recipientName;
+      let extractedRelationship = relationship || '';
+      
+      // Common patterns: "my [relationship] [name]", "[name] my [relationship]"
+      const relationshipPatterns = [
+        /^my\s+(son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)\s+(.+)$/i,
+        /^(.+?),?\s+my\s+(son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)$/i,
+      ];
+      
+      for (const pattern of relationshipPatterns) {
+        const match = recipientName.match(pattern);
+        if (match) {
+          if (pattern === relationshipPatterns[0]) {
+            // "my [relationship] [name]" pattern
+            extractedRelationship = match[1];
+            extractedName = match[2].trim();
+          } else {
+            // "[name], my [relationship]" pattern
+            extractedName = match[1].trim();
+            extractedRelationship = match[2];
+          }
+          break;
+        }
+      }
+      
+      // Clean up the extracted name (remove trailing punctuation)
+      extractedName = extractedName.replace(/[.,!?]+$/, '').trim();
+      
+      console.log(`📝 Parsed recipient: "${recipientName}" -> name: "${extractedName}", relationship: "${extractedRelationship}"`);
+      
+      // Set the parsed name for the response
+      parsedRecipientName = extractedName;
+
       prompt = `Create a personalized Christmas card message.
 
-Recipient: ${recipientName}
-${relationship ? `Sender's relationship to recipient: ${relationship}` : 'Relationship: friend'}
+Recipient's name: ${extractedName}
+${extractedRelationship ? `Sender's relationship to recipient: The recipient is the sender's ${extractedRelationship}` : 'Relationship: friend or family member'}
 Funny/special thing about them: ${funnyStory}
 ${signoff ? `Requested sign-off: ${signoff}` : ''}
 
 Write a Christmas card message in this EXACT FORMAT:
 
-Dear ${recipientName},
+Dear ${extractedName},
 
 {First paragraph: A warm Christmas greeting that cleverly references their quirk/obsession. Make puns or references. 2-3 sentences.}
 
@@ -262,8 +300,7 @@ Dear ${recipientName},
 {REQUIRED SIGN-OFF LINE}
 
 SIGN-OFF RULES (MANDATORY - NEVER SKIP):
-${signoff ? `- USE THE EXACT SIGN-OFF PROVIDED: "${signoff}"` : `- If relationship provided, use appropriate sign-off (e.g., "Love, Dad", "Your loving wife", etc.)
-- If no clear relationship, use: "Wishing you a Merry Christmas!" or "With love and holiday cheer!"`}
+${signoff ? `- USE THE EXACT SIGN-OFF PROVIDED: "${signoff}"` : extractedRelationship ? `- Based on the relationship (${extractedRelationship}), use an appropriate sign-off like "Love, Dad", "Love, Mom", "Your loving husband/wife", etc.` : `- Use a warm sign-off like "Wishing you a Merry Christmas!" or "With love and holiday cheer!"`}
 
 STYLE GUIDELINES:
 - Make specific puns or references to their quirk/obsession
@@ -274,7 +311,7 @@ CRITICAL OUTPUT RULES:
 - DO NOT include any headers or labels
 - DO NOT include any asterisks, bold text, or formatting markers  
 - ONLY output the card message itself: "Dear [name]," + two paragraphs + sign-off
-- Start your response DIRECTLY with "Dear"
+- Start your response DIRECTLY with "Dear ${extractedName},"
 - The message MUST end with a sign-off line on its own line (THIS IS REQUIRED - NEVER OMIT)`;
     }
 
@@ -315,7 +352,13 @@ CRITICAL OUTPUT RULES:
     }
 
     console.log(`✅ Generated greeting card message (${cardMessage.length} chars)`);
-    return res.status(200).json({ cardMessage });
+    
+    // Include the parsed recipient name if available (for display purposes)
+    const response: { cardMessage: string; parsedRecipientName?: string } = { cardMessage };
+    if (parsedRecipientName) {
+      response.parsedRecipientName = parsedRecipientName;
+    }
+    return res.status(200).json(response);
   } catch (error: any) {
     console.error('❌ Error generating greeting card message:', error);
     return res.status(500).json({ error: error.message || 'Failed to generate message' });
@@ -364,7 +407,25 @@ Create a beautiful Christmas greeting card illustration that:
         });
       }
 
-      imagePrompt = `A beautiful, personalized Christmas greeting card illustration in square 1:1 aspect ratio. The card should display the text "Merry Christmas ${recipientName}" prominently. `;
+      // Parse the recipientName field to extract just the name
+      // Examples: "my son Mac" -> "Mac", "my dad Ed" -> "Ed"
+      let displayName = recipientName;
+      const relationshipPatterns = [
+        /^my\s+(?:son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)\s+(.+)$/i,
+        /^(.+?),?\s+my\s+(?:son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)$/i,
+      ];
+      
+      for (const pattern of relationshipPatterns) {
+        const match = recipientName.match(pattern);
+        if (match) {
+          displayName = match[1].trim().replace(/[.,!?]+$/, '');
+          break;
+        }
+      }
+      
+      console.log(`📝 Image prompt using name: "${displayName}" (from "${recipientName}")`);
+
+      imagePrompt = `A beautiful, personalized Christmas greeting card illustration in square 1:1 aspect ratio. The card should display the text "Merry Christmas ${displayName}" prominently. `;
       if (specialAboutThem) {
         imagePrompt += `The image should reflect: ${specialAboutThem}. `;
       }

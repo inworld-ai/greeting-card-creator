@@ -14,6 +14,7 @@ function TextBasedChristmasCard() {
   // Generated card data
   const [cardMessage, setCardMessage] = useState('')
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState('') // Parsed name for display (e.g., "Mac" from "my son Mac")
   
   // Display state
   const [isFlipped, setIsFlipped] = useState(false)
@@ -77,6 +78,8 @@ function TextBasedChristmasCard() {
       
       const messageData = await messageResponse.json()
       setCardMessage(messageData.cardMessage)
+      // Use the parsed name from the API, or fall back to the original input
+      setDisplayName(messageData.parsedRecipientName || recipientInfo)
       
       if (imageResponse.ok) {
         const imageData = await imageResponse.json()
@@ -258,6 +261,7 @@ function TextBasedChristmasCard() {
     setSignoff('')
     setCardMessage('')
     setCoverImageUrl(null)
+    setDisplayName('')
     setIsFlipped(false)
     setError(null)
     setIsPlayingAudio(false)
@@ -481,7 +485,7 @@ function TextBasedChristmasCard() {
             ) : (
               <div className="greeting-card-cover-placeholder">
                 <div className="greeting-card-placeholder-icon">💌</div>
-                <p className="greeting-card-placeholder-text">To: {recipientInfo}</p>
+                <p className="greeting-card-placeholder-text">To: {displayName}</p>
               </div>
             )}
           </div>
