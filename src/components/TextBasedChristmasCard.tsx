@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
-import { shareUrl, isMobileDevice } from '../services/shareService'
+import { shareUrl } from '../services/shareService'
 import CustomNarrator from './CustomNarrator'
 import './GreetingCardDisplay.css'
 
