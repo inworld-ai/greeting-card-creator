@@ -36,10 +36,10 @@
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
-  border-radius: 16px;
+  border-radius: 24px;
   overflow: hidden;
-  /* Reduced shadow for cleaner look */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* Minimal shadow for clean look */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .greeting-card-flip-front {

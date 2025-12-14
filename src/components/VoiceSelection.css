@@ -96,10 +96,10 @@
   font-size: 1rem;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: 'Georgia', serif;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .btn-primary {
@@ -110,7 +110,6 @@
 .btn-primary:hover:not(:disabled) {
   background-color: #c82333;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -131,7 +130,6 @@
 .btn-secondary:hover {
   background-color: #5a6268;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
 }
 
 .btn-secondary:active {

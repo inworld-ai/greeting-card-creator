@@ -25,12 +25,12 @@
   transition: all 0.3s ease;
   text-align: center;
   /* Reduced shadow for cleaner look */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  /* Removed box-shadow for minimal look */
 }
 
 .landing-option:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* Removed box-shadow for minimal look */
   border-color: #dc3545;
 }
 

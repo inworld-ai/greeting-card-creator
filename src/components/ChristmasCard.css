@@ -1,6 +1,6 @@
 .christmas-card-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   margin: 0 auto;
   perspective: 1000px;
   padding: 2rem 1rem;
@@ -8,7 +8,7 @@
 
 .christmas-card {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.8s ease;
@@ -29,9 +29,10 @@
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
-  border-radius: 16px;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  /* Minimal shadow for clean look */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
 }
 
@@ -47,9 +48,10 @@
 
 .card-front-image {
   width: 100%;
-  height: 70%;
+  height: 100%;
   overflow: hidden;
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  /* Clean white/light background instead of red */
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,11 +59,9 @@
 }
 
 .card-front-image img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .card-placeholder {
@@ -85,21 +85,24 @@
 }
 
 .card-front-text {
-  height: 30%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
 }
 
 .card-front-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #212529;
   margin: 0 0 0.5rem 0;
-  font-family: 'Georgia', serif;
+  font-family: 'FeatureDeck', 'Georgia', serif;
   text-align: center;
 }
 
@@ -118,13 +121,13 @@
 }
 
 .card-inside-title {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: #212529;
   margin: 0 0 1.5rem 0;
-  font-family: 'Georgia', serif;
+  font-family: 'FeatureDeck', 'Georgia', serif;
   text-align: center;
-  border-bottom: 2px solid #dc3545;
+  border-bottom: 2px solid #228b22;
   padding-bottom: 1rem;
 }
 
@@ -132,7 +135,7 @@
   font-size: 1.1rem;
   line-height: 1.8;
   color: #212529;
-  font-family: 'Georgia', serif;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .story-paragraph {

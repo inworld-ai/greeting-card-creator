@@ -47,22 +47,13 @@
 
 .story-text-container {
   background: rgba(255, 248, 240, 0.95);
-  border: 2px solid #228b22;
-  border-radius: 4px;
+  border: 1px solid rgba(34, 139, 34, 0.2);
+  border-radius: 16px;
   padding: 30px;
   max-height: 450px;
   overflow-y: auto;
-  box-shadow: 
-    inset 0 2px 8px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(34, 139, 34, 0.2);
+  /* Clean minimal look - no box shadow */
   position: relative;
-  background-image: 
-    repeating-linear-gradient(
-      transparent,
-      transparent 31px,
-      rgba(34, 139, 34, 0.03) 31px,
-      rgba(34, 139, 34, 0.03) 32px
-    );
 }
 
 .story-text-container::-webkit-scrollbar {
@@ -109,61 +100,45 @@
   padding: 12px 24px;
   font-size: 1rem;
   font-weight: 600;
-  border: 2px solid #228b22;
-  border-radius: 4px;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .play-button {
-  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-  color: #fff8f0;
-  border-color: #0f5132;
+  background-color: #dc3545;
+  color: white;
 }
 
 .pause-button {
-  background: linear-gradient(135deg, #dc143c 0%, #c41e3a 100%);
-  color: #fff8f0;
-  border-color: #006400;
+  background-color: #dc3545;
+  color: white;
 }
 
 .resume-button {
-  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-  color: #fff8f0;
-  border-color: #0f5132;
+  background-color: #dc3545;
+  color: white;
 }
 
 .stop-button {
-  background: rgba(34, 139, 34, 0.2);
-  color: #0f5132;
-  border-color: #228b22;
+  background-color: #6c757d;
+  color: white;
 }
 
 .control-button:hover {
   transform: translateY(-2px);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .play-button:hover,
-.resume-button:hover {
-  background: linear-gradient(135deg, #dc143c 0%, #c41e3a 100%);
-  border-color: #dc143c;
-}
-
+.resume-button:hover,
 .pause-button:hover {
-  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+  background-color: #c82333;
 }
 
 .stop-button:hover {
-  background: rgba(34, 139, 34, 0.3);
+  background-color: #5a6268;
 }
 
 .story-controls {
@@ -177,66 +152,44 @@
   padding: 12px 24px;
   font-size: 1rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
-  color: #fff8f0;
-  border: 2px solid #0f5132;
-  border-radius: 4px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .restart-story-button:hover {
-  background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);
+  background-color: #5a6268;
   transform: translateY(-2px);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .restart-story-button:active {
   transform: translateY(0);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .restart-button {
   padding: 12px 24px;
   font-size: 1rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-  color: #fff8f0;
-  border: 2px solid #0f5132;
-  border-radius: 4px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .restart-button:hover {
-  background: linear-gradient(135deg, #dc143c 0%, #c41e3a 100%);
+  background-color: #5a6268;
   transform: translateY(-2px);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .restart-button:active {
   transform: translateY(0);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .spinner {
@@ -255,8 +208,8 @@
 
 .error-message {
   background: rgba(139, 50, 50, 0.1);
-  border: 2px solid #8b3a3a;
-  border-radius: 4px;
+  border: 1px solid rgba(139, 50, 50, 0.2);
+  border-radius: 16px;
   padding: 14px;
   margin-bottom: 16px;
   color: #6b2a2a;
@@ -267,26 +220,18 @@
   padding: 12px 24px;
   font-size: 1rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
-  color: #fff8f0;
-  border: 2px solid #0f5132;
-  border-radius: 4px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .share-story-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);
+  background-color: #c82333;
   transform: translateY(-2px);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .share-story-button:disabled {
@@ -301,8 +246,8 @@
   align-items: center;
   padding: 15px;
   background: rgba(34, 139, 34, 0.1);
-  border: 2px solid #228b22;
-  border-radius: 4px;
+  border: 1px solid rgba(34, 139, 34, 0.2);
+  border-radius: 16px;
   margin-bottom: 10px;
 }
 
@@ -318,11 +263,11 @@
   max-width: 500px;
   padding: 8px 12px;
   font-size: 0.9rem;
-  border: 2px solid #228b22;
-  border-radius: 4px;
+  border: 1px solid rgba(34, 139, 34, 0.2);
+  border-radius: 12px;
   background: #faf7f5;
-  color: #0f5132;
-  font-family: 'Crimson Text', serif;
+  color: #333;
+  font-family: 'FeatureDeck', 'Georgia', serif;
   cursor: text;
 }
 
@@ -330,19 +275,17 @@
   padding: 8px 16px;
   font-size: 0.9rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #228b22 0%, #0f5132 100%);
-  color: #fff8f0;
-  border: 2px solid #0f5132;
-  border-radius: 4px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
 }
 
 .copy-link-button:hover {
-  background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);
+  background-color: #c82333;
   transform: translateY(-2px);
 }
 

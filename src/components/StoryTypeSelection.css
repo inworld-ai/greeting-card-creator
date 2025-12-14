@@ -35,16 +35,13 @@
   min-width: 0;
   padding: 18px 20px;
   font-size: 1.2rem;
-  border: 3px solid #228b22;
-  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
   outline: none;
-  transition: all 0.3s ease;
-  font-family: 'Crimson Text', serif;
-  background: rgba(255, 255, 255, 0.6);
-  color: #0f5132;
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(34, 139, 34, 0.2);
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
 }
 
 .action-buttons {
@@ -63,12 +60,8 @@
 }
 
 .story-type-input:focus {
-  border-color: #dc143c;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.1),
-    0 4px 8px rgba(34, 139, 34, 0.3),
-    0 0 0 3px rgba(34, 139, 34, 0.1);
+  border-color: #4caf50;
+  background: rgba(255, 255, 255, 1);
 }
 
 .continue-button {
@@ -78,17 +71,16 @@
   background: #dc3545;
   color: #ffffff;
   border: none;
-  border-radius: 4px;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Georgia', serif;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
   white-space: nowrap;
 }
 
 .continue-button:hover {
   background: #c82333;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .continue-button:active {
@@ -100,25 +92,24 @@
   padding: 18px 28px;
   font-size: 1.1rem;
   font-weight: 600;
-  background: #dc3545;
+  background: #6c757d;
   color: #ffffff;
   border: none;
-  border-radius: 4px;
+  border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Georgia', serif;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
   white-space: nowrap;
 }
 
 .clear-button:hover {
-  background: #c82333;
+  background: #5a6268;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .clear-button:active {
   transform: translateY(0);
-  background: #bd2130;
+  background: #545b62;
 }
 
 .suggestions-section {
@@ -142,16 +133,16 @@
 
 .story-type-card {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
-  border: 2px solid rgba(76, 175, 80, 0.3);
-  border-radius: 12px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 24px;
   padding: 28px 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  /* Removed box-shadow for minimal look */
   position: relative;
 }
 
@@ -163,9 +154,9 @@
   right: -2px;
   bottom: -2px;
   border: 2px solid rgba(34, 139, 34, 0.3);
-  border-radius: 8px;
+  border-radius: 24px;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
 .story-type-card:hover:not(:disabled)::before {
@@ -174,7 +165,6 @@
 
 .story-type-card:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border-color: rgba(76, 175, 80, 0.6);
   background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 30%, #81c784 60%, #66bb6a 100%);
 }

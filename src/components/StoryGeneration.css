@@ -19,7 +19,7 @@
   border-top: 5px solid #228b22;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Removed box-shadow for cleaner look */
 }
 
 @keyframes spin {
@@ -58,7 +58,7 @@
   background: #228b22;
   border-radius: 50%;
   animation: bounce 1.4s ease-in-out infinite;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  /* Removed box-shadow for cleaner look */
 }
 
 .loading-dots span:nth-child(1) {
