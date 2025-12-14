@@ -89,12 +89,6 @@ function App() {
   const navigate = useNavigate()
   const path = location.pathname
   
-  // Text-based Christmas Card route (simple form, no voice agent)
-  // This is a completely separate experience that doesn't use the main app flow
-  if (path === '/christmascard') {
-    return <TextBasedChristmasCard />
-  }
-  
   // Determine experience type from URL path
   const getExperienceFromPath = (): ExperienceType | null => {
     if (path === '/storyteller') return 'story'
@@ -145,6 +139,12 @@ function App() {
       setStep('landing')
     }
   }, [path, storyData.experienceType])
+
+  // Text-based Christmas Card route (simple form, no voice agent)
+  // This must come AFTER all hooks to comply with React's rules of hooks
+  if (path === '/christmascard') {
+    return <TextBasedChristmasCard />
+  }
 
   const handleExperienceSelected = (experience: ExperienceType) => {
     setStoryData(prev => ({ ...prev, experienceType: experience }))
