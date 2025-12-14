@@ -17,10 +17,10 @@ export const PRE_ROLL_MS = 500;
 export const FRAME_PER_BUFFER = 1024;
 export const TEXT_CONFIG = {
   maxNewTokens: 100, // Keep responses short (~75 words) to prevent TTS timeout
-  maxPromptLength: 1500,
+  maxPromptLength: 1000, // Matching release/0.8
   repetitionPenalty: 1,
   topP: 0.5,
-  temperature: 0.9,
+  temperature: 0.1, // Low temperature for deterministic responses (release/0.8)
   frequencyPenalty: 0,
   presencePenalty: 0,
   stopSequences: ['\n\n'],

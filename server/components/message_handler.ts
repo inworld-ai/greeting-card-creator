@@ -31,7 +31,12 @@ export class MessageHandler {
   private createNewInteraction(logMessage: string): string {
     this.currentInteractionId = v4();
     console.log(logMessage, this.currentInteractionId);
-    this.send(EventFactory.newInteraction(this.currentInteractionId));
+    this.send(
+      EventFactory.newInteraction(
+        this.currentInteractionId,
+        this.interruptionEnabled,
+      ),
+    );
     return this.currentInteractionId;
   }
 
@@ -494,14 +499,17 @@ export class MessageHandler {
           }
         },
         Custom: async (customData: GraphTypes.Custom<any>) => {
-          // Speech complete event
+          // Check if it's SpeechCompleteEvent (from SpeechCompleteNotifierNode - VAD based)
           if (customData.type === 'SPEECH_COMPLETE') {
+            // Use the full interactionId from the event (compound ID like "abc123#1")
             const effectiveInteractionId =
               customData.interactionId || String(customData.iteration);
             console.log(
-              `User speech complete (VAD) - Interaction: ${effectiveInteractionId}`,
+              `User speech complete (VAD) - Interaction: ${effectiveInteractionId}, ` +
+                `Iteration: ${customData.iteration}, Samples: ${customData.totalSamples}, Endpointing Latency: ${customData.endpointingLatencyMs}ms`,
             );
 
+            // Send USER_SPEECH_COMPLETE event to client for latency tracking
             this.send(
               EventFactory.userSpeechComplete(effectiveInteractionId, {
                 totalSamples: customData.totalSamples,
@@ -514,14 +522,16 @@ export class MessageHandler {
             return;
           }
 
-          // Interruption detection
+          // Check if it's InteractionInfo (has isInterrupted property)
           if ('isInterrupted' in customData && customData.isInterrupted) {
+            // InteractionInfo has interactionId field - use it directly
             const effectiveInteractionId =
               customData.interactionId || currentGraphInteractionId || v4();
             console.log(
-              'Interruption detected, sending cancel for interactionId:',
+              'Interruption detected, sending cancel to client for interactionId:',
               effectiveInteractionId,
             );
+            // Send cancel event to client to stop audio playback
             this.send(EventFactory.cancelResponse(effectiveInteractionId));
             return;
           }
@@ -535,13 +545,27 @@ export class MessageHandler {
               return;
             }
 
+            // Update the current graph interaction ID from the state
+            // This captures the interactionId from TextInputNode or StateUpdateNode output
             currentGraphInteractionId = customData.interactionId;
             console.log(
               `Updated currentGraphInteractionId to: ${currentGraphInteractionId} (from ${role} message)`,
             );
 
+            // Validate connection and state (matching release/0.8)
             if (connection?.unloaded) {
               throw Error(`Session unloaded for sessionId:${sessionId}`);
+            }
+            if (!connection) {
+              throw Error(
+                `Failed to read connection for sessionId:${sessionId}`,
+              );
+            }
+            const state = connection.state;
+            if (!state) {
+              throw Error(
+                `Failed to read state from connection for sessionId:${sessionId}`,
+              );
             }
 
             this.send(
@@ -552,19 +576,51 @@ export class MessageHandler {
           }
         },
         error: async (error: GraphTypes.GraphError) => {
-          console.error(`[Session ${sessionId}] Graph error:`, error.message);
+          console.error(`[Session ${sessionId}] *** ERROR HANDLER CALLED ***`);
+          console.error(
+            `[Session ${sessionId}] Graph error:`,
+            error.message,
+            'Code:',
+            error.code,
+          );
 
+          // Get effective interaction ID
           const effectiveInteractionId =
             currentGraphInteractionId || interactionId || v4();
 
+          // Check if this is a timeout error
+          // Code 4 = DEADLINE_EXCEEDED in gRPC/Abseil status codes
+          const isTimeout =
+            error.code === 4 || error.message.includes('timed out');
+
+          // Don't send errors for empty speech recognition (common and expected)
           if (!error.message.includes('recognition produced no text')) {
+            // Convert GraphError to Error for EventFactory
             const errorObj = new Error(error.message);
             this.send(EventFactory.error(errorObj, effectiveInteractionId));
+            console.log(`[Session ${sessionId}] Error sent to client`);
+          } else {
+            console.log(`[Session ${sessionId}] Ignoring empty speech error`);
           }
 
-          if (error.code === 4 || error.message.includes('timed out')) {
+          // For timeout errors, close audio session if active
+          if (isTimeout) {
+            console.error(
+              `[Session ${sessionId}] ⚠️ NODE TIMEOUT DETECTED - Closing audio session`,
+              '\n  Possible causes:',
+              '\n  - Audio stream issues or delays',
+              '\n  - STT service connectivity problems',
+              '\n  - Slow processing in custom nodes',
+              '\n  - Network latency to external services',
+            );
+
+            // Close audio session if it exists
+            // Client will close microphone based on the error event already sent
             const audioConnection = this.inworldApp.connections[sessionId];
             if (audioConnection?.audioStreamManager) {
+              console.log(
+                `[Session ${sessionId}] Ending audio stream due to timeout`,
+              );
               audioConnection.audioStreamManager.end();
             }
           }
@@ -574,20 +630,28 @@ export class MessageHandler {
         },
       });
     } catch (error) {
+      // Catch any errors not handled by the error handler above
       console.error(
-        `[Session ${sessionId}] Error processing result:`,
+        `[Session ${sessionId}] *** CATCH BLOCK - Error processing result:***`,
         error,
       );
 
       const effectiveInteractionId =
         currentGraphInteractionId || interactionId || v4();
 
+      // Send error to client if it's not about empty speech
       if (
         error instanceof Error &&
         !error.message.includes('recognition produced no text')
       ) {
         this.send(EventFactory.error(error, effectiveInteractionId));
+        console.log(
+          `[Session ${sessionId}] Error sent to client from catch block`,
+        );
       }
+
+      // Don't throw - let the processing continue for other results
+      // Return the current interaction ID so the flow can continue
     }
 
     return currentGraphInteractionId;
