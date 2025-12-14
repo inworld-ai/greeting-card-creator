@@ -841,9 +841,12 @@ function App() {
       </div>
       
       <footer className="inworld-footer">
-        <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" className="inworld-footer-link">
-          A gift from Inworld AI
-        </a>
+        <span style={{ color: '#888', fontSize: '0.9rem' }}>
+          🎁 A gift from{' '}
+          <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline' }}>
+            Inworld AI
+          </a>
+        </span>
       </footer>
     </div>
   )
