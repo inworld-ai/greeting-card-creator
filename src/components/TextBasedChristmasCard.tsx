@@ -8,6 +8,7 @@ function TextBasedChristmasCard() {
   const [step, setStep] = useState<Step>('form')
   const [recipientInfo, setRecipientInfo] = useState('')
   const [funnyStory, setFunnyStory] = useState('')
+  const [signoff, setSignoff] = useState('')
   const [error, setError] = useState<string | null>(null)
   
   // Generated card data
@@ -18,18 +19,26 @@ function TextBasedChristmasCard() {
   const [isFlipped, setIsFlipped] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
+  const [_isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [_isAudioReady, setIsAudioReady] = useState(false)
+  
+  // Suppress unused variable warnings (values tracked for future UI enhancements)
+  void _isPlayingAudio
+  void _isAudioReady
   
   // Audio refs
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null)
+  const preloadedFollowUpRef = useRef<HTMLAudioElement | null>(null)
   const hasPlayedRef = useRef(false)
+  const hasAskedFollowUpRef = useRef(false)
   const isPreloadingRef = useRef(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!recipientInfo.trim() || !funnyStory.trim()) {
-      setError('Please fill in both fields')
+      setError('Please fill in the recipient and story fields')
       return
     }
     
@@ -49,6 +58,7 @@ function TextBasedChristmasCard() {
           body: JSON.stringify({
             recipientName: recipientInfo,
             funnyStory: funnyStory,
+            signoff: signoff.trim() || undefined,
           })
         }),
         fetch(`${API_BASE_URL}/api/generate-greeting-card-image`, {
@@ -83,7 +93,7 @@ function TextBasedChristmasCard() {
     }
   }
 
-  // Preload audio when card is generated
+  // Preload audio when card is generated (while user looks at cover)
   useEffect(() => {
     if (step !== 'display' || !cardMessage || isPreloadingRef.current) return
     isPreloadingRef.current = true
@@ -91,52 +101,122 @@ function TextBasedChristmasCard() {
     const preloadAudio = async () => {
       try {
         console.log('🎵 Preloading card message audio...')
+        
+        // Preload main message audio with [happy] emotion tag for TTS
+        // The tag influences voice tone but won't be verbalized
         const audio = await synthesizeSpeech('[happy] ' + cardMessage, {
           voiceId: 'Craig'
         })
         preloadedAudioRef.current = audio
-        console.log('✅ Card message audio preloaded!')
+        setIsAudioReady(true)
+        console.log('✅ Card message audio preloaded and ready!')
+
+        // Also preload the follow-up prompt
+        const followUpText = 'I hope they love it! Tap Share Card to send this to your loved one.'
+        const followUpAudio = await synthesizeSpeech(followUpText, {
+          voiceId: 'christmas_story_generator__female_elf_narrator'
+        })
+        preloadedFollowUpRef.current = followUpAudio
+        console.log('✅ Follow-up audio preloaded!')
       } catch (error) {
         console.error('Error preloading audio:', error)
+        isPreloadingRef.current = false // Allow retry
       }
     }
 
     preloadAudio()
   }, [step, cardMessage])
 
-  // Play audio when flipped to message
+  // Play message audio when user clicks to see the message
   const playMessageAudio = async () => {
     if (!cardMessage || hasPlayedRef.current) return
     hasPlayedRef.current = true
 
     try {
+      setIsPlayingAudio(true)
+      
+      // Use preloaded audio if available, otherwise generate on-demand
       let audio: HTMLAudioElement
       if (preloadedAudioRef.current) {
+        console.log('🎵 Playing preloaded card message audio (instant!)...')
         audio = preloadedAudioRef.current
       } else {
+        console.log('🎵 Generating card message audio on-demand...')
+        // Add [happy] emotion tag for TTS - influences voice tone but won't be verbalized
         audio = await synthesizeSpeech('[happy] ' + cardMessage, {
           voiceId: 'Craig'
         })
       }
       
       audioRef.current = audio
+
+      const playFollowUp = async () => {
+        if (hasAskedFollowUpRef.current) return
+        hasAskedFollowUpRef.current = true
+        try {
+          setIsPlayingAudio(true)
+          
+          // Use preloaded follow-up if available
+          let followUpAudio: HTMLAudioElement
+          if (preloadedFollowUpRef.current) {
+            console.log('🎵 Playing preloaded follow-up audio...')
+            followUpAudio = preloadedFollowUpRef.current
+          } else {
+            const followUpText = 'I hope they love it! Tap Share Card to send this to your loved one.'
+            followUpAudio = await synthesizeSpeech(followUpText, {
+              voiceId: 'christmas_story_generator__female_elf_narrator'
+            })
+          }
+          audioRef.current = followUpAudio
+          await followUpAudio.play()
+        } catch (e) {
+          console.error('Error playing follow-up audio:', e)
+        } finally {
+          setIsPlayingAudio(false)
+        }
+      }
+      
+      // Handle audio end - play follow-up after message finishes
+      audio.addEventListener('ended', () => {
+        setIsPlayingAudio(false)
+        console.log('🎵 Card message audio finished')
+        setTimeout(() => {
+          void playFollowUp()
+        }, 250)
+      }, { once: true })
+      
       await audio.play()
     } catch (error) {
       console.error('Error playing audio:', error)
+      setIsPlayingAudio(false)
     }
   }
 
-  const handleFlip = () => {
-    if (!isFlipped) {
-      setIsFlipped(true)
-      playMessageAudio()
-    } else {
-      setIsFlipped(false)
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+      if (preloadedAudioRef.current) {
+        preloadedAudioRef.current.pause()
+      }
+      if (preloadedFollowUpRef.current) {
+        preloadedFollowUpRef.current.pause()
+      }
     }
+  }, [])
+
+  // Handle flip and play audio immediately
+  const handleFlipToMessage = () => {
+    setIsFlipped(true)
+    // Start playing audio immediately when card is flipped
+    playMessageAudio()
   }
 
   const handleShare = async () => {
     setIsSharing(true)
+    setShareSuccess(false)
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
       
@@ -155,6 +235,7 @@ function TextBasedChristmasCard() {
         const data = await response.json()
         await navigator.clipboard.writeText(data.shareUrl)
         setShareSuccess(true)
+        // Reset success message after 3 seconds
         setTimeout(() => setShareSuccess(false), 3000)
       }
     } catch (error) {
@@ -167,18 +248,25 @@ function TextBasedChristmasCard() {
   const handleStartOver = () => {
     // Stop any playing audio
     audioRef.current?.pause()
+    preloadedAudioRef.current?.pause()
+    preloadedFollowUpRef.current?.pause()
     
     // Reset all state
     setStep('form')
     setRecipientInfo('')
     setFunnyStory('')
+    setSignoff('')
     setCardMessage('')
     setCoverImageUrl(null)
     setIsFlipped(false)
     setError(null)
+    setIsPlayingAudio(false)
+    setIsAudioReady(false)
     hasPlayedRef.current = false
+    hasAskedFollowUpRef.current = false
     isPreloadingRef.current = false
     preloadedAudioRef.current = null
+    preloadedFollowUpRef.current = null
   }
 
   // Form step
@@ -241,6 +329,7 @@ function TextBasedChristmasCard() {
                   borderRadius: '12px',
                   outline: 'none',
                   transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#166534'}
                 onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -271,6 +360,36 @@ function TextBasedChristmasCard() {
                   resize: 'vertical',
                   fontFamily: 'inherit',
                   transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#166534'}
+                onBlur={(e) => e.target.style.borderColor = '#ddd'}
+              />
+            </div>
+            
+            <div style={{ textAlign: 'left' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontWeight: '600',
+                color: '#333',
+              }}>
+                How would you like to sign off? <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={signoff}
+                onChange={(e) => setSignoff(e.target.value)}
+                placeholder="e.g., Love, Dad | Your favorite son | The whole family"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  fontSize: '1rem',
+                  border: '2px solid #ddd',
+                  borderRadius: '12px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#166534'}
                 onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -344,7 +463,7 @@ function TextBasedChristmasCard() {
     )
   }
 
-  // Display step - use exact same structure as GreetingCardDisplay
+  // Display step - matching GreetingCardDisplay structure exactly
   return (
     <div className="greeting-card-display-container" style={{ background: '#faf7f5', minHeight: '100vh', paddingTop: '2rem' }}>
       <div className="greeting-card-display-wrapper">
@@ -361,7 +480,7 @@ function TextBasedChristmasCard() {
               </div>
             ) : (
               <div className="greeting-card-cover-placeholder">
-                <div className="greeting-card-placeholder-icon">🎄</div>
+                <div className="greeting-card-placeholder-icon">💌</div>
                 <p className="greeting-card-placeholder-text">To: {recipientInfo}</p>
               </div>
             )}
@@ -384,7 +503,7 @@ function TextBasedChristmasCard() {
         {!isFlipped && (
           <button
             className="btn btn-secondary greeting-card-view-message-button"
-            onClick={handleFlip}
+            onClick={handleFlipToMessage}
           >
             Click to see the message
           </button>

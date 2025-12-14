@@ -159,7 +159,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
   console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
   
   try {
-    const { senderName, conversationHistory, recipientName, relationship, specialAboutThem, funnyStory } = req.body;
+    const { senderName, conversationHistory, recipientName, relationship, specialAboutThem, funnyStory, signoff } = req.body;
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return res.status(500).json({ 
@@ -249,6 +249,7 @@ CRITICAL OUTPUT RULES:
 Recipient: ${recipientName}
 ${relationship ? `Sender's relationship to recipient: ${relationship}` : 'Relationship: friend'}
 Funny/special thing about them: ${funnyStory}
+${signoff ? `Requested sign-off: ${signoff}` : ''}
 
 Write a Christmas card message in this EXACT FORMAT:
 
@@ -258,11 +259,11 @@ Dear ${recipientName},
 
 {Second paragraph: Continue the joke/reference and end with something heartfelt. 2-3 sentences.}
 
-{REQUIRED SIGN-OFF LINE based on relationship}
+{REQUIRED SIGN-OFF LINE}
 
 SIGN-OFF RULES (MANDATORY - NEVER SKIP):
-- If relationship provided, use appropriate sign-off (e.g., "Love, Dad", "Your loving wife", etc.)
-- If no clear relationship, use: "Wishing you a Merry Christmas!" or "With love and holiday cheer!"
+${signoff ? `- USE THE EXACT SIGN-OFF PROVIDED: "${signoff}"` : `- If relationship provided, use appropriate sign-off (e.g., "Love, Dad", "Your loving wife", etc.)
+- If no clear relationship, use: "Wishing you a Merry Christmas!" or "With love and holiday cheer!"`}
 
 STYLE GUIDELINES:
 - Make specific puns or references to their quirk/obsession
