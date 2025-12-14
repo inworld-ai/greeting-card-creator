@@ -1,6 +1,7 @@
 import { GraphOutputStream, GraphTypes } from '@inworld/runtime/graph';
 import { v4 } from 'uuid';
 import { RawData } from 'ws';
+import WavEncoder from 'wav-encoder';
 
 import { INPUT_SAMPLE_RATE } from '../constants';
 import { AudioStreamInput, EVENT_TYPE, TextInput } from '../types';
@@ -9,8 +10,6 @@ import { InworldApp } from './app';
 import { AudioStreamManager } from './audio_stream_manager';
 import { EventFactory } from './event_factory';
 import { InworldGraphWrapper } from './graph';
-
-const WavEncoder = require('wav-encoder');
 
 export class MessageHandler {
   private INPUT_SAMPLE_RATE = INPUT_SAMPLE_RATE;
