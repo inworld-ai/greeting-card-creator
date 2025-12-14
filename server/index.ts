@@ -568,7 +568,7 @@ app.post('/api/tts', async (req, res) => {
           speakerId: selectedVoiceId,
           modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1',
           sampleRate: 24000,
-          temperature: 0.8,
+          temperature: 1.1,
         }),
       ],
     });

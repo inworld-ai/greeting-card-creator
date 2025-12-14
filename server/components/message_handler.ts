@@ -173,7 +173,7 @@ export class MessageHandler {
             speakerId: voiceId,
             modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1',
             sampleRate: 24000,
-            temperature: 0.8,
+            temperature: 1.1,
           }),
         ],
       });

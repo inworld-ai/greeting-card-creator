@@ -159,10 +159,10 @@ export class InworldGraphWrapper {
           vadClient: props.vadClient,
           sampleRate: INPUT_SAMPLE_RATE,
           formatTurns: false,
-          // Increased thresholds to give users more time to pause without cutting off
-          endOfTurnConfidenceThreshold: 0.6, // Higher = needs more confidence user is done (was 0.4)
-          minEndOfTurnSilenceWhenConfident: 500, // 500ms minimum silence (was 160ms)
-          maxTurnSilence: 2500, // 2.5 seconds max silence before ending turn (was 1280ms)
+          // Using default thresholds from release/0.8
+          endOfTurnConfidenceThreshold: 0.4,
+          minEndOfTurnSilenceWhenConfident: 160, // milliseconds (AssemblyAI "Balanced" preset)
+          maxTurnSilence: 1280, // milliseconds (AssemblyAI "Balanced" preset)
         },
       });
 
@@ -176,8 +176,8 @@ export class InworldGraphWrapper {
         id: `speech-complete-notifier-node${postfix}`,
       });
 
-      // CONTINUOUS GRAPH: Loops back to STT after each turn completes
-      // Audio stream stays alive throughout the session for multi-turn conversations
+      // Assembly.AI Pipeline (from release/0.8)
+      // Uses stream_exhausted for loop condition and optional: true for loop edges
       graphBuilder
         .addNode(audioInputNode)
         .addNode(assemblyAISTTNode)
@@ -185,19 +185,22 @@ export class InworldGraphWrapper {
         .addNode(speechCompleteNotifierNode)
         .addNode(interactionQueueNode)
         .addEdge(audioInputNode, assemblyAISTTNode)
-        // STT continuously processes audio, looping back when not complete
+        // Loop back while stream is still active (key fix from release/0.8)
         .addEdge(assemblyAISTTNode, assemblyAISTTNode, {
           condition: async (input: any) => {
-            // Loop back to continue processing audio until turn is complete
-            return input?.interaction_complete !== true;
+            return input?.stream_exhausted !== true;
           },
           loop: true,
+          optional: true,
         })
+        // Two separate edges from assemblyAISTTNode when interaction is complete:
+        // 1. To speechCompleteNotifierNode for client notification (terminal node)
         .addEdge(assemblyAISTTNode, speechCompleteNotifierNode, {
           condition: async (input: any) => {
             return input?.interaction_complete === true;
           },
         })
+        // 2. To transcriptExtractorNode for continued processing
         .addEdge(assemblyAISTTNode, transcriptExtractorNode, {
           condition: async (input: any) => {
             return input?.interaction_complete === true;
@@ -206,23 +209,22 @@ export class InworldGraphWrapper {
         .addEdge(transcriptExtractorNode, interactionQueueNode)
         .addEdge(interactionQueueNode, textInputNode, {
           condition: (input: TextInput) => {
-            return !!(input.text && input.text.trim().length > 0);
+            console.log('InteractionQueueNode: condition', input);
+            return input.text && input.text.trim().length > 0;
           },
         })
-        // Loop back from StateUpdate to STT node to wait for next user turn
-        // This keeps the audio stream alive and processing
-        .addEdge(stateUpdateNode, assemblyAISTTNode, {
+        // Loop back from StateUpdate to InteractionQueue for next turn (with optional)
+        .addEdge(stateUpdateNode, interactionQueueNode, {
           loop: true,
+          optional: true,
         })
         .setStartNode(audioInputNode);
     } else {
       graphBuilder.setStartNode(textInputNode);
-      // Text-only graph (no audio loop) - set end node so it completes after TTS
-      graphBuilder.setEndNode(ttsNode);
     }
 
-    // NOTE: For audio input graphs, we DON'T set an end node
-    // This allows the graph to keep running and loop back to STT for multi-turn conversations
+    // Set end node for all graphs (TTS is the output endpoint)
+    graphBuilder.setEndNode(ttsNode);
 
     const graph = graphBuilder.build();
     if (props.graphVisualizationEnabled) {
