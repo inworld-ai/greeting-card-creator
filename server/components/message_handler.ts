@@ -355,10 +355,12 @@ export class MessageHandler {
       let currentGraphInteractionId: string | undefined = undefined;
       let resultCount = 0;
 
+      console.log(`[Session ${sessionId}] 🔄 Starting to iterate over outputStream...`);
       for await (const result of outputStream) {
         resultCount++;
+        const resultType = result?.data?.constructor?.name || typeof result?.data;
         console.log(
-          `[Session ${sessionId}] Processing audio interaction ${resultCount} from stream`,
+          `[Session ${sessionId}] Processing audio interaction ${resultCount} from stream (type: ${resultType})`,
         );
 
         // Check if result contains an error
@@ -456,57 +458,78 @@ export class MessageHandler {
     try {
       await result.processResponse({
         TTSOutputStream: async (ttsStream: GraphTypes.TTSOutputStream) => {
-          for await (const chunk of ttsStream) {
-            // Check interruption inside TTS loop
-            const checkInteractionId = interactionId || currentGraphInteractionId;
-            if (
-              this.interruptionEnabled &&
-              checkInteractionId &&
-              this.currentInteractionId !== checkInteractionId
-            ) {
-              console.log(
-                'Interaction ID mismatch, skipping response',
-                'current:', this.currentInteractionId,
-                'processing:', checkInteractionId,
-              );
-              return;
-            }
+          let ttsChunkCount = 0;
+          let totalTextLength = 0;
+          console.log(`[Session ${sessionId}] 🎵 TTS stream started (interruptionEnabled: ${this.interruptionEnabled})`);
+          
+          try {
+            for await (const chunk of ttsStream) {
+              ttsChunkCount++;
+              
+              // Check interruption inside TTS loop
+              const checkInteractionId = interactionId || currentGraphInteractionId;
+              if (
+                this.interruptionEnabled &&
+                checkInteractionId &&
+                this.currentInteractionId !== checkInteractionId
+              ) {
+                console.log(
+                  `[Session ${sessionId}] ⚠️ TTS INTERRUPTED - ID mismatch after ${ttsChunkCount} chunks`,
+                  'current:', this.currentInteractionId,
+                  'processing:', checkInteractionId,
+                );
+                return;
+              }
 
-            // Simple buffer conversion (matching greeting TTS approach)
-            // The TTS already outputs properly formatted audio - no need to re-encode
-            if (!chunk.audio?.data) continue;
+              // Simple buffer conversion (matching greeting TTS approach)
+              // The TTS already outputs properly formatted audio - no need to re-encode
+              if (!chunk.audio?.data) {
+                console.log(`[Session ${sessionId}] TTS chunk ${ttsChunkCount} has no audio data`);
+                continue;
+              }
 
-            let audioBuffer: Buffer;
-            if (Array.isArray(chunk.audio.data)) {
-              audioBuffer = Buffer.from(chunk.audio.data);
-            } else if (typeof chunk.audio.data === 'string') {
-              audioBuffer = Buffer.from(chunk.audio.data, 'base64');
-            } else if (Buffer.isBuffer(chunk.audio.data)) {
-              audioBuffer = chunk.audio.data;
-            } else {
-              continue;
-            }
+              let audioBuffer: Buffer;
+              if (Array.isArray(chunk.audio.data)) {
+                audioBuffer = Buffer.from(chunk.audio.data);
+              } else if (typeof chunk.audio.data === 'string') {
+                audioBuffer = Buffer.from(chunk.audio.data, 'base64');
+              } else if (Buffer.isBuffer(chunk.audio.data)) {
+                audioBuffer = chunk.audio.data;
+              } else {
+                console.log(`[Session ${sessionId}] TTS chunk ${ttsChunkCount} has unknown data type`);
+                continue;
+              }
 
-            if (audioBuffer.byteLength === 0) continue;
+              if (audioBuffer.byteLength === 0) {
+                console.log(`[Session ${sessionId}] TTS chunk ${ttsChunkCount} has empty buffer`);
+                continue;
+              }
 
-            const effectiveInteractionId = currentGraphInteractionId || v4();
-            const textPacket = EventFactory.text(
-              chunk.text || '',
-              effectiveInteractionId,
-              {
-                isAgent: true,
-                name: connection.state.agent.id,
-              },
-            );
-
-            this.send(
-              EventFactory.audio(
-                audioBuffer.toString('base64'),
+              totalTextLength += (chunk.text || '').length;
+              const effectiveInteractionId = currentGraphInteractionId || v4();
+              const textPacket = EventFactory.text(
+                chunk.text || '',
                 effectiveInteractionId,
-                textPacket.packetId.utteranceId,
-              ),
-            );
-            this.send(textPacket);
+                {
+                  isAgent: true,
+                  name: connection.state.agent.id,
+                },
+              );
+
+              this.send(
+                EventFactory.audio(
+                  audioBuffer.toString('base64'),
+                  effectiveInteractionId,
+                  textPacket.packetId.utteranceId,
+                ),
+              );
+              this.send(textPacket);
+            }
+            
+            console.log(`[Session ${sessionId}] ✅ TTS stream completed: ${ttsChunkCount} chunks, ${totalTextLength} chars`);
+          } catch (ttsError) {
+            console.error(`[Session ${sessionId}] ❌ TTS stream error after ${ttsChunkCount} chunks:`, ttsError);
+            throw ttsError;
           }
         },
         Custom: async (customData: GraphTypes.Custom<any>) => {
