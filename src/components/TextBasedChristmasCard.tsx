@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
+import CustomNarrator from './CustomNarrator'
 import './GreetingCardDisplay.css'
 
-type Step = 'form' | 'generating' | 'display'
+type Step = 'form' | 'generating' | 'display' | 'custom-narrator'
 
 function TextBasedChristmasCard() {
   const [step, setStep] = useState<Step>('form')
@@ -15,6 +16,7 @@ function TextBasedChristmasCard() {
   const [cardMessage, setCardMessage] = useState('')
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('') // Parsed name for display (e.g., "Mac" from "my son Mac")
+  const [customVoiceId, setCustomVoiceId] = useState<string | null>(null)
   
   // Display state
   const [isFlipped, setIsFlipped] = useState(false)
@@ -107,15 +109,16 @@ function TextBasedChristmasCard() {
         
         // Preload main message audio with [happy] emotion tag for TTS
         // The tag influences voice tone but won't be verbalized
+        // Use custom voice if available, otherwise use default Craig voice
         const audio = await synthesizeSpeech('[happy] ' + cardMessage, {
-          voiceId: 'Craig'
+          voiceId: customVoiceId || 'Craig'
         })
         preloadedAudioRef.current = audio
         setIsAudioReady(true)
         console.log('✅ Card message audio preloaded and ready!')
 
         // Also preload the follow-up prompt
-        const followUpText = 'I hope they love it! Tap Share Card to send this to your loved one.'
+        const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
         const followUpAudio = await synthesizeSpeech(followUpText, {
           voiceId: 'christmas_story_generator__female_elf_narrator'
         })
@@ -128,7 +131,7 @@ function TextBasedChristmasCard() {
     }
 
     preloadAudio()
-  }, [step, cardMessage])
+  }, [step, cardMessage, customVoiceId])
 
   // Play message audio when user clicks to see the message
   const playMessageAudio = async () => {
@@ -146,8 +149,9 @@ function TextBasedChristmasCard() {
       } else {
         console.log('🎵 Generating card message audio on-demand...')
         // Add [happy] emotion tag for TTS - influences voice tone but won't be verbalized
+        // Use custom voice if available, otherwise use default Craig voice
         audio = await synthesizeSpeech('[happy] ' + cardMessage, {
-          voiceId: 'Craig'
+          voiceId: customVoiceId || 'Craig'
         })
       }
       
@@ -165,7 +169,7 @@ function TextBasedChristmasCard() {
             console.log('🎵 Playing preloaded follow-up audio...')
             followUpAudio = preloadedFollowUpRef.current
           } else {
-            const followUpText = 'I hope they love it! Tap Share Card to send this to your loved one.'
+            const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
             followUpAudio = await synthesizeSpeech(followUpText, {
               voiceId: 'christmas_story_generator__female_elf_narrator'
             })
@@ -248,6 +252,16 @@ function TextBasedChristmasCard() {
     }
   }
 
+  const handleAddNarration = () => {
+    // Stop any playing audio
+    audioRef.current?.pause()
+    preloadedAudioRef.current?.pause()
+    preloadedFollowUpRef.current?.pause()
+    
+    // Navigate to custom narrator step
+    setStep('custom-narrator')
+  }
+
   const handleStartOver = () => {
     // Stop any playing audio
     audioRef.current?.pause()
@@ -262,6 +276,7 @@ function TextBasedChristmasCard() {
     setCardMessage('')
     setCoverImageUrl(null)
     setDisplayName('')
+    setCustomVoiceId(null)
     setIsFlipped(false)
     setError(null)
     setIsPlayingAudio(false)
@@ -467,6 +482,28 @@ function TextBasedChristmasCard() {
     )
   }
 
+  // Custom narrator step
+  if (step === 'custom-narrator') {
+    return (
+      <div style={{ background: '#faf7f5', minHeight: '100vh' }}>
+        <CustomNarrator
+          childName={displayName || recipientInfo}
+          onSubmit={(_apiKey: string, voiceId: string) => {
+            setCustomVoiceId(voiceId)
+            // Reset audio refs so we can replay with custom voice
+            hasPlayedRef.current = false
+            hasAskedFollowUpRef.current = false
+            isPreloadingRef.current = false
+            preloadedAudioRef.current = null
+            preloadedFollowUpRef.current = null
+            setStep('display')
+          }}
+          onBack={() => setStep('display')}
+        />
+      </div>
+    )
+  }
+
   // Display step - matching GreetingCardDisplay structure exactly
   return (
     <div className="greeting-card-display-container" style={{ background: '#faf7f5', minHeight: '100vh', paddingTop: '2rem' }}>
@@ -526,6 +563,13 @@ function TextBasedChristmasCard() {
       <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
           className="btn btn-primary"
+          onClick={handleAddNarration}
+          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+        >
+          🎙️ Create Custom Narrator
+        </button>
+        <button
+          className="btn btn-secondary"
           onClick={handleShare}
           disabled={isSharing}
           style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
