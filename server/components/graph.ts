@@ -56,10 +56,11 @@ export class InworldGraphWrapper {
       ttsModelId,
     } = props;
 
-    // Create postfix based on audio input type (matching release/0.8)
+    // Create unique postfix based on audio input and unique ID (for per-session graphs)
+    const uniqueId = props.uniqueId || 1;
     let postfix = withAudioInput ? '-with-audio-input' : '-with-text-input';
     if (withAudioInput) {
-      postfix += '-assembly-ai';
+      postfix += `-assembly-ai-${uniqueId}`;
     }
 
     const dialogPromptBuilderNode = new DialogPromptBuilderNode({

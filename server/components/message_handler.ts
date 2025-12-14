@@ -277,9 +277,10 @@ export class MessageHandler {
           sessionId,
         };
 
-        // Get the shared audio graph (created lazily on first request)
+        // Get a fresh audio graph for this session
         const graphWrapper = await this.inworldApp.getGraphForSTTService(
           connection.sttService,
+          sessionId,
         );
 
         // Start graph execution in the background

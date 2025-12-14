@@ -23,11 +23,10 @@ export class InworldApp {
 
   vadClient: any;
 
-  // Shared graphs for all sessions (voice selected dynamically via TTSRequestBuilderNode)
+  // Shared graph for text input
   graphWithTextInput!: InworldGraphWrapper;
-  private graphWithAudioInputAssemblyAI?: InworldGraphWrapper;
   
-  // Counter for unique graph IDs (incremented when graph is recreated after crash)
+  // Counter for unique graph IDs per session
   private graphCreationCounter = 0;
 
   // Environment configuration for lazy graph creation
@@ -74,40 +73,39 @@ export class InworldApp {
   }
 
   /**
-   * Get the shared Assembly.AI audio graph.
-   * Graph is created lazily on first request and shared across all sessions.
-   * (Matching release/0.8 architecture)
+   * Create a NEW audio graph for each session.
+   * Each session gets its own graph to avoid shared state issues.
    */
-  async getGraphForSTTService(_sttService?: string): Promise<InworldGraphWrapper> {
+  async getGraphForSTTService(_sttService?: string, sessionId?: string): Promise<InworldGraphWrapper> {
     if (!this.env.assemblyAIApiKey) {
       throw new Error(
         `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured. This should have been caught during session load.`,
       );
     }
 
-    // Use shared graph (created lazily on first request)
-    if (!this.graphWithAudioInputAssemblyAI) {
-      console.log('  → Creating Assembly.AI STT graph (first use)...');
-      this.graphWithAudioInputAssemblyAI = await InworldGraphWrapper.create({
-        apiKey: this.apiKey,
-        llmModelName: this.llmModelName,
-        llmProvider: this.llmProvider,
-        voiceId: DEFAULT_VOICE_ID,
-        connections: this.connections,
-        withAudioInput: true,
-        graphVisualizationEnabled: this.graphVisualizationEnabled,
-        disableAutoInterruption: this.disableAutoInterruption,
-        ttsModelId: this.ttsModelId,
-        vadClient: this.vadClient,
-        useAssemblyAI: true,
-        assemblyAIApiKey: this.env.assemblyAIApiKey,
-      });
-      console.log('  ✓ Assembly.AI STT graph created');
-    } else {
-      console.log(`  → Using existing Assembly.AI STT graph`);
-    }
-
-    return this.graphWithAudioInputAssemblyAI;
+    // Create a fresh graph for each call (each session gets its own graph)
+    this.graphCreationCounter++;
+    const graphId = this.graphCreationCounter;
+    console.log(`  → Creating new Assembly.AI STT graph #${graphId} for session ${sessionId || 'unknown'}...`);
+    
+    const graph = await InworldGraphWrapper.create({
+      apiKey: this.apiKey,
+      llmModelName: this.llmModelName,
+      llmProvider: this.llmProvider,
+      voiceId: DEFAULT_VOICE_ID,
+      connections: this.connections,
+      withAudioInput: true,
+      graphVisualizationEnabled: this.graphVisualizationEnabled,
+      disableAutoInterruption: this.disableAutoInterruption,
+      ttsModelId: this.ttsModelId,
+      vadClient: this.vadClient,
+      useAssemblyAI: true,
+      assemblyAIApiKey: this.env.assemblyAIApiKey,
+      uniqueId: graphId,
+    });
+    
+    console.log(`  ✓ Assembly.AI STT graph #${graphId} created`);
+    return graph;
   }
 
   async load(req: any, res: any) {
@@ -270,16 +268,13 @@ Keep responses brief (1-2 sentences).`;
   }
 
   clearGraphCache(_sessionId?: string) {
-    // With shared graph architecture, we don't destroy the graph
-    // The shared graph is reused across all sessions
-    // Only clear on server shutdown
-    console.log('📝 clearGraphCache called - no action with shared graph architecture');
+    // Per-session graphs are created fresh each time, no caching to clear
+    console.log('📝 clearGraphCache called - graphs are created per-session');
   }
 
   shutdown() {
     this.connections = {};
     this.graphWithTextInput.destroy();
-    this.graphWithAudioInputAssemblyAI?.destroy();
     stopInworldRuntime();
   }
 }
