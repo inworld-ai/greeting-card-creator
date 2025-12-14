@@ -354,11 +354,11 @@ CRITICAL OUTPUT RULES:
     console.log(`✅ Generated greeting card message (${cardMessage.length} chars)`);
     
     // Include the parsed recipient name if available (for display purposes)
-    const response: { cardMessage: string; parsedRecipientName?: string } = { cardMessage };
+    const responseBody: { cardMessage: string; parsedRecipientName?: string } = { cardMessage };
     if (parsedRecipientName) {
-      response.parsedRecipientName = parsedRecipientName;
+      responseBody.parsedRecipientName = parsedRecipientName;
     }
-    return res.status(200).json(response);
+    return res.status(200).json(responseBody);
   } catch (error: any) {
     console.error('❌ Error generating greeting card message:', error);
     return res.status(500).json({ error: error.message || 'Failed to generate message' });
