@@ -344,69 +344,75 @@ function TextBasedChristmasCard() {
     )
   }
 
-  // Display step
+  // Display step - use exact same structure as GreetingCardDisplay
   return (
-    <div className="greeting-card-display" style={{ background: '#faf7f5' }}>
-      <div className={`card-container ${isFlipped ? 'flipped' : ''}`}>
-        <div className="card-inner" onClick={handleFlip}>
-          {/* Front of card (cover image) */}
-          <div className="card-front">
+    <div className="greeting-card-display-container" style={{ background: '#faf7f5', minHeight: '100vh', paddingTop: '2rem' }}>
+      <div className="greeting-card-display-wrapper">
+        <div className={`greeting-card-flip-container ${isFlipped ? 'flipped' : ''}`}>
+          {/* Front - Cover Image */}
+          <div className="greeting-card-flip-front">
             {coverImageUrl ? (
-              <img src={coverImageUrl} alt="Christmas Card Cover" className="cover-image" />
+              <div className="greeting-card-cover-image-wrapper">
+                <img 
+                  src={coverImageUrl} 
+                  alt="Greeting card cover" 
+                  className="greeting-card-cover-image"
+                />
+              </div>
             ) : (
-              <div className="placeholder-cover">
-                <span className="christmas-emoji">🎄</span>
-                <p>Merry Christmas!</p>
+              <div className="greeting-card-cover-placeholder">
+                <div className="greeting-card-placeholder-icon">🎄</div>
+                <p className="greeting-card-placeholder-text">To: {recipientInfo}</p>
               </div>
             )}
-            <div className="tap-hint">
-              <span>Tap to open</span>
-            </div>
           </div>
-          
-          {/* Back of card (message) */}
-          <div className="card-back">
-            <div className="message-content">
-              <pre className="card-message">{cardMessage}</pre>
-            </div>
-            <div className="tap-hint back">
-              <span>Tap to close</span>
+
+          {/* Back - Message */}
+          <div className="greeting-card-flip-back">
+            <div className="greeting-card-message-container">
+              <div className="greeting-card-message-content">
+                {cardMessage.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="greeting-card-message-paragraph">
+                    {paragraph.trim()}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         </div>
+        
+        {!isFlipped && (
+          <button
+            className="btn btn-secondary greeting-card-view-message-button"
+            onClick={handleFlip}
+          >
+            Click to see the message
+          </button>
+        )}
+        
+        {isFlipped && (
+          <button
+            className="btn btn-secondary greeting-card-back-button"
+            onClick={() => setIsFlipped(false)}
+          >
+            ← Back to Cover
+          </button>
+        )}
       </div>
       
-      <div className="card-actions" style={{ marginTop: '2rem' }}>
-        <button 
+      <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button
           className="btn btn-primary"
           onClick={handleShare}
           disabled={isSharing}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '1.1rem',
-            background: 'linear-gradient(135deg, #166534 0%, #22c55e 100%)',
-            border: 'none',
-            borderRadius: '12px',
-            color: 'white',
-            cursor: 'pointer',
-            marginRight: '1rem',
-          }}
+          style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
         >
-          {isSharing ? 'Sharing...' : shareSuccess ? '✓ Link Copied!' : '📤 Share Card'}
+          {isSharing ? '📤 Sharing...' : shareSuccess ? '✅ Link Copied!' : '📤 Share Card'}
         </button>
-        
-        <button 
+        <button
           className="btn btn-secondary"
           onClick={handleStartOver}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '1.1rem',
-            background: 'white',
-            border: '2px solid #166534',
-            borderRadius: '12px',
-            color: '#166534',
-            cursor: 'pointer',
-          }}
+          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
         >
           Create Another
         </button>
