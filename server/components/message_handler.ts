@@ -340,32 +340,55 @@ export class MessageHandler {
       throw new Error(`Failed to get connection for sessionId:${sessionId}`);
     }
 
+    // Handle multiple interactions from the stream (from release/0.8)
     try {
       let currentGraphInteractionId: string | undefined = undefined;
       let resultCount = 0;
 
-      // CONTINUOUS: Process results as they come - graph loops for multi-turn
       for await (const result of outputStream) {
         resultCount++;
         console.log(
-          `[Session ${sessionId}] Processing result ${resultCount} from continuous graph`,
+          `[Session ${sessionId}] Processing audio interaction ${resultCount} from stream`,
         );
 
         // Check if result contains an error
         if (result && result.isGraphError && result.isGraphError()) {
           const errorData = result.data;
           console.error(
-            `[Session ${sessionId}] Graph error:`,
+            `[Session ${sessionId}] Received error result from graph:`,
             errorData?.message || errorData,
             'Code:',
             errorData?.code,
           );
 
+          // Check if this is a timeout error (code 4 = DEADLINE_EXCEEDED)
+          const isTimeout =
+            errorData?.code === 4 || errorData?.message?.includes('timed out');
+
+          // Send error to client
           const effectiveInteractionId = currentGraphInteractionId || v4();
           const errorObj = new Error(
             errorData?.message || 'Graph processing error',
           );
           this.send(EventFactory.error(errorObj, effectiveInteractionId));
+
+          // For timeout errors, close the audio session
+          if (isTimeout) {
+            console.error(
+              `[Session ${sessionId}] ⚠️ TIMEOUT DETECTED - Closing audio session`,
+            );
+
+            // End the audio stream
+            if (audioStreamManager) {
+              audioStreamManager.end();
+            }
+
+            // Stop processing - don't continue with more results
+            outputStream.abort();
+            break;
+          }
+
+          // For non-timeout errors, continue processing other results
           continue;
         }
 
@@ -382,24 +405,15 @@ export class MessageHandler {
         }
       }
 
-      // Graph ended (should only happen on session close or error)
       console.log(
-        `[Session ${sessionId}] Graph stream ended - processed ${resultCount} result(s)`,
+        `[Session ${sessionId}] Audio stream processing complete - processed ${resultCount} result(s)`,
       );
-      
     } catch (error) {
-      console.error('Error processing audio stream:', error);
+      console.error('Error processing audio stream interactions:', error);
       throw error;
     } finally {
-      // Only clean up when graph actually ends (session close or error)
-      // Don't clean up between turns - keep stream alive
+      // Clean up stream manager
       console.log(`[Session ${sessionId}] 🧹 Audio graph execution ended`);
-      
-      // Only end the audio stream if it's still active
-      if (audioStreamManager && !audioStreamManager.isEnded()) {
-        audioStreamManager.end();
-      }
-      
       connection.audioStreamManager = undefined;
       connection.currentAudioGraphExecution = undefined;
     }

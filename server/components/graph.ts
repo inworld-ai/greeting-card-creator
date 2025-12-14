@@ -23,7 +23,6 @@ import { SpeechCompleteNotifierNode } from './nodes/speech_complete_notifier_nod
 import { StateUpdateNode } from './nodes/state_update_node';
 import { TextInputNode } from './nodes/text_input_node';
 import { TranscriptExtractorNode } from './nodes/transcript_extractor_node';
-import { TTSRequestBuilderNode } from './nodes/tts_request_builder_node';
 
 //
 // Audio-to-speech pipeline for Christmas Storyteller:
@@ -96,11 +95,6 @@ export class InworldGraphWrapper {
       reportToClient: true,
     });
 
-    const ttsRequestBuilderNode = new TTSRequestBuilderNode({
-      id: `tts-request-builder-node${postfix}`,
-      connections,
-    });
-
     const ttsNode = new RemoteTTSNode({
       id: `tts-node${postfix}`,
       speakerId: voiceId,
@@ -108,6 +102,7 @@ export class InworldGraphWrapper {
       sampleRate: TTS_SAMPLE_RATE,
       temperature: 1.1,
       speakingRate: 1,
+      reportToClient: true,
     });
 
     const graphName = `voice-agent${postfix}`;
@@ -123,14 +118,12 @@ export class InworldGraphWrapper {
       .addNode(llmNode)
       .addNode(textChunkingNode)
       .addNode(textAggregatorNode)
-      .addNode(ttsRequestBuilderNode)
       .addNode(ttsNode)
       .addNode(stateUpdateNode)
       .addEdge(textInputNode, dialogPromptBuilderNode)
       .addEdge(dialogPromptBuilderNode, llmNode)
       .addEdge(llmNode, textChunkingNode)
-      .addEdge(textChunkingNode, ttsRequestBuilderNode)
-      .addEdge(ttsRequestBuilderNode, ttsNode)
+      .addEdge(textChunkingNode, ttsNode)
       .addEdge(llmNode, textAggregatorNode)
       .addEdge(textAggregatorNode, stateUpdateNode);
 
