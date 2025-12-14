@@ -247,26 +247,28 @@ CRITICAL OUTPUT RULES:
 
       // Parse the recipientName field to extract name and relationship
       // Examples: "my son Mac" -> name: "Mac", relationship: "son"
+      //           "our daughter Sarah" -> name: "Sarah", relationship: "daughter"
       //           "my dad Ed" -> name: "Ed", relationship: "dad"  
       //           "Sarah" -> name: "Sarah", relationship: null
       let extractedName = recipientName;
       let extractedRelationship = relationship || '';
       
-      // Common patterns: "my [relationship] [name]", "[name] my [relationship]"
+      // Common patterns: "my/our [relationship] [name]", "[name] my/our [relationship]"
+      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis';
       const relationshipPatterns = [
-        /^my\s+(son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)\s+(.+)$/i,
-        /^(.+?),?\s+my\s+(son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)$/i,
+        new RegExp(`^(?:my|our)\\s+(${relationshipWords})\\s+(.+)$`, 'i'),
+        new RegExp(`^(.+?),?\\s+(?:my|our)\\s+(${relationshipWords})$`, 'i'),
       ];
       
       for (const pattern of relationshipPatterns) {
         const match = recipientName.match(pattern);
         if (match) {
           if (pattern === relationshipPatterns[0]) {
-            // "my [relationship] [name]" pattern
+            // "my/our [relationship] [name]" pattern
             extractedRelationship = match[1];
             extractedName = match[2].trim();
           } else {
-            // "[name], my [relationship]" pattern
+            // "[name], my/our [relationship]" pattern
             extractedName = match[1].trim();
             extractedRelationship = match[2];
           }
@@ -408,14 +410,15 @@ Create a beautiful Christmas greeting card illustration that:
       }
 
       // Parse the recipientName field to extract just the name
-      // Examples: "my son Mac" -> "Mac", "my dad Ed" -> "Ed"
+      // Examples: "my son Mac" -> "Mac", "our daughter Sarah" -> "Sarah"
       let displayName = recipientName;
-      const relationshipPatterns = [
-        /^my\s+(?:son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)\s+(.+)$/i,
-        /^(.+?),?\s+my\s+(?:son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner)$/i,
+      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis';
+      const imageRelationshipPatterns = [
+        new RegExp(`^(?:my|our)\\s+(?:${relationshipWords})\\s+(.+)$`, 'i'),
+        new RegExp(`^(.+?),?\\s+(?:my|our)\\s+(?:${relationshipWords})$`, 'i'),
       ];
       
-      for (const pattern of relationshipPatterns) {
+      for (const pattern of imageRelationshipPatterns) {
         const match = recipientName.match(pattern);
         if (match) {
           displayName = match[1].trim().replace(/[.,!?]+$/, '');
