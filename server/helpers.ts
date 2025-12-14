@@ -45,6 +45,8 @@ export const parseEnvironmentVariables = () => {
     graphVisualizationEnabled:
       (process.env.GRAPH_VISUALIZATION_ENABLED || '').toLowerCase().trim() ===
       'true',
+    interruptionEnabled:
+      (process.env.INTERRUPTION_ENABLED || '').toLowerCase().trim() === 'true',
     disableAutoInterruption:
       (process.env.DISABLE_AUTO_INTERRUPTION || '').toLowerCase().trim() ===
       'true',

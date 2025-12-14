@@ -14,6 +14,7 @@ export class InworldApp {
   llmProvider!: string;
   vadModelPath!: string;
   graphVisualizationEnabled!: boolean;
+  interruptionEnabled!: boolean;
   disableAutoInterruption!: boolean; // Flag to disable graph-based auto-interruptions (default: false, meaning auto-interruptions are enabled)
   ttsModelId!: string;
   connections: {
@@ -43,6 +44,7 @@ export class InworldApp {
     this.llmProvider = this.env.llmProvider;
     this.vadModelPath = this.env.vadModelPath;
     this.graphVisualizationEnabled = this.env.graphVisualizationEnabled;
+    this.interruptionEnabled = this.env.interruptionEnabled;
     this.disableAutoInterruption = this.env.disableAutoInterruption;
     this.ttsModelId = this.env.ttsModelId;
 
@@ -72,51 +74,40 @@ export class InworldApp {
   }
 
   /**
-   * Get or create an Assembly.AI audio graph for a session.
-   * Creates a FRESH graph for each session to avoid shared state issues.
-   * Voice is selected dynamically per session via TTSRequestBuilderNode.
+   * Get the shared Assembly.AI audio graph.
+   * Graph is created lazily on first request and shared across all sessions.
+   * (Matching release/0.8 architecture)
    */
-  async getGraphForSTTService(_sttService?: string, sessionId?: string): Promise<InworldGraphWrapper> {
+  async getGraphForSTTService(_sttService?: string): Promise<InworldGraphWrapper> {
     if (!this.env.assemblyAIApiKey) {
       throw new Error(
         `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured. This should have been caught during session load.`,
       );
     }
 
-    // Check if session already has a graph
-    if (sessionId && this.connections[sessionId]?.sessionGraph) {
-      console.log(`  → Using existing graph for session ${sessionId}`);
-      return this.connections[sessionId].sessionGraph;
+    // Use shared graph (created lazily on first request)
+    if (!this.graphWithAudioInputAssemblyAI) {
+      console.log('  → Creating Assembly.AI STT graph (first use)...');
+      this.graphWithAudioInputAssemblyAI = await InworldGraphWrapper.create({
+        apiKey: this.apiKey,
+        llmModelName: this.llmModelName,
+        llmProvider: this.llmProvider,
+        voiceId: DEFAULT_VOICE_ID,
+        connections: this.connections,
+        withAudioInput: true,
+        graphVisualizationEnabled: this.graphVisualizationEnabled,
+        disableAutoInterruption: this.disableAutoInterruption,
+        ttsModelId: this.ttsModelId,
+        vadClient: this.vadClient,
+        useAssemblyAI: true,
+        assemblyAIApiKey: this.env.assemblyAIApiKey,
+      });
+      console.log('  ✓ Assembly.AI STT graph created');
+    } else {
+      console.log(`  → Using existing Assembly.AI STT graph`);
     }
 
-    // Create a fresh graph for this session
-    this.graphCreationCounter++;
-    console.log(`  → Creating fresh Assembly.AI STT graph #${this.graphCreationCounter} for session ${sessionId || 'unknown'}...`);
-    
-    const newGraph = await InworldGraphWrapper.create({
-      apiKey: this.apiKey,
-      llmModelName: this.llmModelName,
-      llmProvider: this.llmProvider,
-      voiceId: DEFAULT_VOICE_ID, // Default voice (overridden by TTSRequestBuilderNode)
-      connections: this.connections,
-      withAudioInput: true,
-      graphVisualizationEnabled: this.graphVisualizationEnabled,
-      disableAutoInterruption: this.disableAutoInterruption,
-      ttsModelId: this.ttsModelId,
-      vadClient: this.vadClient,
-      useAssemblyAI: true,
-      assemblyAIApiKey: this.env.assemblyAIApiKey,
-      uniqueId: this.graphCreationCounter, // Unique ID for graph node names
-    });
-    
-    console.log(`  ✓ Assembly.AI STT graph #${this.graphCreationCounter} created for session ${sessionId || 'unknown'}`);
-
-    // Store the graph on the session connection
-    if (sessionId && this.connections[sessionId]) {
-      this.connections[sessionId].sessionGraph = newGraph;
-    }
-
-    return newGraph;
+    return this.graphWithAudioInputAssemblyAI;
   }
 
   async load(req: any, res: any) {
@@ -272,43 +263,17 @@ Keep responses brief (1-2 sentences).`;
         .json({ error: `Session not found for sessionId: ${sessionId}` });
     }
 
-    // Clean up session graph
-    if (this.connections[sessionId].sessionGraph) {
-      try {
-        console.log(`🧹 Destroying session graph for ${sessionId}`);
-        this.connections[sessionId].sessionGraph.destroy();
-      } catch (e) {
-        console.warn(`Error destroying session graph for ${sessionId}:`, e);
-      }
-      this.connections[sessionId].sessionGraph = undefined;
-    }
-
+    // Shared graphs are reused across sessions - no per-session cleanup needed
     this.connections[sessionId].unloaded = true;
 
     res.end(JSON.stringify({ message: 'Session unloaded' }));
   }
 
-  clearGraphCache(sessionId?: string) {
-    if (sessionId && this.connections[sessionId]?.sessionGraph) {
-      console.log(`🔄 Clearing session graph for ${sessionId}`);
-      try {
-        this.connections[sessionId].sessionGraph.destroy();
-      } catch (e) {
-        console.warn(`Error destroying session graph for ${sessionId}:`, e);
-      }
-      this.connections[sessionId].sessionGraph = undefined;
-    }
-    
-    // Also clear the legacy shared graph if it exists
-    if (this.graphWithAudioInputAssemblyAI) {
-      console.log('🔄 Clearing shared graph cache');
-      try {
-        this.graphWithAudioInputAssemblyAI.destroy();
-      } catch (e) {
-        console.warn('Error destroying shared graph:', e);
-      }
-      this.graphWithAudioInputAssemblyAI = undefined;
-    }
+  clearGraphCache(_sessionId?: string) {
+    // With shared graph architecture, we don't destroy the graph
+    // The shared graph is reused across all sessions
+    // Only clear on server shutdown
+    console.log('📝 clearGraphCache called - no action with shared graph architecture');
   }
 
   shutdown() {

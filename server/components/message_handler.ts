@@ -10,8 +10,11 @@ import { AudioStreamManager } from './audio_stream_manager';
 import { EventFactory } from './event_factory';
 import { InworldGraphWrapper } from './graph';
 
+const WavEncoder = require('wav-encoder');
+
 export class MessageHandler {
   private INPUT_SAMPLE_RATE = INPUT_SAMPLE_RATE;
+  private interruptionEnabled: boolean;
   private currentInteractionId: string = v4();
 
   // Keep track of the processing queue to avoid concurrent execution of the graph
@@ -22,7 +25,9 @@ export class MessageHandler {
   constructor(
     private inworldApp: InworldApp,
     private send: (data: any) => void,
-  ) {}
+  ) {
+    this.interruptionEnabled = inworldApp.interruptionEnabled;
+  }
 
   private createNewInteraction(logMessage: string): string {
     this.currentInteractionId = v4();
@@ -273,10 +278,9 @@ export class MessageHandler {
           sessionId,
         };
 
-        // Get the audio graph (creates a fresh one per session)
+        // Get the shared audio graph (created lazily on first request)
         const graphWrapper = await this.inworldApp.getGraphForSTTService(
           connection.sttService,
-          sessionId,
         );
 
         // Start graph execution in the background
@@ -426,6 +430,20 @@ export class MessageHandler {
     sessionId: string,
     currentGraphInteractionId: string | undefined,
   ): Promise<string | undefined> {
+    // Check for interaction mismatch (interruption)
+    if (
+      this.interruptionEnabled &&
+      interactionId &&
+      this.currentInteractionId !== interactionId
+    ) {
+      console.log(
+        'Interaction ID mismatch, skipping response',
+        this.currentInteractionId,
+        interactionId,
+      );
+      return currentGraphInteractionId;
+    }
+
     const resultType = result?.data?.constructor?.name || typeof result?.data;
     console.log(`[Session ${sessionId}] Processing result type: ${resultType}`);
 
@@ -433,39 +451,31 @@ export class MessageHandler {
       await result.processResponse({
         TTSOutputStream: async (ttsStream: GraphTypes.TTSOutputStream) => {
           for await (const chunk of ttsStream) {
-            if (!chunk.audio?.data) {
-              console.warn(
-                `[Session ${sessionId}] Skipping chunk with missing audio data`,
+            // Check interruption inside TTS loop
+            const checkInteractionId = interactionId || currentGraphInteractionId;
+            if (
+              this.interruptionEnabled &&
+              checkInteractionId &&
+              this.currentInteractionId !== checkInteractionId
+            ) {
+              console.log(
+                'Interaction ID mismatch, skipping response',
+                'current:', this.currentInteractionId,
+                'processing:', checkInteractionId,
               );
-              continue;
+              return;
             }
 
-            let audioBuffer: Buffer;
-
-            if (Array.isArray(chunk.audio.data)) {
-              audioBuffer = Buffer.from(chunk.audio.data);
-            } else if (typeof chunk.audio.data === 'string') {
-              audioBuffer = Buffer.from(chunk.audio.data, 'base64');
-            } else if (Buffer.isBuffer(chunk.audio.data)) {
-              audioBuffer = chunk.audio.data;
-            } else {
-              console.error(
-                `[Session ${sessionId}] Unsupported audio data type:`,
-                typeof chunk.audio.data,
-              );
-              continue;
-            }
-
-            if (audioBuffer.byteLength === 0) {
-              console.warn(
-                `[Session ${sessionId}] Skipping chunk with zero-length audio buffer`,
-              );
-              continue;
-            }
+            // Use WavEncoder like release/0.8
+            const decodedData = Buffer.from(chunk.audio?.data, 'base64');
+            const audioBuffer = await WavEncoder.encode({
+              sampleRate: chunk.audio.sampleRate,
+              channelData: [new Float32Array(decodedData.buffer)],
+            });
 
             const effectiveInteractionId = currentGraphInteractionId || v4();
             const textPacket = EventFactory.text(
-              chunk.text || '',
+              chunk.text,
               effectiveInteractionId,
               {
                 isAgent: true,
@@ -475,7 +485,7 @@ export class MessageHandler {
 
             this.send(
               EventFactory.audio(
-                audioBuffer.toString('base64'),
+                Buffer.from(audioBuffer).toString('base64'),
                 effectiveInteractionId,
                 textPacket.packetId.utteranceId,
               ),
