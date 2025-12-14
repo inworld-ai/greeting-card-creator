@@ -1,7 +1,6 @@
 import { GraphOutputStream, GraphTypes } from '@inworld/runtime/graph';
 import { v4 } from 'uuid';
 import { RawData } from 'ws';
-import WavEncoder from 'wav-encoder';
 
 import { INPUT_SAMPLE_RATE } from '../constants';
 import { AudioStreamInput, EVENT_TYPE, TextInput } from '../types';
@@ -183,6 +182,8 @@ export class MessageHandler {
             modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1',
             sampleRate: 24000,
             temperature: 1.1,
+            speakingRate: 1,
+            reportToClient: true,
           }),
         ],
       });
@@ -471,16 +472,26 @@ export class MessageHandler {
               return;
             }
 
-            // Use WavEncoder like release/0.8
-            const decodedData = Buffer.from(chunk.audio?.data, 'base64');
-            const audioBuffer = await WavEncoder.encode({
-              sampleRate: chunk.audio.sampleRate,
-              channelData: [new Float32Array(decodedData.buffer)],
-            });
+            // Simple buffer conversion (matching greeting TTS approach)
+            // The TTS already outputs properly formatted audio - no need to re-encode
+            if (!chunk.audio?.data) continue;
+
+            let audioBuffer: Buffer;
+            if (Array.isArray(chunk.audio.data)) {
+              audioBuffer = Buffer.from(chunk.audio.data);
+            } else if (typeof chunk.audio.data === 'string') {
+              audioBuffer = Buffer.from(chunk.audio.data, 'base64');
+            } else if (Buffer.isBuffer(chunk.audio.data)) {
+              audioBuffer = chunk.audio.data;
+            } else {
+              continue;
+            }
+
+            if (audioBuffer.byteLength === 0) continue;
 
             const effectiveInteractionId = currentGraphInteractionId || v4();
             const textPacket = EventFactory.text(
-              chunk.text,
+              chunk.text || '',
               effectiveInteractionId,
               {
                 isAgent: true,
@@ -490,7 +501,7 @@ export class MessageHandler {
 
             this.send(
               EventFactory.audio(
-                Buffer.from(audioBuffer).toString('base64'),
+                audioBuffer.toString('base64'),
                 effectiveInteractionId,
                 textPacket.packetId.utteranceId,
               ),

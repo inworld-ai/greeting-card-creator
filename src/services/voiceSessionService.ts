@@ -31,6 +31,7 @@ export interface VoiceSessionConfig {
   onAudioChunk: (audioData: string, interactionId: string) => void;
   onError: (error: string) => void;
   onInteractionEnd: (interactionId: string) => void;
+  onAudioPlaybackComplete?: (interactionId: string) => void; // Called when audio actually finishes playing
   onSpeechComplete?: (interactionId: string) => void;
   onGreetingStart?: () => void;
   onGreetingEnd?: () => void;
@@ -163,7 +164,17 @@ export class VoiceSession {
         break;
 
       case 'INTERACTION_END':
+        // Notify that interaction data is complete (server-side)
         this.config.onInteractionEnd(packet.packetId?.interactionId);
+        
+        // Wait for audio to actually finish playing before triggering audio complete
+        if (this.config.onAudioPlaybackComplete) {
+          const interactionId = packet.packetId?.interactionId;
+          this.audioPlayer.setOnPlaybackComplete(() => {
+            this.config.onAudioPlaybackComplete?.(interactionId);
+          });
+          this.audioPlayer.notifyInteractionEnd();
+        }
         break;
 
       case 'USER_SPEECH_COMPLETE':
@@ -338,6 +349,8 @@ class AudioPlayer {
   private isPlaying = false;
   private currentSources: AudioBufferSourceNode[] = [];
   private nextStartTime = 0;
+  private onPlaybackComplete: (() => void) | null = null;
+  private pendingInteractionEnd = false;
 
   prepare(): void {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -354,6 +367,23 @@ class AudioPlayer {
     this.queue = [];
     this.isPlaying = false;
     this.nextStartTime = 0;
+    this.pendingInteractionEnd = false;
+  }
+
+  // Set callback for when all audio playback completes
+  setOnPlaybackComplete(callback: (() => void) | null): void {
+    this.onPlaybackComplete = callback;
+  }
+
+  // Called when INTERACTION_END is received - wait for audio to finish
+  notifyInteractionEnd(): void {
+    if (!this.isPlaying && this.queue.length === 0) {
+      // Audio already finished, fire callback immediately
+      this.onPlaybackComplete?.();
+    } else {
+      // Audio still playing, mark as pending
+      this.pendingInteractionEnd = true;
+    }
   }
 
   addToQueue(base64Audio: string): void {
@@ -366,6 +396,11 @@ class AudioPlayer {
   private async playQueue(): Promise<void> {
     if (!this.audioContext || !this.gainNode || this.queue.length === 0) {
       this.isPlaying = false;
+      // Check if we were waiting for playback to complete
+      if (this.pendingInteractionEnd) {
+        this.pendingInteractionEnd = false;
+        this.onPlaybackComplete?.();
+      }
       return;
     }
 
@@ -379,6 +414,12 @@ class AudioPlayer {
     }
 
     this.isPlaying = false;
+    
+    // Check if we were waiting for playback to complete
+    if (this.pendingInteractionEnd) {
+      this.pendingInteractionEnd = false;
+      this.onPlaybackComplete?.();
+    }
   }
 
   private async playChunk(base64Chunk: string): Promise<void> {

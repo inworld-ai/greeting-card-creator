@@ -288,17 +288,22 @@ Guidelines:
       },
       onInteractionEnd: async (interactionId) => {
         console.log('✅ Interaction ended:', interactionId)
-        // Elf finished speaking
+        // Server finished sending packets - but audio may still be playing
+        // Don't enable mic here - wait for onAudioPlaybackComplete
+      },
+      onAudioPlaybackComplete: async (interactionId) => {
+        console.log('🔊 Audio playback complete:', interactionId)
+        // Audio actually finished playing - NOW it's safe to enable mic
         setIsProcessing(false)
         
-        // Enable mic after initial greeting - it stays on continuously
+        // Enable mic after audio playback completes - it stays on continuously
         // (continuous audio stream architecture - no need to restart between turns)
         if (!autoMicEnabledRef.current && voiceSessionRef.current && !generationStartedRef.current) {
           try {
             await voiceSessionRef.current.startRecording()
             setIsRecording(true)
             autoMicEnabledRef.current = true
-            console.log('🎤 Mic enabled after initial greeting (continuous mode)')
+            console.log('🎤 Mic enabled after audio playback complete (continuous mode)')
           } catch (err: any) {
             console.error('Failed to enable mic:', err)
           }
