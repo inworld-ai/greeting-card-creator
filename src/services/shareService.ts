@@ -55,32 +55,48 @@ export async function shareStory(data: ShareStoryData): Promise<ShareStoryRespon
 }
 
 /**
- * Share a URL using the Web Share API (mobile) or show share options (desktop)
+ * Check if we're on a mobile device
  */
-export async function shareUrl(url: string, title?: string, text?: string): Promise<void> {
+export function isMobileDevice(): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+/**
+ * Share a URL using the Web Share API (mobile) or copy to clipboard (desktop)
+ * Returns 'shared' if native share was used, 'copied' if clipboard was used, or 'cancelled' if user cancelled
+ */
+export async function shareUrl(url: string, title?: string, text?: string): Promise<'shared' | 'copied' | 'cancelled'> {
   const shareTitle = title || 'Check this out!'
   const shareText = text || ''
   
-  // Check if Web Share API is available (mobile browsers)
-  if (typeof navigator !== 'undefined' && 'share' in navigator && typeof navigator.share === 'function') {
+  // Check if we're on mobile and Web Share API is available
+  if (isMobileDevice() && typeof navigator !== 'undefined' && 'share' in navigator && typeof navigator.share === 'function') {
     try {
       await navigator.share({
         title: shareTitle,
         text: shareText,
         url: url
       })
-      return // Successfully shared via native share
+      return 'shared' // Successfully shared via native share
     } catch (error: any) {
-      // User cancelled or share failed, fall through to options
+      // User cancelled or share failed
       if (error.name === 'AbortError') {
-        return // User cancelled, don't show error
+        return 'cancelled' // User cancelled
       }
-      console.warn('Web Share API failed, falling back to share options:', error)
+      console.warn('Web Share API failed, falling back to clipboard:', error)
     }
   }
   
-  // Desktop fallback: show share options modal
-  showShareOptionsModal(url, shareTitle, shareText)
+  // Desktop fallback: just copy to clipboard
+  try {
+    await navigator.clipboard.writeText(url)
+    return 'copied'
+  } catch (error) {
+    console.error('Clipboard failed:', error)
+    // Last resort: prompt user to copy
+    prompt('Copy this link:', url)
+    return 'copied'
+  }
 }
 
 /**

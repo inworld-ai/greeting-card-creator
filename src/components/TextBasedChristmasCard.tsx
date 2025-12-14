@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
+import { shareUrl, isMobileDevice } from '../services/shareService'
 import CustomNarrator from './CustomNarrator'
 import './GreetingCardDisplay.css'
 
@@ -21,7 +22,7 @@ function TextBasedChristmasCard() {
   // Display state
   const [isFlipped, setIsFlipped] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
-  const [shareSuccess, setShareSuccess] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState<'copied' | 'shared' | false>(false)
   const [_isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [_isAudioReady, setIsAudioReady] = useState(false)
   
@@ -240,10 +241,20 @@ function TextBasedChristmasCard() {
       
       if (response.ok) {
         const data = await response.json()
-        await navigator.clipboard.writeText(data.shareUrl)
-        setShareSuccess(true)
-        // Reset success message after 3 seconds
-        setTimeout(() => setShareSuccess(false), 3000)
+        const url = data.shareUrl
+        
+        // Use the shareUrl helper - native share on mobile, clipboard on desktop
+        const result = await shareUrl(
+          url,
+          `Christmas Card for ${displayName || recipientInfo}`,
+          `Check out this personalized Christmas card! 🎄`
+        )
+        
+        if (result !== 'cancelled') {
+          setShareSuccess(result) // 'shared' or 'copied'
+          // Reset success message after 3 seconds
+          setTimeout(() => setShareSuccess(false), 3000)
+        }
       }
     } catch (error) {
       console.error('Share failed:', error)
@@ -582,7 +593,7 @@ function TextBasedChristmasCard() {
           disabled={isSharing}
           style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
         >
-          {isSharing ? '📤 Sharing...' : shareSuccess ? '✅ Link Copied!' : '📤 Share Card'}
+          {isSharing ? '📤 Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : '📤 Share Card'}
         </button>
         <button
           className="btn btn-secondary"

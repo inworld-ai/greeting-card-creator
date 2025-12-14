@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
+import { isMobileDevice } from '../services/shareService'
 import './GreetingCardDisplay.css'
 
 interface GreetingCardDisplayProps {
@@ -235,7 +236,7 @@ function GreetingCardDisplay({ coverImageUrl, message, recipientName, onAddNarra
           disabled={isSharing}
           style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
         >
-          {isSharing ? '📤 Sharing...' : shareSuccess ? '✅ Shared!' : '📤 Share Card'}
+          {isSharing ? '📤 Sharing...' : shareSuccess ? (isMobileDevice() ? '✅ Shared!' : '✅ Link Copied!') : '📤 Share Card'}
         </button>
       </div>
     </div>
