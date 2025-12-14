@@ -110,7 +110,12 @@ webSocket.on('connection', (ws, request) => {
       connection.audioStreamManager = undefined;
     }
 
+    // Mark as unloaded and delete from connections to free memory
     connection.unloaded = true;
+    if (inworldApp.connections[sessionId!]) {
+      console.log(`[Session ${sessionId}] 🧹 Deleting session from connections`);
+      delete inworldApp.connections[sessionId!];
+    }
   });
 
   console.log(`[Session ${sessionId}] WebSocket connected`);

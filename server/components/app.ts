@@ -261,8 +261,21 @@ Keep responses brief (1-2 sentences).`;
         .json({ error: `Session not found for sessionId: ${sessionId}` });
     }
 
-    // Shared graphs are reused across sessions - no per-session cleanup needed
+    // Mark as unloaded first
     this.connections[sessionId].unloaded = true;
+    
+    // Close WebSocket if open
+    if (this.connections[sessionId].ws) {
+      try {
+        this.connections[sessionId].ws.close();
+      } catch (e) {
+        // Already closed
+      }
+    }
+    
+    // DELETE the connection to free memory and prevent state bleeding
+    console.log(`🧹 Cleaning up session ${sessionId}`);
+    delete this.connections[sessionId];
 
     res.end(JSON.stringify({ message: 'Session unloaded' }));
   }

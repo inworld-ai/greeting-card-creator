@@ -189,8 +189,17 @@ Guidelines:
         // Elf is speaking - show "Elf is speaking..." in UI
         setIsProcessing(true)
 
+        // Debug: Log ref states on every agent text
+        console.log('📊 Ref states:', {
+          triggerDetected: triggerDetectedRef.current,
+          generationStarted: generationStartedRef.current,
+          fullAgentTextLength: fullAgentTextRef.current.length
+        })
+
         // Once we start generating, ignore further agent chatter.
-        if (isGenerating || triggerDetectedRef.current) {
+        // Use ref instead of state to avoid stale closure issues
+        if (generationStartedRef.current || triggerDetectedRef.current) {
+          console.log('⏭️ Skipping - already generating or trigger detected')
           return
         }
         
@@ -210,7 +219,7 @@ Guidelines:
           
           // Check for trigger phrase - agent is done collecting info
           const fullText = fullAgentTextRef.current.toLowerCase()
-          if (!triggerDetectedRef.current && (
+          const hasTrigger = 
               fullText.includes('perfect! creating your card') ||
               fullText.includes('creating your christmas card') ||
               fullText.includes('creating your card now') ||
@@ -220,8 +229,17 @@ Guidelines:
               fullText.includes('let me generate') ||
               fullText.includes('let me create') ||
               fullText.includes('generate your card') ||
-              fullText.includes('make your card'))) {
+              fullText.includes('make your card')
+          
+          console.log('🔍 Trigger check:', { 
+            hasTrigger, 
+            triggerDetectedRef: triggerDetectedRef.current,
+            fullTextSample: fullText.slice(-100)
+          })
+          
+          if (!triggerDetectedRef.current && hasTrigger) {
             triggerDetectedRef.current = true
+            generationStartedRef.current = true
             console.log('🎄 Trigger phrase detected - starting generation')
             setCurrentStep(2) // Generating
             setIsGenerating(true)
@@ -321,7 +339,8 @@ Guidelines:
         
         // Clear partial transcript display
         setCurrentTranscript('')
-        fullAgentTextRef.current = '' // Reset agent text accumulator for next response
+        // NOTE: Don't reset fullAgentTextRef here - it's needed for trigger detection
+        // fullAgentTextRef will be reset when generation starts
         
         // Wait a bit for any final transcript to arrive before checking
         // The STT sometimes sends the final transcript AFTER the speech complete event
@@ -330,6 +349,16 @@ Guidelines:
           setConversationHistory(prev => {
             if (experienceType === 'greeting-card') {
               const { hasRecipient, hasStory } = hasCollectedGreetingCardInfo(prev)
+              
+              // Debug logging
+              console.log('📊 onSpeechComplete check:', {
+                hasRecipient,
+                hasStory,
+                generationStarted: generationStartedRef.current,
+                triggerDetected: triggerDetectedRef.current,
+                userMessageCount: prev.filter(m => m.role === 'user').length,
+                messages: prev.map(m => ({ role: m.role, content: m.content.substring(0, 50) }))
+              })
               
               // Update step based on what we've collected
               if (hasRecipient && !hasStory) {
@@ -342,6 +371,7 @@ Guidelines:
                 console.log('📝 Final conversation:', prev.map(m => `${m.role}: ${m.content}`).join('\n'))
                 generationStartedRef.current = true
                 triggerDetectedRef.current = true
+                fullAgentTextRef.current = '' // Reset now that we're generating
                 setCurrentStep(2) // Creating Card
                 setIsGenerating(true)
 
@@ -423,12 +453,20 @@ Guidelines:
   // Suppress unused warning (kept for future manual submit button)
   void _handleSubmit
 
-  // Cleanup on unmount
+  // Cleanup on unmount - reset ALL refs to prevent state bleeding
   useEffect(() => {
     return () => {
+      console.log('🧹 VoiceConversation unmounting - cleaning up all state')
       if (voiceSessionRef.current) {
         voiceSessionRef.current.stop()
+        voiceSessionRef.current = null
       }
+      // Reset all refs to prevent state bleeding between sessions
+      autoMicEnabledRef.current = false
+      triggerDetectedRef.current = false
+      fullAgentTextRef.current = ''
+      generationStartedRef.current = false
+      answersRef.current = {}
     }
   }, [])
 
