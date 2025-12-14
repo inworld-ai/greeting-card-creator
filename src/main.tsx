@@ -12,6 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<App />} />
         <Route path="/storyteller" element={<App />} />
         <Route path="/greetingcard" element={<App />} />
+        <Route path="/christmascard" element={<App />} />
         <Route path="/share/:storyId" element={<SharedStory />} />
       </Routes>
     </BrowserRouter>
