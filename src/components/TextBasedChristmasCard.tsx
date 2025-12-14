@@ -450,7 +450,15 @@ function TextBasedChristmasCard() {
             fontSize: '0.9rem',
             color: '#888',
           }}>
-            Powered by AI magic ✨
+            🎁 A gift from{' '}
+            <a 
+              href="https://inworld.ai" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#166534', textDecoration: 'underline' }}
+            >
+              Inworld AI
+            </a>
           </p>
         </div>
       </div>
