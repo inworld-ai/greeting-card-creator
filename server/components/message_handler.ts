@@ -244,6 +244,87 @@ export class MessageHandler {
     this.send(EventFactory.interactionEnd(interactionId));
   }
 
+  /**
+   * Generate TTS using a SEPARATE graph from the main audio pipeline.
+   * This prevents STT timeout from killing TTS mid-stream.
+   */
+  private async generateSeparateTTS({
+    text,
+    sessionId,
+    interactionId,
+    connection,
+  }: {
+    text: string;
+    sessionId: string;
+    interactionId: string;
+    connection: any;
+  }) {
+    try {
+      const { RemoteTTSNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
+      
+      const voiceId = connection.state.voiceId || 'christmas_story_generator__female_elf_narrator';
+      
+      const graphBuilder = new SequentialGraphBuilder({
+        id: `separate-tts-${Date.now()}`,
+        apiKey: process.env.INWORLD_API_KEY,
+        enableRemoteConfig: false,
+        nodes: [
+          new RemoteTTSNode({
+            speakerId: voiceId,
+            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1',
+            sampleRate: 24000,
+            temperature: 1.1,
+            speakingRate: 1,
+            reportToClient: true,
+          }),
+        ],
+      });
+
+      const graph = graphBuilder.build();
+      const { outputStream } = await graph.start(text);
+
+      let chunkCount = 0;
+      for await (const result of outputStream) {
+        await result.processResponse({
+          TTSOutputStream: async (ttsStream: any) => {
+            for await (const chunk of ttsStream) {
+              if (!chunk.audio?.data) continue;
+
+              let audioBuffer: Buffer;
+              if (Array.isArray(chunk.audio.data)) {
+                audioBuffer = Buffer.from(chunk.audio.data);
+              } else if (typeof chunk.audio.data === 'string') {
+                audioBuffer = Buffer.from(chunk.audio.data, 'base64');
+              } else if (Buffer.isBuffer(chunk.audio.data)) {
+                audioBuffer = chunk.audio.data;
+              } else {
+                continue;
+              }
+
+              if (audioBuffer.byteLength === 0) continue;
+              chunkCount++;
+
+              this.send(
+                EventFactory.audio(
+                  audioBuffer.toString('base64'),
+                  interactionId,
+                  `${interactionId}-${chunkCount}`,
+                ),
+              );
+            }
+          },
+          default: () => {},
+        });
+      }
+
+      console.log(`[Session ${sessionId}] ✅ Separate TTS complete: ${chunkCount} chunks`);
+      await graph.stop();
+    } catch (error) {
+      console.error(`[Session ${sessionId}] ❌ Separate TTS error:`, error);
+      // Text was already sent, so just log the error
+    }
+  }
+
   private async processAudioChunk(message: any, sessionId: string) {
     try {
       const connection = this.inworldApp.connections[sessionId];
@@ -575,18 +656,13 @@ export class MessageHandler {
             const text = customData.messages.at(-1).content;
             const role = customData.messages.at(-1).role;
 
-            if (role === 'assistant') {
-              return;
-            }
-
             // Update the current graph interaction ID from the state
-            // This captures the interactionId from TextInputNode or StateUpdateNode output
             currentGraphInteractionId = customData.interactionId;
             console.log(
               `Updated currentGraphInteractionId to: ${currentGraphInteractionId} (from ${role} message)`,
             );
 
-            // Validate connection and state (matching release/0.8)
+            // Validate connection and state
             if (connection?.unloaded) {
               throw Error(`Session unloaded for sessionId:${sessionId}`);
             }
@@ -602,6 +678,32 @@ export class MessageHandler {
               );
             }
 
+            if (role === 'assistant') {
+              // For assistant messages, use SEPARATE TTS graph (decoupled from STT)
+              // This prevents STT timeout from killing TTS mid-stream
+              console.log(`[Session ${sessionId}] 🎵 Using separate TTS for assistant response: "${text.substring(0, 50)}..."`);
+              const effectiveInteractionId = currentGraphInteractionId || v4();
+              
+              // Send text first
+              this.send(
+                EventFactory.text(text, effectiveInteractionId, {
+                  isAgent: true,
+                  name: connection.state.agent?.id || 'elf',
+                }),
+              );
+              
+              // Generate TTS using separate graph (like greeting)
+              await this.generateSeparateTTS({
+                text,
+                sessionId,
+                interactionId: effectiveInteractionId,
+                connection,
+              });
+              
+              return;
+            }
+
+            // User messages
             this.send(
               EventFactory.text(text, currentGraphInteractionId || v4(), {
                 isUser: role === 'user',

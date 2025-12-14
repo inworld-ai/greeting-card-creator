@@ -112,20 +112,36 @@ export class InworldGraphWrapper {
       enableRemoteConfig: false,
     });
 
-    graphBuilder
-      .addNode(textInputNode)
-      .addNode(dialogPromptBuilderNode)
-      .addNode(llmNode)
-      .addNode(textChunkingNode)
-      .addNode(textAggregatorNode)
-      .addNode(ttsNode)
-      .addNode(stateUpdateNode)
-      .addEdge(textInputNode, dialogPromptBuilderNode)
-      .addEdge(dialogPromptBuilderNode, llmNode)
-      .addEdge(llmNode, textChunkingNode)
-      .addEdge(textChunkingNode, ttsNode)
-      .addEdge(llmNode, textAggregatorNode)
-      .addEdge(textAggregatorNode, stateUpdateNode);
+    // For audio input graphs, we DON'T include TTS - it will be handled separately
+    // to avoid STT timeout killing TTS mid-stream
+    if (withAudioInput) {
+      graphBuilder
+        .addNode(textInputNode)
+        .addNode(dialogPromptBuilderNode)
+        .addNode(llmNode)
+        .addNode(textAggregatorNode)
+        .addNode(stateUpdateNode)
+        .addEdge(textInputNode, dialogPromptBuilderNode)
+        .addEdge(dialogPromptBuilderNode, llmNode)
+        .addEdge(llmNode, textAggregatorNode)
+        .addEdge(textAggregatorNode, stateUpdateNode);
+    } else {
+      // For text-only graphs, include TTS in the graph
+      graphBuilder
+        .addNode(textInputNode)
+        .addNode(dialogPromptBuilderNode)
+        .addNode(llmNode)
+        .addNode(textChunkingNode)
+        .addNode(textAggregatorNode)
+        .addNode(ttsNode)
+        .addNode(stateUpdateNode)
+        .addEdge(textInputNode, dialogPromptBuilderNode)
+        .addEdge(dialogPromptBuilderNode, llmNode)
+        .addEdge(llmNode, textChunkingNode)
+        .addEdge(textChunkingNode, ttsNode)
+        .addEdge(llmNode, textAggregatorNode)
+        .addEdge(textAggregatorNode, stateUpdateNode);
+    }
 
     if (withAudioInput) {
       // Validate configuration
@@ -216,8 +232,13 @@ export class InworldGraphWrapper {
       graphBuilder.setStartNode(textInputNode);
     }
 
-    // Set end node for all graphs (TTS is the output endpoint)
-    graphBuilder.setEndNode(ttsNode);
+    // Set end node - TTS for text graphs, stateUpdateNode for audio graphs
+    // (Audio graphs handle TTS separately to avoid STT timeout killing TTS)
+    if (withAudioInput) {
+      graphBuilder.setEndNode(stateUpdateNode);
+    } else {
+      graphBuilder.setEndNode(ttsNode);
+    }
 
     const graph = graphBuilder.build();
     if (props.graphVisualizationEnabled) {
