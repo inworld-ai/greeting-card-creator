@@ -118,13 +118,15 @@ function TextBasedChristmasCard() {
         setIsAudioReady(true)
         console.log('✅ Card message audio preloaded and ready!')
 
-        // Also preload the follow-up prompt
-        const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
-        const followUpAudio = await synthesizeSpeech(followUpText, {
-          voiceId: 'christmas_story_generator__female_elf_narrator'
-        })
-        preloadedFollowUpRef.current = followUpAudio
-        console.log('✅ Follow-up audio preloaded!')
+        // Only preload follow-up prompt if no custom voice (user hasn't created one yet)
+        if (!customVoiceId) {
+          const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
+          const followUpAudio = await synthesizeSpeech(followUpText, {
+            voiceId: 'christmas_story_generator__female_elf_narrator'
+          })
+          preloadedFollowUpRef.current = followUpAudio
+          console.log('✅ Follow-up audio preloaded!')
+        }
       } catch (error) {
         console.error('Error preloading audio:', error)
         isPreloadingRef.current = false // Allow retry
@@ -184,13 +186,16 @@ function TextBasedChristmasCard() {
         }
       }
       
-      // Handle audio end - play follow-up after message finishes
+      // Handle audio end - play follow-up after message finishes (only if no custom voice)
       audio.addEventListener('ended', () => {
         setIsPlayingAudio(false)
         console.log('🎵 Card message audio finished')
-        setTimeout(() => {
-          void playFollowUp()
-        }, 250)
+        // Only play follow-up if user hasn't created a custom voice yet
+        if (!customVoiceId) {
+          setTimeout(() => {
+            void playFollowUp()
+          }, 250)
+        }
       }, { once: true })
       
       await audio.play()
@@ -580,15 +585,18 @@ function TextBasedChristmasCard() {
       </div>
       
       <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {/* Only show Create Custom Narrator button if user hasn't created one yet */}
+        {!customVoiceId && (
+          <button
+            className="btn btn-primary"
+            onClick={handleAddNarration}
+            style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+          >
+            🎙️ Create Custom Narrator
+          </button>
+        )}
         <button
-          className="btn btn-primary"
-          onClick={handleAddNarration}
-          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
-        >
-          🎙️ Create Custom Narrator
-        </button>
-        <button
-          className="btn btn-secondary"
+          className={customVoiceId ? "btn btn-primary" : "btn btn-secondary"}
           onClick={handleShare}
           disabled={isSharing}
           style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
