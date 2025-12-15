@@ -1,9 +1,16 @@
+.christmas-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
 .christmas-card-container {
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
   perspective: 1000px;
-  padding: 2rem 1rem;
+  padding: 1rem;
 }
 
 .christmas-card {
@@ -12,7 +19,6 @@
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.8s ease;
-  cursor: pointer;
 }
 
 .christmas-card-container:not(.open) .christmas-card {
@@ -32,7 +38,7 @@
   border-radius: 24px;
   overflow: hidden;
   /* Minimal shadow for clean look */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
 }
 
@@ -81,36 +87,26 @@
 .placeholder-text {
   font-size: 1.5rem;
   font-weight: 600;
-  font-family: 'Georgia', serif;
-}
-
-.card-front-text {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
-}
-
-.card-front-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #212529;
-  margin: 0 0 0.5rem 0;
   font-family: 'FeatureDeck', 'Georgia', serif;
-  text-align: center;
 }
 
-.card-front-hint {
-  font-size: 0.9rem;
-  color: #6c757d;
-  margin: 0;
-  font-style: italic;
+/* Action button below the card - matching Christmas Card Creator style */
+.card-action-button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'FeatureDeck', 'Georgia', serif;
+}
+
+.card-action-button:hover {
+  background-color: #5a6268;
+  transform: translateY(-2px);
 }
 
 .card-inside-content {
@@ -149,11 +145,7 @@
 
 @media (max-width: 768px) {
   .christmas-card-container {
-    padding: 1rem;
-  }
-
-  .card-front-title {
-    font-size: 1.25rem;
+    padding: 0.5rem;
   }
 
   .card-inside-content {
@@ -174,6 +166,11 @@
 
   .placeholder-text {
     font-size: 1.25rem;
+  }
+  
+  .card-action-button {
+    font-size: 0.95rem;
+    padding: 10px 20px;
   }
 }
 

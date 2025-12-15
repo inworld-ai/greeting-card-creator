@@ -14,7 +14,7 @@ interface ChristmasCardProps {
 function ChristmasCard({ imageUrl, title, content, childName: _childName, onCardOpen, isAudioReady = false, isAudioLoading = false }: ChristmasCardProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleCardClick = () => {
+  const handleOpenCard = () => {
     if (!isOpen) {
       setIsOpen(true)
       // Notify parent that card was opened (triggers audio playback)
@@ -34,51 +34,64 @@ function ChristmasCard({ imageUrl, title, content, childName: _childName, onCard
     ? content.split('\n').slice(1).join('\n').trim()
     : content
 
+  // Suppress unused variable warnings
+  void isAudioReady
+  void isAudioLoading
+
   return (
-    <div className={`christmas-card-container ${isOpen ? 'open' : ''}`}>
-      <div className="christmas-card" onClick={handleCardClick}>
-        {!isOpen ? (
-          // Front Cover
-          <div className="card-front">
-            <div className="card-front-image">
-              {imageUrl ? (
-                <img src={imageUrl} alt="Christmas card" />
-              ) : (
-                <div className="card-placeholder">
-                  <div className="placeholder-icon">🎄</div>
-                  <div className="placeholder-text">Merry Christmas!</div>
-                </div>
-              )}
-            </div>
-            <div className="card-front-text">
-              <h2 className="card-front-title">{displayTitle}</h2>
-              <p className="card-front-hint">
-                {isAudioLoading ? (
-                  <>🎵 Preparing narrator... Click to open</>
-                ) : isAudioReady ? (
-                  <>🎵 Click to open & hear the story!</>
+    <div className="christmas-card-wrapper">
+      <div className={`christmas-card-container ${isOpen ? 'open' : ''}`}>
+        <div className="christmas-card">
+          {!isOpen ? (
+            // Front Cover - just the image, no overlay text
+            <div className="card-front">
+              <div className="card-front-image">
+                {imageUrl ? (
+                  <img src={imageUrl} alt="Christmas card" />
                 ) : (
-                  <>Click to open</>
+                  <div className="card-placeholder">
+                    <div className="placeholder-icon">🎄</div>
+                    <div className="placeholder-text">Merry Christmas!</div>
+                  </div>
                 )}
-              </p>
-            </div>
-          </div>
-        ) : (
-          // Inside Page
-          <div className="card-inside">
-            <div className="card-inside-content">
-              <h1 className="card-inside-title">{displayTitle}</h1>
-              <div className="card-inside-story">
-                {displayContent.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="story-paragraph">
-                    {paragraph.trim()}
-                  </p>
-                ))}
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            // Inside Page
+            <div className="card-inside">
+              <div className="card-inside-content">
+                <h1 className="card-inside-title">{displayTitle}</h1>
+                <div className="card-inside-story">
+                  {displayContent.split('\n\n').map((paragraph, index) => (
+                    <p key={index} className="story-paragraph">
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Buttons below the card - matching Christmas Card Creator style */}
+      {!isOpen && (
+        <button
+          className="card-action-button"
+          onClick={handleOpenCard}
+        >
+          Click to see the story
+        </button>
+      )}
+      
+      {isOpen && (
+        <button
+          className="card-action-button"
+          onClick={() => setIsOpen(false)}
+        >
+          ← Back to Cover
+        </button>
+      )}
     </div>
   )
 }
