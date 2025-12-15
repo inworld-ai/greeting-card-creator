@@ -118,12 +118,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   }, [])
 
   // Store preloaded audio from parent (generated during loading screen)
+  // Audio will be played when user clicks to open the card (via handleCardOpen)
   useEffect(() => {
     if (preloadedAudio && experienceType === 'story') {
-      console.log('🎵 Using preloaded audio from loading screen')
+      console.log('🎵 Preloaded audio stored and ready - will play when card is opened')
       preloadedAudioRef.current = preloadedAudio
       allAudioElementsRef.current.add(preloadedAudio)
       setIsAudioPreloaded(true)
+      // Don't auto-start - wait for user to click "Click to see the story"
     }
   }, [preloadedAudio, experienceType])
 
@@ -1413,7 +1415,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         </div>
       )}
       
-      {needsUserInteraction && audioRef.current && (
+      {/* For story experience, audio starts when card is opened - no separate button needed */}
+      {needsUserInteraction && audioRef.current && experienceType !== 'story' && (
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <button 
             onClick={async () => {
