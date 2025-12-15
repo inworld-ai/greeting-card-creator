@@ -406,7 +406,15 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         </div>
       )}
       
-      <button onClick={onBack} className="back-button" style={{ marginTop: '20px' }}>
+      <button 
+        onClick={onBack} 
+        className="back-button" 
+        style={{ 
+          marginTop: '20px',
+          fontSize: '1.1rem',
+          padding: '16px 32px'
+        }}
+      >
         ← Go Back
       </button>
     </div>
