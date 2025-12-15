@@ -851,6 +851,7 @@ function App() {
             customVoiceId={storyData.customVoiceId}
             experienceType={storyData.experienceType}
             preloadedAudio={preloadedAudio}
+            preloadedText={firstChunkText}
           />
         )}
       </div>

@@ -79,9 +79,10 @@ interface StoryNarrationProps {
   isShared?: boolean
   experienceType?: 'story' | 'year-review' | 'wish-list' | 'greeting-card'
   preloadedAudio?: HTMLAudioElement | null
+  preloadedText?: string  // The text that was already converted to preloaded audio
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null, preloadedText = '' }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -602,11 +603,43 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
     
     try {
-      // Extract title and split story
-      const [_title] = extractTitleAndStory(text)
-      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300)
+      // Find remaining text by removing the preloaded text from the full story
+      // preloadedText is the exact text that was sent to TTS (may include "Title: X" at start)
+      let remainingText = text
       
-      if (storyChunks.length <= 1) {
+      if (preloadedText) {
+        // The preloaded text might have had "Title:" stripped for TTS, but we need to match
+        // against the original text which includes "Title:"
+        // Try to find where the preloaded content ends in the full text
+        
+        // First, strip "Title:" from preloadedText if present to get the actual content
+        let preloadedContent = preloadedText
+        const titleMatch = preloadedText.match(/^Title:\s*(.+?)(?:\n\n|\n)/i)
+        if (titleMatch) {
+          // preloadedText has title, so the preloaded audio covers from start to end of preloadedText
+          preloadedContent = preloadedText
+        }
+        
+        // Find where preloadedText ends in the full text
+        const preloadedIndex = text.indexOf(preloadedContent)
+        if (preloadedIndex !== -1) {
+          remainingText = text.substring(preloadedIndex + preloadedContent.length).trim()
+          console.log(`🟡 Found preloaded text (${preloadedContent.length} chars), remaining text: ${remainingText.length} chars`)
+        } else {
+          // Fallback: try to match just the last part of preloaded text
+          // Sometimes there might be slight differences in whitespace
+          const lastWords = preloadedContent.split(/\s+/).slice(-10).join(' ')
+          const lastWordsIndex = text.indexOf(lastWords)
+          if (lastWordsIndex !== -1) {
+            remainingText = text.substring(lastWordsIndex + lastWords.length).trim()
+            console.log(`🟡 Found preloaded via last words, remaining text: ${remainingText.length} chars`)
+          } else {
+            console.log('⚠️ Could not find preloaded text in full story, will regenerate all')
+          }
+        }
+      }
+      
+      if (!remainingText || remainingText.length < 10) {
         console.log('🟡 Story is short enough that preloaded audio covers it all')
         remainingAudiosPromiseResolve?.([])
         hasStartedNarrationForStoryRef.current = text
@@ -614,9 +647,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         return
       }
       
-      // Generate remaining chunks (skip the first one which is preloaded)
-      const remainingChunks = storyChunks.slice(1)
-      console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks...`)
+      // Split remaining text into chunks for better TTS (300 words each)
+      const remainingChunks = splitStoryIntoSmallChunks(remainingText, 300, 300)
+      console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks (${remainingText.length} chars)...`)
       
       // Generate all remaining chunks
       const audioPromises = remainingChunks.map((chunk) => 
