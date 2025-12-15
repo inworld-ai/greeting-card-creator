@@ -554,6 +554,100 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
   }
 
+  // Generate remaining audio chunks and chain them to the first preloaded chunk
+  const generateRemainingAudioChunks = async (text: string, firstChunkAudio: HTMLAudioElement) => {
+    console.log('🟡 Generating remaining audio chunks to chain after preloaded first chunk...')
+    
+    try {
+      // Extract title and split story
+      const [_title] = extractTitleAndStory(text)
+      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300)
+      
+      if (storyChunks.length <= 1) {
+        console.log('🟡 Story is short enough that preloaded audio covers it all')
+        // Set up ended handler for the first chunk
+        firstChunkAudio.onended = () => {
+          console.log('🎵 Preloaded audio playback complete (short story)')
+          setIsAudioPlaying(false)
+          isNarrationInProgressRef.current = false
+          if (checkAudioIntervalRef.current) {
+            clearInterval(checkAudioIntervalRef.current)
+            checkAudioIntervalRef.current = null
+          }
+        }
+        hasStartedNarrationForStoryRef.current = text
+        return
+      }
+      
+      // Generate remaining chunks (skip the first one which is preloaded)
+      const remainingChunks = storyChunks.slice(1)
+      console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks...`)
+      
+      // Generate all remaining chunks
+      const audioPromises = remainingChunks.map((chunk) => 
+        synthesizeSpeech(chunk, {
+          voiceId: customVoiceId || voiceId,
+          apiKey: customApiKey || undefined,
+        })
+      )
+      
+      const remainingAudios = await Promise.all(audioPromises)
+      console.log(`✅ Generated ${remainingAudios.length} remaining audio chunks`)
+      
+      // Track all audio elements
+      remainingAudios.forEach(audio => {
+        allAudioElementsRef.current.add(audio)
+      })
+      
+      // Chain the first remaining audio to the preloaded first chunk
+      firstChunkAudio.onended = async () => {
+        console.log('🎵 Preloaded first chunk ended, playing remaining audio...')
+        if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
+          try {
+            await remainingAudios[0].play()
+            console.log('✅ Started playing remaining audio')
+          } catch (err) {
+            console.error('Error playing remaining audio:', err)
+          }
+        }
+      }
+      
+      // Chain remaining audios to each other
+      for (let i = 0; i < remainingAudios.length - 1; i++) {
+        const current = remainingAudios[i]
+        const next = remainingAudios[i + 1]
+        current.onended = async () => {
+          if (!shouldStopAllAudioRef.current) {
+            try {
+              await next.play()
+              console.log(`✅ Playing chunk ${i + 3}`)
+            } catch (err) {
+              console.error('Error playing next chunk:', err)
+            }
+          }
+        }
+      }
+      
+      // Set up final chunk ended handler
+      const lastAudio = remainingAudios[remainingAudios.length - 1]
+      lastAudio.onended = () => {
+        console.log('🎵 All audio playback complete!')
+        setIsAudioPlaying(false)
+        isNarrationInProgressRef.current = false
+        if (checkAudioIntervalRef.current) {
+          clearInterval(checkAudioIntervalRef.current)
+          checkAudioIntervalRef.current = null
+        }
+      }
+      
+      hasStartedNarrationForStoryRef.current = text
+      
+    } catch (err) {
+      console.error('Error generating remaining audio chunks:', err)
+      // Don't break playback - the first chunk is already playing
+    }
+  }
+
   const handleStartNarration = async (textToSpeak?: string) => {
     const text = textToSpeak || storyText
     
@@ -1554,15 +1648,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   setHasStartedNarration(true)
                   setIsAudioPlaying(true)
                   isNarrationInProgressRef.current = true
-                  hasStartedNarrationForStoryRef.current = storyText
+                  // DON'T set hasStartedNarrationForStoryRef yet - we still need to generate remaining chunks
                   startPollingForAudioEnd()
                   
                   await playPromise
                   console.log('🎵 Preloaded audio (first chunk) playing!')
                   
                   // Generate the rest of the story audio in background
-                  // The first chunk will end, and we need the rest ready
-                  handleStartNarration(storyText)
+                  // Chain the remaining audio to the preloaded first chunk
+                  generateRemainingAudioChunks(storyText, preloadedAudioRef.current)
                 } catch (err: any) {
                   console.error('Error playing preloaded audio:', err)
                   if (err.name === 'NotAllowedError') {
