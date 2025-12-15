@@ -181,62 +181,26 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       
       console.log('📝 Formatted conversation:\n', conversationText);
 
-      prompt = `Based on this conversation between an Elf and a user, create a personalized Christmas card message.
+      prompt = `Based on this conversation, write a VERY SHORT Christmas card (under 250 characters).
 
 CONVERSATION:
 ${conversationText}
 
-TASK:
-1. First, extract from the conversation:
-   - Who the card is for (recipient name)
-   - WHO IS SENDING THE CARD (the user!) - look for phrases like "I'm her dad", "I'm his mom", "she's my wife", "my best friend", etc.
-   - The funny story, quirk, obsession, or special thing mentioned about them
+Extract: recipient name, sender relationship, and their quirk/obsession.
 
-2. Then write a Christmas card message in this EXACT FORMAT:
+FORMAT (follow EXACTLY):
+Dear [Name],
 
-Dear {name},
+[ONE short fun sentence about the quirk]. [ONE Christmas wish]. Merry Christmas!
 
-{First paragraph: A warm Christmas greeting that cleverly references their quirk/obsession. Make puns or movie/hobby references. 2-3 sentences.}
+[Sign-off based on relationship, e.g., "Love, Dad"]
 
-{Second paragraph: Continue the joke/reference and end with something heartfelt. 2-3 sentences.}
-
-{REQUIRED SIGN-OFF LINE - see rules below}
-
-SIGN-OFF RULES (THIS IS MANDATORY - NEVER SKIP):
-- Extract the sender's relationship from the conversation (e.g., "I'm her dad" → sign off as "Love, Dad")
-- Common mappings:
-  * "I'm her/his dad" or "my daughter/son" → "Love, Dad" or "Love always, Dad"
-  * "I'm her/his mom" → "Love, Mom" or "With all my love, Mom"  
-  * "my wife" or "I'm her husband" → "Your loving husband" or "Forever yours"
-  * "my husband" or "I'm his wife" → "Your loving wife" or "All my love"
-  * "my best friend" → "Your best friend forever" or "Love ya!"
-  * "my sister/brother" → "Love, your [brother/sister]"
-- If relationship is unclear, use: "Wishing you a Merry Christmas!" or "With love and holiday cheer!"
-
-EXAMPLE (for daughter Willa, sent by her Dad, who loves Stranger Things):
-
-Dear Willa,
-
-Merry Christmas to my amazing daughter! I've been thinking - if the Demogorgon tried to ruin Christmas, you'd probably handle it like Eleven, no problem. Just don't go opening any gates to the Upside Down under the tree!
-
-Your dedication to all things Hawkins is legendary, and watching you geek out over every episode is one of my favorite things. Here's to more binge-watching adventures together in the new year!
-
-Love always,
-Dad
-
-STYLE GUIDELINES:
-- Make specific puns or references to their quirk/obsession
-- Be witty, warm, and personal - like an inside joke between loved ones
-- Aim for 500-700 characters total
-
-CRITICAL OUTPUT RULES:
-- DO NOT include any "EXTRACTED INFORMATION" section
-- DO NOT include any asterisks, bold text, or formatting markers
-- DO NOT include character counts
-- ONLY output the card message itself: "Dear [name]," + two paragraphs + sign-off
-- Start your response DIRECTLY with "Dear"
-- The message MUST end with a sign-off line (THIS IS REQUIRED - NEVER OMIT)
-- The sign-off MUST be on its own line after the second paragraph`;
+RULES:
+- ONLY 2 sentences in body (plus "Merry Christmas!")
+- Total under 250 characters
+- Keep punchy and fun
+- Start DIRECTLY with "Dear"
+- End with sign-off on its own line`;
     } else {
       // Legacy path with individual fields
       if (!recipientName || !funnyStory) {
@@ -284,37 +248,25 @@ CRITICAL OUTPUT RULES:
       // Set the parsed name for the response
       parsedRecipientName = extractedName;
 
-      prompt = `Create a personalized Christmas card message.
+      prompt = `Write a VERY SHORT Christmas card message (under 250 characters total).
 
-Recipient's name: ${extractedName}
-${extractedRelationship ? `Sender's relationship to recipient: The recipient is the sender's ${extractedRelationship}` : 'Relationship: friend or family member'}
-Funny/special thing about them: ${funnyStory}
-${signoff ? `Requested sign-off: ${signoff}` : ''}
+Recipient: ${extractedName}
+Anecdote: ${funnyStory}
+Sign-off: ${signoff || (extractedRelationship ? `Love, [appropriate for ${extractedRelationship}]` : 'Merry Christmas!')}
 
-Write a Christmas card message in this EXACT FORMAT:
-
+FORMAT (follow EXACTLY):
 Dear ${extractedName},
 
-{First paragraph: A warm Christmas greeting that cleverly references their quirk/obsession. Make puns or references. 2-3 sentences.}
+[ONE short fun sentence about the anecdote]. [ONE Christmas wish]. Merry Christmas!
 
-{Second paragraph: Continue the joke/reference and end with something heartfelt. 2-3 sentences.}
+${signoff || (extractedRelationship ? `[Sign-off for ${extractedRelationship}]` : 'With love')}
 
-{REQUIRED SIGN-OFF LINE}
-
-SIGN-OFF RULES (MANDATORY - NEVER SKIP):
-${signoff ? `- USE THE EXACT SIGN-OFF PROVIDED: "${signoff}"` : extractedRelationship ? `- Based on the relationship (${extractedRelationship}), use an appropriate sign-off like "Love, Dad", "Love, Mom", "Your loving husband/wife", etc.` : `- Use a warm sign-off like "Wishing you a Merry Christmas!" or "With love and holiday cheer!"`}
-
-STYLE GUIDELINES:
-- Make specific puns or references to their quirk/obsession
-- Be witty, warm, and personal - like an inside joke between loved ones
-- Aim for 500-700 characters total
-
-CRITICAL OUTPUT RULES:
-- DO NOT include any headers or labels
-- DO NOT include any asterisks, bold text, or formatting markers  
-- ONLY output the card message itself: "Dear [name]," + two paragraphs + sign-off
-- Start your response DIRECTLY with "Dear ${extractedName},"
-- The message MUST end with a sign-off line on its own line (THIS IS REQUIRED - NEVER OMIT)`;
+CRITICAL RULES:
+- ONLY 2 sentences in the body (plus "Merry Christmas!")
+- Total message under 250 characters
+- Keep it punchy and fun
+- Do NOT write multiple paragraphs
+- Do NOT add extra sentences`;
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -326,7 +278,7 @@ CRITICAL OUTPUT RULES:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
+        max_tokens: 150,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -340,15 +292,18 @@ CRITICAL OUTPUT RULES:
     const data = await response.json() as { content: Array<{ text: string }> };
     let cardMessage = data.content[0].text.trim();
 
-    // Enforce 500 character limit
-    if (cardMessage.length > 500) {
-      const truncated = cardMessage.substring(0, 497);
+    console.log(`💌 Generated card message - Characters: ${cardMessage.length}`);
+    
+    // Enforce 350 character limit
+    if (cardMessage.length > 350) {
+      console.log(`⚠️ Message exceeded 350 characters (${cardMessage.length} chars), truncating...`);
+      const truncated = cardMessage.substring(0, 347);
       const lastSentence = Math.max(
         truncated.lastIndexOf('.'),
         truncated.lastIndexOf('!'),
         truncated.lastIndexOf('?')
       );
-      cardMessage = lastSentence > 400 
+      cardMessage = lastSentence > 200 
         ? truncated.substring(0, lastSentence + 1) 
         : truncated + '...';
     }
@@ -795,29 +750,31 @@ app.post('/api/generate-story', async (req, res) => {
               role: 'system',
               content: {
                 type: 'template',
-                template: `You are a creative and playful Christmas storyteller who writes fun, energetic stories in the style of Robert Munsch. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness.`,
+                template: `You write EXTREMELY SHORT Christmas stories (80-100 words ONLY). Write fun, playful stories in Robert Munsch style. Be concise - every word counts.`,
               },
             },
             {
               role: 'user',
               content: {
                 type: 'template',
-                template: `You are writing a personalized Christmas story for a child named {{childName}}.
+                template: `Write a VERY SHORT Christmas story for {{childName}} about: "{{storyType}}"
 
-CRITICAL REQUIREMENT - THE STORY MUST BE ABOUT THIS EXACT TOPIC:
-"{{storyType}}"
+STRICT FORMAT:
+Title: [Short Title]
 
-Story Requirements:
-- Start with a title on the first line in the format: "Title: [Story Title]"
-- The main character is {{childName}}
-- {{childName}} is the hero of the story
-- The story is specifically about: {{storyType}}
-- Include classic Christmas elements: Santa Claus, reindeer, elves, Christmas trees, presents, snow, the North Pole, Christmas magic
-- Write in the style of Robert Munsch: playful, energetic, silly, and full of fun
-- Keep it to about 200-250 words
-- The story MUST end with {{childName}} having a wonderful Christmas
-- DO NOT use onomatopoeia or ALL-CAPS
-- DO NOT end with the child falling asleep`,
+[Story: EXACTLY 6-8 short sentences. No more. Target: 80-100 words total.]
+
+RULES:
+- Main character: {{childName}} (the hero)
+- Theme: {{storyType}} with Christmas magic
+- Style: Playful, silly, fun - Robert Munsch style
+- Sentences: Short and punchy
+- Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
+- No ALL-CAPS words
+- No sound effects (BOOM, ZAP, etc.)
+- Santa says "Ho ho ho" only (no punctuation variations)
+
+CRITICAL LENGTH: 80-100 words maximum. Count carefully. This story should take 30-40 seconds to read aloud.`,
               },
             },
           ],
