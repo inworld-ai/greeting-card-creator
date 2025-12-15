@@ -87,7 +87,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
-  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [_shareUrl, setShareUrl] = useState<string | null>(null)
   const [isSharing, setIsSharing] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
   const [isLinkCopied, setIsLinkCopied] = useState(false)
@@ -1506,68 +1506,67 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         {/* For greeting cards and stories, Share and Make Another buttons go below the text */}
         {experienceType !== 'greeting-card' && !isShared && (
           <>
-            {!shareUrl ? (
-              <button 
-                  onClick={async () => {
-                    setIsSharing(true)
-                    setShareError(null)
+            <button 
+              onClick={async () => {
+                setIsSharing(true)
+                setShareError(null)
+                try {
+                  // Convert blob URL to data URL if needed for sharing
+                  let finalImageUrl = imageUrl
+                  if (imageUrl && imageUrl.startsWith('blob:')) {
                     try {
-                      // Convert blob URL to data URL if needed for sharing
-                      let finalImageUrl = imageUrl
-                      if (imageUrl && imageUrl.startsWith('blob:')) {
-                        try {
-                          const response = await fetch(imageUrl)
-                          const blob = await response.blob()
-                          const reader = new FileReader()
-                          finalImageUrl = await new Promise<string>((resolve, reject) => {
-                            reader.onloadend = () => resolve(reader.result as string)
-                            reader.onerror = reject
-                            reader.readAsDataURL(blob)
-                          })
-                        } catch (error) {
-                          console.error('Error converting blob URL to data URL:', error)
-                          // Continue with original URL if conversion fails
-                        }
-                      }
-                      
-                      const result = await shareStory({
-                        storyText,
-                        childName,
-                        voiceId,
-                        storyType: _storyType,
-                        imageUrl: finalImageUrl,
-                        customApiKey,
-                        customVoiceId
+                      const response = await fetch(imageUrl)
+                      const blob = await response.blob()
+                      const reader = new FileReader()
+                      finalImageUrl = await new Promise<string>((resolve, reject) => {
+                        reader.onloadend = () => resolve(reader.result as string)
+                        reader.onerror = reject
+                        reader.readAsDataURL(blob)
                       })
-                      setShareUrl(result.shareUrl)
-                      // Use Web Share API (mobile) or clipboard (desktop)
-                      await shareUrlHelper(
-                        result.shareUrl,
-                        'A Christmas Story For You',
-                        `Check out this personalized Christmas story for ${childName}!`
-                      )
-                      setIsLinkCopied(true)
-                      // Reset after 2 seconds
-                      setTimeout(() => {
-                        setIsLinkCopied(false)
-                      }, 2000)
-                  } catch (err: any) {
-                    setShareError(err.message || 'Failed to share story')
-                  } finally {
-                    setIsSharing(false)
+                    } catch (error) {
+                      console.error('Error converting blob URL to data URL:', error)
+                      // Continue with original URL if conversion fails
+                    }
                   }
-                }}
-                disabled={isSharing || isLinkCopied}
-                className="share-story-button"
-                style={{ order: 2 }}
-              >
-                {isSharing ? 'Sharing...' : isLinkCopied ? '✅ Link Copied!' : 'Share Story'}
-              </button>
+                  
+                  const result = await shareStory({
+                    storyText,
+                    childName,
+                    voiceId,
+                    storyType: _storyType,
+                    imageUrl: finalImageUrl,
+                    customApiKey,
+                    customVoiceId
+                  })
+                  setShareUrl(result.shareUrl)
+                  // Use Web Share API (mobile) or clipboard (desktop)
+                  await shareUrlHelper(
+                    result.shareUrl,
+                    'A Christmas Story For You',
+                    `Check out this personalized Christmas story for ${childName}!`
+                  )
+                  setIsLinkCopied(true)
+                  // Reset after 2 seconds
+                  setTimeout(() => {
+                    setIsLinkCopied(false)
+                  }, 2000)
+                } catch (err: any) {
+                  setShareError(err.message || 'Failed to share story')
+                } finally {
+                  setIsSharing(false)
+                }
+              }}
+              disabled={isSharing || isLinkCopied}
+              className="share-story-button"
+              style={{ order: 2 }}
+            >
+              {isSharing ? 'Sharing...' : isLinkCopied ? '✅ Link Copied!' : 'Share Story'}
+            </button>
             {shareError && (
               <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                 {shareError}
-          </div>
-      )}
+              </div>
+            )}
           </>
         )}
         </div>
@@ -1803,68 +1802,67 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         <div className="story-controls" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '30px' }}>
           {!isShared && (
             <>
-              {!shareUrl ? (
-                <button 
-                  onClick={async () => {
-                    setIsSharing(true)
-                    setShareError(null)
-                    try {
-                      // Convert blob URL to data URL if needed for sharing
-                      let finalImageUrl = imageUrl
-                      if (imageUrl && imageUrl.startsWith('blob:')) {
-                        try {
-                          const response = await fetch(imageUrl)
-                          const blob = await response.blob()
-                          const reader = new FileReader()
-                          finalImageUrl = await new Promise<string>((resolve, reject) => {
-                            reader.onloadend = () => resolve(reader.result as string)
-                            reader.onerror = reject
-                            reader.readAsDataURL(blob)
-                          })
-                        } catch (error) {
-                          console.error('Error converting blob URL to data URL:', error)
-                          // Continue with original URL if conversion fails
-                        }
+              <button 
+                onClick={async () => {
+                  setIsSharing(true)
+                  setShareError(null)
+                  try {
+                    // Convert blob URL to data URL if needed for sharing
+                    let finalImageUrl = imageUrl
+                    if (imageUrl && imageUrl.startsWith('blob:')) {
+                      try {
+                        const response = await fetch(imageUrl)
+                        const blob = await response.blob()
+                        const reader = new FileReader()
+                        finalImageUrl = await new Promise<string>((resolve, reject) => {
+                          reader.onloadend = () => resolve(reader.result as string)
+                          reader.onerror = reject
+                          reader.readAsDataURL(blob)
+                        })
+                      } catch (error) {
+                        console.error('Error converting blob URL to data URL:', error)
+                        // Continue with original URL if conversion fails
                       }
-                      
-                      const result = await shareStory({
-                        storyText,
-                        childName,
-                        voiceId,
-                        storyType: _storyType,
-                        imageUrl: finalImageUrl,
-                        customApiKey,
-                        customVoiceId
-                      })
-                        setShareUrl(result.shareUrl)
-                        // Use Web Share API (mobile) or clipboard (desktop)
-                        await shareUrlHelper(
-                          result.shareUrl,
-                          experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
-                          experienceType === 'greeting-card' 
-                            ? `Check out this personalized Christmas card for ${childName}!`
-                            : `Check out this personalized Christmas story for ${childName}!`
-                        )
-                        setIsLinkCopied(true)
-                        // Reset after 2 seconds
-                        setTimeout(() => {
-                          setIsLinkCopied(false)
-                        }, 2000)
-                    } catch (err: any) {
-                      setShareError(err.message || 'Failed to share story')
-                    } finally {
-                      setIsSharing(false)
                     }
-                  }}
-                  disabled={isSharing || isLinkCopied}
-                  className="share-story-button"
-                >
-                  {isSharing ? 'Sharing...' : isLinkCopied ? '✅ Link Copied!' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
+                    
+                    const result = await shareStory({
+                      storyText,
+                      childName,
+                      voiceId,
+                      storyType: _storyType,
+                      imageUrl: finalImageUrl,
+                      customApiKey,
+                      customVoiceId
+                    })
+                    setShareUrl(result.shareUrl)
+                    // Use Web Share API (mobile) or clipboard (desktop)
+                    await shareUrlHelper(
+                      result.shareUrl,
+                      experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
+                      experienceType === 'greeting-card' 
+                        ? `Check out this personalized Christmas card for ${childName}!`
+                        : `Check out this personalized Christmas story for ${childName}!`
+                    )
+                    setIsLinkCopied(true)
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                      setIsLinkCopied(false)
+                    }, 2000)
+                  } catch (err: any) {
+                    setShareError(err.message || 'Failed to share story')
+                  } finally {
+                    setIsSharing(false)
+                  }
+                }}
+                disabled={isSharing || isLinkCopied}
+                className="share-story-button"
+              >
+                {isSharing ? 'Sharing...' : isLinkCopied ? '✅ Link Copied!' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
               </button>
               {shareError && (
                 <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                   {shareError}
-          </div>
+                </div>
               )}
             </>
           )}
