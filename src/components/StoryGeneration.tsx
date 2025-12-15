@@ -39,9 +39,17 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             console.log('🟡 First text chunk ready, starting TTS generation...')
             
             try {
+              // Strip "Title:" prefix if present (we want to speak the title, not the word "Title")
+              let textForTTS = chunk.text
+              const titleMatch = textForTTS.match(/^Title:\s*(.+?)(?:\n\n|\n)/i)
+              if (titleMatch) {
+                // Replace "Title: X" with just "X" at the beginning
+                textForTTS = titleMatch[1].trim() + '. ' + textForTTS.substring(titleMatch[0].length).trim()
+              }
+              
               // Generate TTS for the first chunk with [happy] emotion tag
               // The onFirstChunkReady callback fires after ~3 seconds of audio data
-              await synthesizeSpeech('[happy] ' + chunk.text, {
+              await synthesizeSpeech('[happy] ' + textForTTS, {
                 voiceId: customVoiceId || voiceId,
                 onFirstChunkReady: (preloadedAudio) => {
                   // Only transition once - when first ~3 seconds of audio is ready

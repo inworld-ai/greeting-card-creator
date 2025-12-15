@@ -280,7 +280,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       
       // If no audio is playing, set state to false (regardless of current state)
-      if (!anyPlaying && allAudioElementsRef.current.size > 0) {
+      // BUT don't stop if we're still generating remaining audio chunks
+      if (!anyPlaying && allAudioElementsRef.current.size > 0 && !isGeneratingRemainingRef.current) {
         // Always update state if no audio is playing (even if state already says false)
         // This ensures the button becomes active
         console.log(`🟡🟡🟡 POLLING DETECTED ALL AUDIO HAS ENDED! (poll #${pollCount}, playing: ${playingCount}, ended: ${endedCount}, paused: ${pausedCount}, total tracked: ${allAudioElementsRef.current.size}, isAudioPlaying: ${isAudioPlaying}) 🟡🟡🟡`)
@@ -293,6 +294,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         if (onFullStoryReady && fullStoryRef.current) {
           onFullStoryReady(fullStoryRef.current)
         }
+      } else if (!anyPlaying && isGeneratingRemainingRef.current) {
+        console.log(`🟡 First chunk ended, waiting for remaining audio to be generated...`)
       }
     }, 300) // Check every 300ms for faster detection
   }
@@ -554,9 +557,49 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
   }
 
+  // Ref to track if we're still generating remaining audio
+  const isGeneratingRemainingRef = useRef<boolean>(false)
+
   // Generate remaining audio chunks and chain them to the first preloaded chunk
   const generateRemainingAudioChunks = async (text: string, firstChunkAudio: HTMLAudioElement) => {
     console.log('🟡 Generating remaining audio chunks to chain after preloaded first chunk...')
+    isGeneratingRemainingRef.current = true
+    
+    // Promise that resolves when remaining audio is ready
+    let remainingAudiosReady: HTMLAudioElement[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let remainingAudiosPromiseResolve: any = null
+    const remainingAudiosPromise = new Promise<HTMLAudioElement[]>(resolve => {
+      remainingAudiosPromiseResolve = resolve
+    })
+    
+    // Set up the onended handler IMMEDIATELY so we don't miss the event
+    firstChunkAudio.onended = async () => {
+      console.log('🎵 Preloaded first chunk ended, waiting for remaining audio...')
+      
+      // Wait for remaining audio to be ready
+      const remainingAudios = await remainingAudiosPromise
+      
+      if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
+        try {
+          console.log('🎵 Starting remaining audio playback...')
+          await remainingAudios[0].play()
+          console.log('✅ Started playing remaining audio')
+        } catch (err) {
+          console.error('Error playing remaining audio:', err)
+        }
+      } else if (remainingAudios.length === 0) {
+        // No remaining audio - playback complete
+        console.log('🎵 All audio playback complete (short story)')
+        setIsAudioPlaying(false)
+        isNarrationInProgressRef.current = false
+        isGeneratingRemainingRef.current = false
+        if (checkAudioIntervalRef.current) {
+          clearInterval(checkAudioIntervalRef.current)
+          checkAudioIntervalRef.current = null
+        }
+      }
+    }
     
     try {
       // Extract title and split story
@@ -565,17 +608,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       
       if (storyChunks.length <= 1) {
         console.log('🟡 Story is short enough that preloaded audio covers it all')
-        // Set up ended handler for the first chunk
-        firstChunkAudio.onended = () => {
-          console.log('🎵 Preloaded audio playback complete (short story)')
-          setIsAudioPlaying(false)
-          isNarrationInProgressRef.current = false
-          if (checkAudioIntervalRef.current) {
-            clearInterval(checkAudioIntervalRef.current)
-            checkAudioIntervalRef.current = null
-          }
-        }
+        remainingAudiosPromiseResolve?.([])
         hasStartedNarrationForStoryRef.current = text
+        isGeneratingRemainingRef.current = false
         return
       }
       
@@ -591,31 +626,18 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
       )
       
-      const remainingAudios = await Promise.all(audioPromises)
-      console.log(`✅ Generated ${remainingAudios.length} remaining audio chunks`)
+      remainingAudiosReady = await Promise.all(audioPromises)
+      console.log(`✅ Generated ${remainingAudiosReady.length} remaining audio chunks`)
       
       // Track all audio elements
-      remainingAudios.forEach(audio => {
+      remainingAudiosReady.forEach(audio => {
         allAudioElementsRef.current.add(audio)
       })
       
-      // Chain the first remaining audio to the preloaded first chunk
-      firstChunkAudio.onended = async () => {
-        console.log('🎵 Preloaded first chunk ended, playing remaining audio...')
-        if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
-          try {
-            await remainingAudios[0].play()
-            console.log('✅ Started playing remaining audio')
-          } catch (err) {
-            console.error('Error playing remaining audio:', err)
-          }
-        }
-      }
-      
       // Chain remaining audios to each other
-      for (let i = 0; i < remainingAudios.length - 1; i++) {
-        const current = remainingAudios[i]
-        const next = remainingAudios[i + 1]
+      for (let i = 0; i < remainingAudiosReady.length - 1; i++) {
+        const current = remainingAudiosReady[i]
+        const next = remainingAudiosReady[i + 1]
         current.onended = async () => {
           if (!shouldStopAllAudioRef.current) {
             try {
@@ -629,11 +651,12 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       
       // Set up final chunk ended handler
-      const lastAudio = remainingAudios[remainingAudios.length - 1]
+      const lastAudio = remainingAudiosReady[remainingAudiosReady.length - 1]
       lastAudio.onended = () => {
         console.log('🎵 All audio playback complete!')
         setIsAudioPlaying(false)
         isNarrationInProgressRef.current = false
+        isGeneratingRemainingRef.current = false
         if (checkAudioIntervalRef.current) {
           clearInterval(checkAudioIntervalRef.current)
           checkAudioIntervalRef.current = null
@@ -641,10 +664,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       
       hasStartedNarrationForStoryRef.current = text
+      isGeneratingRemainingRef.current = false
+      
+      // Resolve the promise so onended handler can play the audio
+      remainingAudiosPromiseResolve?.(remainingAudiosReady)
       
     } catch (err) {
       console.error('Error generating remaining audio chunks:', err)
-      // Don't break playback - the first chunk is already playing
+      isGeneratingRemainingRef.current = false
+      remainingAudiosPromiseResolve?.([])
     }
   }
 
@@ -1135,7 +1163,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               }
               
               // If no audio is playing, set state to false (regardless of current state)
-              if (!anyPlaying) {
+              // BUT don't stop if we're still generating remaining audio chunks
+              if (!anyPlaying && !isGeneratingRemainingRef.current) {
                 // Always update state if no audio is playing (even if state already says false)
                 // This ensures the button becomes active
                 console.log(`🟡🟡🟡 POLLING DETECTED ALL AUDIO HAS ENDED! (poll #${pollCount}, playing: ${playingCount}, ended: ${endedCount}, paused: ${pausedCount}, total tracked: ${allAudioElementsRef.current.size}, isAudioPlaying: ${isAudioPlaying}) 🟡🟡🟡`)
@@ -1148,6 +1177,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 if (onFullStoryReady && fullStoryRef.current) {
                   onFullStoryReady(fullStoryRef.current)
                 }
+              } else if (!anyPlaying && isGeneratingRemainingRef.current) {
+                console.log(`🟡 First chunk ended, waiting for remaining audio to be generated...`)
               }
             }, 300) // Check every 300ms for faster detection
           }
