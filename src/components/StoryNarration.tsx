@@ -1594,19 +1594,6 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       )}
           </>
         )}
-        {experienceType !== 'greeting-card' && (
-          <button 
-            onClick={() => {
-              // Use browser refresh to ensure all audio stops completely
-              // This is the most reliable way to stop all audio and reset the app
-              window.location.href = '/'
-            }} 
-            className="restart-button"
-            style={{ order: 3 }}
-          >
-            Make Another Christmas Creation
-          </button>
-        )}
         </div>
       )}
 
@@ -1931,16 +1918,18 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               )}
             </>
           )}
-          <button 
-            onClick={() => {
-              // Use browser refresh to ensure all audio stops completely
-              // This is the most reliable way to stop all audio and reset the app
-              window.location.href = '/'
-            }} 
-            className="restart-button"
-          >
-            Make Another Christmas Creation
-          </button>
+          {experienceType === 'greeting-card' && (
+            <button 
+              onClick={() => {
+                // Use browser refresh to ensure all audio stops completely
+                // This is the most reliable way to stop all audio and reset the app
+                window.location.href = '/'
+              }} 
+              className="restart-button"
+            >
+              Make Another Christmas Creation
+            </button>
+          )}
         </div>
       )}
     </div>
