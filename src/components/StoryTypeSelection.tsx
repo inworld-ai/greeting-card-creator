@@ -58,7 +58,7 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   return (
     <div className="story-type-selection">
       <p className="prompt-text">
-        Enter your Christmas story idea or choose a suggestion below!
+        Create a personalized Christmas story in seconds! Enter your story idea or choose from a suggestion below.
       </p>
       
       <div className="text-input-container">
