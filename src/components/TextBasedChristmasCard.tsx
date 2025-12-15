@@ -50,6 +50,21 @@ function TextBasedChristmasCard() {
     setError(null)
     setStep('generating')
     
+    // Extract a simple name from recipientInfo for the announcement
+    // e.g., "my son Mac" -> "Mac", "Dad" -> "Dad"
+    const words = recipientInfo.trim().split(/\s+/)
+    const announceName = words.length > 0 ? words[words.length - 1] : recipientInfo
+    
+    // Play the female elf announcement
+    try {
+      const announcement = await synthesizeSpeech(`[happy] Creating your Christmas card for ${announceName}!`, {
+        voiceId: 'christmas_story_generator__female_elf_narrator'
+      })
+      announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
+    } catch (err) {
+      console.log('Could not play announcement:', err)
+    }
+    
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
       
@@ -410,7 +425,7 @@ function TextBasedChristmasCard() {
                 fontWeight: '600',
                 color: '#333',
               }}>
-                How would you like to sign off? <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span>
+                How would you like to sign off?
               </label>
               <input
                 type="text"
