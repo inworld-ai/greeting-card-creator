@@ -14,7 +14,7 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
   }
 
   const handleGreetingCardClick = () => {
-    navigate('/greetingcard')
+    navigate('/christmascard')
     onSelectExperience('greeting-card')
   }
 
