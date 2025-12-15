@@ -21,22 +21,44 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   const [error, setError] = useState<string | null>(null)
   const hasPlayedWelcomeRef = useRef(false)
 
-  // Play welcome greeting when component mounts
+  // Play welcome greeting on first user interaction (to avoid autoplay blocking)
   useEffect(() => {
     if (hasPlayedWelcomeRef.current) return
-    hasPlayedWelcomeRef.current = true
     
     const playWelcome = async () => {
+      if (hasPlayedWelcomeRef.current) return
+      hasPlayedWelcomeRef.current = true
+      
       try {
         const welcome = await synthesizeSpeech('[happy] Welcome to the Inworld Christmas Story Creator! Enter your details now!', {
           voiceId: 'christmas_story_generator__female_elf_narrator'
         })
-        welcome.play().catch(err => console.log('Welcome autoplay prevented:', err))
+        welcome.play().catch(err => console.log('Welcome play error:', err))
       } catch (err) {
         console.log('Could not play welcome:', err)
       }
     }
+    
+    // Try autoplay first
     playWelcome()
+    
+    // Also listen for first interaction as fallback
+    const handleInteraction = () => {
+      if (!hasPlayedWelcomeRef.current) {
+        playWelcome()
+      }
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleInteraction)
+      document.removeEventListener('touchstart', handleInteraction)
+    }
+    
+    document.addEventListener('click', handleInteraction, { once: true })
+    document.addEventListener('touchstart', handleInteraction, { once: true })
+    
+    return () => {
+      document.removeEventListener('click', handleInteraction)
+      document.removeEventListener('touchstart', handleInteraction)
+    }
   }, [])
 
   const handleTextInput = (value: string) => {
