@@ -556,14 +556,14 @@ app.post('/api/tts', async (req, res) => {
   }
 })
 
-// Story generation endpoint using Inworld Runtime
+// Story generation endpoint using Claude Sonnet 4.5
 app.post('/api/generate-story', async (req, res) => {
   console.log('\n\n📖 ==========================================')
-  console.log('📖 STORY GENERATION ENDPOINT CALLED (Inworld Runtime)')
+  console.log('📖 STORY GENERATION ENDPOINT CALLED (Claude Sonnet 4.5)')
   console.log('📖 ==========================================')
   
   try {
-    const { storyType, childName, apiKey } = req.body
+    const { storyType, childName } = req.body
 
     if (!storyType || !childName) {
       return res.status(400).json({ 
@@ -571,138 +571,89 @@ app.post('/api/generate-story', async (req, res) => {
       })
     }
 
-    // Use custom API key if provided, otherwise use server's default
-    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY
-    if (!selectedApiKey) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return res.status(500).json({ 
-        error: 'Server configuration error: INWORLD_API_KEY not set and no custom API key provided' 
-      })
-    }
-
-    if (!process.env.GOOGLE_API_KEY) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+        error: 'Server configuration error: ANTHROPIC_API_KEY not set' 
       })
     }
 
     const startTime = Date.now()
     console.log(`📖 Generating story for "${childName}" about "${storyType}"`)
-    console.log(`📖 Using ${apiKey ? 'custom' : 'default'} API key`)
 
-    // Create text-only graph (LLM only, no TTS)
-    const graphCreateTime = Date.now()
-    const graph = createTextOnlyGraph(selectedApiKey)
-    console.log(`⏱️ Graph created in ${Date.now() - graphCreateTime}ms`)
+    // Build the story prompt
+    const systemPrompt = `You are a creative and playful Christmas storyteller who writes fun, energetic stories in the style of Robert Munsch. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness. Stories should be lighthearted, silly, and full of fun.`
 
-    // Execute the Inworld Runtime graph
-    const { outputStream } = await graph.start({
-      childName,
-      storyType,
-    })
-    const graphStartTime = Date.now()
-    console.log(`⏱️ Graph started in ${graphStartTime - graphCreateTime}ms`)
+    const userPrompt = `You are writing a personalized Christmas story for a child named ${childName}.
 
-    // Always stream for faster TTS start - set headers immediately
-    res.setHeader('Content-Type', 'application/json')
-    res.setHeader('Transfer-Encoding', 'chunked')
-    
-    let storyText = ''
-    let firstChunkSent = false
-    let done = false
+CRITICAL REQUIREMENT - THE STORY MUST BE ABOUT THIS EXACT TOPIC:
+"${storyType}"
 
-    // Iterate through execution results using the proper pattern
-    while (!done) {
-      const result = await outputStream.next()
-      
-      await result.processResponse({
-        ContentStream: async (contentStream) => {
-          // Process LLM streaming content
-          for await (const chunk of contentStream) {
-            if (chunk.text) {
-              storyText += chunk.text
-              console.log(`📝 Received LLM text chunk: ${chunk.text.substring(0, 50)}...`)
-              
-              // Send first chunk immediately when we have enough text (first sentence or ~100 chars)
-              // This allows TTS to start while the rest of the story is still being generated
-              if (!firstChunkSent && storyText.length >= 100) {
-                // Try to find a sentence boundary
-                const sentenceEnd = storyText.search(/[.!?]\s+/)
-                const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
-                  ? storyText.substring(0, sentenceEnd + 1).trim()
-                  : storyText.substring(0, Math.min(200, storyText.length)).trim()
-                
-                // Only send if we have a meaningful chunk (at least 80 chars - lower threshold for faster start)
-                if (firstChunk.length >= 80) {
-                  res.write(JSON.stringify({ 
-                    chunkIndex: 0, 
-                    text: firstChunk, 
-                    isFirst: true,
-                    isComplete: false 
-                  }) + '\n')
-                  firstChunkSent = true
-                  console.log(`📖 Sent first chunk from ContentStream (${firstChunk.length} chars) for early TTS start`)
-                }
-              }
-            }
+DO NOT write about anything else. DO NOT substitute this topic with something similar. The story MUST be specifically and directly about: ${storyType}
+
+Story Requirements:
+- Start with a title on the first line in the format: "Title: [Story Title]"
+- The main character is ${childName}
+- ${childName} is the hero of the story
+- The story is specifically about: ${storyType}
+- The story must feature ${storyType} as the central theme
+- Include classic Christmas elements: Santa Claus, reindeer, elves, Christmas trees, presents, snow, the North Pole, Christmas magic, etc.
+- Write in the style of Robert Munsch: playful, energetic, silly, and full of fun
+- Use short, punchy sentences with lots of action and movement
+- Include repetitive, rhythmic language
+- Add silly, unexpected twists and child-friendly humor
+- Keep it SHORT - approximately 150-180 words total, no more than 200 words
+- Use simple, direct language that a young child can understand
+- Make it engaging, energetic, and joyful
+- DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
+- DO NOT use words that represent sounds - describe actions instead (e.g., "the door slammed" instead of "SLAM!")
+- CRITICAL: NEVER use ALL-CAPS or all-uppercase letters for ANY word in the story. Write everything in normal sentence case. No exceptions.
+- DO NOT have Santa say variations of "Ho! Ho! Ho!" or "Ho, ho, ho!" or "Hoo hoo!" - Santa should ONLY say "Ho ho ho" (no punctuation, no variations)
+- DO NOT make any references to these instructions, writing rules, or restrictions in the story itself
+- Write in normal narrative prose without sound effect words
+- The story MUST end with ${childName} having a wonderful Christmas, filled with joy, magic, and happiness
+- DO NOT end the story with ${childName} falling asleep, going to bed, or having dreams
+- DO NOT include any bedtime or sleep-related content in the ending
+- The ending should be active and joyful - ${childName} should be awake and experiencing the wonderful Christmas
+- Include a happy, uplifting ending that celebrates the magic of Christmas
+- Structure the story so it naturally flows in two parts (like two pages of a book)
+- DO NOT use "Part 1", "Part 2", "Page 1", "Page 2", or any similar section labels
+- Write the story as one continuous narrative without section breaks or labels
+
+REMINDER: The story MUST be about "${storyType}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about ${storyType} and must end with ${childName} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words.`
+
+    // Call Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
           }
-        },
-        TextStream: async (textStream) => {
-          // Text chunks from TextChunkingNode
-          for await (const textChunk of textStream) {
-            if (textChunk.text) {
-              storyText += textChunk.text
-              console.log(`📝 Received text chunk: ${textChunk.text.substring(0, 50)}...`)
-            }
-          }
-        },
-        string: (text) => {
-          // Final aggregated text - might come all at once
-          storyText += text
-          console.log(`📝 Received aggregated text: ${text.substring(0, 50)}...`)
-          
-          // If we haven't sent first chunk yet and we have enough text, send it now
-          if (!firstChunkSent && storyText.length >= 100) {
-            const sentenceEnd = storyText.search(/[.!?]\s+/)
-            const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
-              ? storyText.substring(0, sentenceEnd + 1).trim()
-              : storyText.substring(0, Math.min(200, storyText.length)).trim()
-            
-            if (firstChunk.length >= 80) {
-              res.write(JSON.stringify({ 
-                chunkIndex: 0, 
-                text: firstChunk, 
-                isFirst: true,
-                isComplete: false 
-              }) + '\n')
-              firstChunkSent = true
-              console.log(`📖 Sent first chunk from aggregated text (${firstChunk.length} chars) for early TTS start`)
-            }
-          }
-        },
-        AudioStream: async (audioStream) => {
-          // Audio chunks - shouldn't happen in text-only graph, but handle it
-          console.log('🎵 Received audio chunk (unexpected in text-only graph)')
-        },
-        default: (data) => {
-          // Handle other data types
-          if (data?.text) {
-            storyText += data.text
-            console.log(`📝 Received text: ${data.text.substring(0, 50)}...`)
-          } else {
-            console.log('Received unknown data type:', typeof data, Object.keys(data || {}))
-          }
-        },
+        ]
       })
+    })
 
-      done = result.done
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Claude API error:', errorText)
+      throw new Error(`Claude API error: ${response.status} ${errorText}`)
     }
 
-    // Clean up
-    await graph.stop()
+    const data = await response.json()
+    let storyText = data.content[0].text.trim()
 
-    if (!storyText || storyText.trim().length === 0) {
-      console.error('❌ No story text generated from Runtime')
-      return res.status(500).json({ error: 'No story generated from Runtime' })
+    if (!storyText || storyText.length === 0) {
+      console.error('❌ No story text generated from Claude')
+      return res.status(500).json({ error: 'No story generated from Claude' })
     }
 
     const endTime = Date.now()
@@ -711,67 +662,35 @@ app.post('/api/generate-story', async (req, res) => {
     console.log(`Story mentions "${storyType}": ${storyText.toLowerCase().includes(storyType.toLowerCase())}`)
     console.log(`⏱️ Total story generation time: ${totalTime}ms (${(totalTime / 1000).toFixed(2)}s)`)
 
-    // Always send final chunk (we're always streaming now)
-    if (firstChunkSent) {
-      // Send remaining text (everything after the first chunk) as final chunk
-      // Find where the first chunk ended in the full story
-      const firstChunkEnd = storyText.search(/[.!?]\s+/)
-      const firstChunkLength = firstChunkEnd > 0 && firstChunkEnd < storyText.length * 0.6 
-        ? firstChunkEnd + 1
-        : Math.min(200, storyText.length)
+    // Set streaming headers
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Transfer-Encoding', 'chunked')
+
+    // Send first chunk for early TTS start
+    if (storyText.length >= 100) {
+      const sentenceEnd = storyText.search(/[.!?]\s+/)
+      const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
+        ? storyText.substring(0, sentenceEnd + 1).trim()
+        : storyText.substring(0, Math.min(200, storyText.length)).trim()
       
-      const remainingText = storyText.substring(firstChunkLength).trim()
-      if (remainingText) {
+      if (firstChunk.length >= 80) {
         res.write(JSON.stringify({ 
-          chunkIndex: 1, 
-          text: storyText.trim(), // Send full story for second chunk (frontend will handle splitting)
-          isFirst: false,
-          isComplete: true 
+          chunkIndex: 0, 
+          text: firstChunk, 
+          isFirst: true,
+          isComplete: false 
         }) + '\n')
-      } else {
-        // No remaining text, just mark as complete
-        res.write(JSON.stringify({ 
-          chunkIndex: 1, 
-          text: '', 
-          isFirst: false,
-          isComplete: true 
-        }) + '\n')
-      }
-    } else {
-      // If we never sent first chunk (story was too short), send full story but mark as first chunk
-      // Try to send a partial chunk anyway for early TTS start
-      if (storyText.length >= 100) {
-        const sentenceEnd = storyText.search(/[.!?]\s+/)
-        const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
-          ? storyText.substring(0, sentenceEnd + 1).trim()
-          : storyText.substring(0, Math.min(200, storyText.length)).trim()
+        console.log(`📖 Sent first chunk (${firstChunk.length} chars) for early TTS start`)
         
-        if (firstChunk.length >= 80) {
-          res.write(JSON.stringify({ 
-            chunkIndex: 0, 
-            text: firstChunk, 
-            isFirst: true,
-            isComplete: false 
-          }) + '\n')
-          firstChunkSent = true
-          // Then send full story as second chunk
-          res.write(JSON.stringify({ 
-            chunkIndex: 1, 
-            text: storyText.trim(), 
-            isFirst: false,
-            isComplete: true 
-          }) + '\n')
-        } else {
-          // Too short, just send full story
-          res.write(JSON.stringify({ 
-            chunkIndex: 0, 
-            text: storyText.trim(), 
-            isFirst: true,
-            isComplete: true 
-          }) + '\n')
-        }
+        // Send full story as second chunk
+        res.write(JSON.stringify({ 
+          chunkIndex: 1, 
+          text: storyText.trim(), 
+          isFirst: false,
+          isComplete: true 
+        }) + '\n')
       } else {
-        // Story too short, just send it
+        // Too short, just send full story
         res.write(JSON.stringify({ 
           chunkIndex: 0, 
           text: storyText.trim(), 
@@ -779,27 +698,25 @@ app.post('/api/generate-story', async (req, res) => {
           isComplete: true 
         }) + '\n')
       }
+    } else {
+      // Story too short, just send it
+      res.write(JSON.stringify({ 
+        chunkIndex: 0, 
+        text: storyText.trim(), 
+        isFirst: true,
+        isComplete: true 
+      }) + '\n')
     }
     res.end()
   } catch (error) {
-    console.error('❌ Error generating story with Inworld Runtime:', error)
+    console.error('❌ Error generating story with Claude:', error)
     
     let statusCode = 500
     let errorMessage = 'Failed to generate story'
 
-    // Check for authorization/authentication errors
-    if (error.message?.includes('Invalid authorization') || 
-        error.message?.includes('authorization credentials') ||
-        error.message?.includes('API key') || 
-        error.message?.includes('authentication') ||
-        error.message?.includes('401')) {
+    if (error.message?.includes('401') || error.message?.includes('authentication')) {
       statusCode = 401
-      // Check if this is a custom API key (from request body)
-      if (req.body?.apiKey) {
-        errorMessage = 'Invalid authorization credentials. Please double-check your Inworld API Key. Make sure it\'s the correct Base64-encoded key copied from your Inworld workspace (API Keys → Copy the "Basic (Base64) key").'
-      } else {
-        errorMessage = 'Invalid API key. Please check your GOOGLE_API_KEY and INWORLD_API_KEY in the .env file.'
-      }
+      errorMessage = 'Invalid Anthropic API key. Please check your ANTHROPIC_API_KEY configuration.'
     } else if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
       statusCode = 429
       errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
