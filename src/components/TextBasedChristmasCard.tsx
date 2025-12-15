@@ -92,11 +92,21 @@ function TextBasedChristmasCard() {
     const words = recipientInfo.trim().split(/\s+/)
     const announceName = words.length > 0 ? words[words.length - 1] : recipientInfo
     
-    // Play the female elf announcement
+    // Play the female elf announcement (TTS for personalized part + MP3 for static ending)
     try {
-      const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas card for ${announceName} right now. Oops, I spilled some paint! And, it's ready!`, {
+      // Pre-load the static ending MP3
+      const staticEnding = new Audio('/audio/card-status-ending.mp3')
+      
+      // Generate TTS for personalized part only
+      const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas card for ${announceName} right now.`, {
         voiceId: 'christmas_story_generator__female_elf_narrator'
       })
+      
+      // Chain: when TTS finishes, play the static MP3 ending
+      announcement.onended = () => {
+        staticEnding.play().catch(err => console.log('Static ending play error:', err))
+      }
+      
       announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
     } catch (err) {
       console.log('Could not play announcement:', err)
