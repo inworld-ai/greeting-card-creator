@@ -636,7 +636,7 @@ function TextBasedChristmasCard() {
           <button
             className="btn btn-primary"
             onClick={handleAddNarration}
-            style={{ fontSize: '0.9rem', padding: '8px 16px' }}
+            style={{ fontSize: '0.9rem', padding: '12px 14px', flex: 'none', width: 'auto' }}
           >
             Create Custom Narrator
           </button>
@@ -645,7 +645,7 @@ function TextBasedChristmasCard() {
           className={customVoiceId ? "btn btn-primary" : "btn btn-secondary"}
           onClick={handleShare}
           disabled={isSharing}
-          style={{ fontSize: '0.9rem', padding: '8px 16px' }}
+          style={{ fontSize: '0.9rem', padding: '12px 14px', flex: 'none', width: 'auto' }}
         >
           {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Card'}
         </button>
