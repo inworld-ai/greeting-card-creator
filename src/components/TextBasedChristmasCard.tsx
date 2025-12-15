@@ -638,7 +638,7 @@ function TextBasedChristmasCard() {
             onClick={handleAddNarration}
             style={{ fontSize: '1rem', padding: '10px 20px' }}
           >
-            🎙️ Create Custom Narrator
+            Create Custom Narrator
           </button>
         )}
         <button
@@ -647,7 +647,7 @@ function TextBasedChristmasCard() {
           disabled={isSharing}
           style={{ fontSize: '1rem', padding: '10px 20px' }}
         >
-          {isSharing ? '📤 Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : '📤 Share Card'}
+          {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Card'}
         </button>
       </div>
       
