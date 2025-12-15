@@ -548,7 +548,8 @@ function App() {
       if (storyData.experienceType === 'year-review') return 'Year In Review'
       if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
       if (storyData.experienceType === 'greeting-card') return 'Christmas Card Creator'
-      return 'Christmas Story Creator'
+      // Hide title for story during generating and narration steps
+      return ''
     } else if (step.startsWith('year-review')) {
       return 'Year In Review'
     } else if (step.startsWith('wish-list')) {
@@ -559,10 +560,12 @@ function App() {
     return 'Inworld Christmas Creations'
   }
 
+  const title = getTitle()
+  
   return (
     <div className="app">
       <div className="app-container">
-        <h1 className="app-title"><span className="app-title-content">{getTitle()}</span></h1>
+        {title && <h1 className="app-title"><span className="app-title-content">{title}</span></h1>}
         
         {step === 'landing' && (
           <LandingPage onSelectExperience={handleExperienceSelected} />
