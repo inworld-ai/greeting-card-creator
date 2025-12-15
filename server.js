@@ -2745,11 +2745,13 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   }
 })
 
-// Story image generation endpoint for Christmas Story Creator
+// Story image generation endpoint for Christmas Story Creator using DALL-E 3
 app.post('/api/generate-story-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')
-  console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED')
+  console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED (DALL-E 3)')
   console.log('🎨 ==========================================')
+
+  const startTime = Date.now()
 
   try {
     const { storyType, childName, storyText, uploadedImageUrl } = req.body
@@ -2762,28 +2764,13 @@ app.post('/api/generate-story-image', async (req, res) => {
     
     // storyText is optional - if empty, image will be generated based on storyType and childName only
 
-    if (!process.env.GOOGLE_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
-        error: 'Server configuration error: GOOGLE_API_KEY not set'
+        error: 'Server configuration error: OPENAI_API_KEY not set'
       })
     }
 
-    // If an image was uploaded, use it as the base for transformation
-    if (uploadedImageUrl) {
-      console.log('🎨 Using uploaded image as base for story book style transformation')
-      
-      // For uploaded images, we'll transform them into a children's story book style
-      // Extract first paragraph or title from story for context
-      const storyPreview = storyText.split('\n\n')[0].substring(0, 200)
-      
-      const imagePrompt = `Transform this photo into a beautiful children's Christmas story book illustration. Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, and a magical Christmas atmosphere. The image should match the story theme: ${storyType}. Include elements that reflect: ${storyPreview}. Make it look like a page from a classic children's Christmas storybook.`
-      
-      // For now, we'll generate a new image based on the story details
-      // In the future, we could use image editing API to transform the uploaded image
-      console.log('🎨 Generating story book style image based on uploaded photo and story details')
-    }
-
-    // Build image prompt based on story type and character name
+    // Build image prompt for DALL-E 3
     // Do NOT include the story title on the cover - just create an illustration related to the story plot
     // Include the character name somewhere in the image (but not as a title)
     // Do NOT depict the main character to avoid assumptions about race/appearance
@@ -2791,67 +2778,64 @@ app.post('/api/generate-story-image', async (req, res) => {
     imagePrompt += `Story theme: ${storyType}. `
     imagePrompt += `The illustration should be related to the story plot and theme, but do NOT include the story title as text on the cover. `
     imagePrompt += `Include the name "${childName}" somewhere naturally in the image (for example, on a letter, name tag, or sign), but NOT as a large title. `
-    imagePrompt += `CRITICAL: Do NOT depict or show the main character ${childName} in the image. `
+    imagePrompt += `IMPORTANT: Do NOT depict or show the main character ${childName} in the image. `
     imagePrompt += `It is okay to include Santa Claus, elves, reindeer, Christmas decorations, magical elements, and other story-related items, but absolutely NO depiction of the main character. `
     imagePrompt += `The image should be a scene related to the ${storyType} story theme, showing the setting, magical elements, and supporting characters (like Santa or elves), but never the main character. `
     imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `
-    imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook. `
-    imagePrompt += `Make it visually appealing and related to the story theme without showing any human main character.`
+    imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook.`
 
-    console.log(`🎨 Full image prompt: ${imagePrompt}`)
-    console.log(`🎨 Child name: ${childName}`)
+    console.log(`🎨 Generating story image for: ${childName}`)
     console.log(`🎨 Story type: ${storyType}`)
+    console.log(`🎨 Prompt: ${imagePrompt.substring(0, 150)}...`)
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
+    // Use OpenAI DALL-E 3 API
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: imagePrompt }
-          ]
-        }]
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+        response_format: 'url'
       })
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Google Gemini API error:', errorText)
+      console.error('❌ DALL-E 3 API error:', errorText)
       console.error('❌ Response status:', response.status)
       return res.status(200).json({
         imageUrl: null,
-        error: `Image generation failed: ${errorText}`
+        error: 'Image generation temporarily unavailable'
       })
     }
 
     const data = await response.json()
-    console.log('🎨 API response structure:', JSON.stringify(data).substring(0, 500))
 
-    // Use same parsing approach as greeting card endpoint (which works)
-    let generatedImageUrl = null
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      for (const part of data.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          // Convert base64 to data URL (matching greeting card approach)
-          const mimeType = part.inlineData.mimeType || 'image/png'
-          generatedImageUrl = `data:${mimeType};base64,${part.inlineData.data}`
-          console.log(`✅ Generated story image successfully (${generatedImageUrl.length} chars data URL)`)
-          break
-        }
-      }
+    // Extract image URL from DALL-E response
+    let imageUrl = null
+    if (data.data && data.data[0] && data.data[0].url) {
+      imageUrl = data.data[0].url
     }
 
-    if (!generatedImageUrl) {
-      console.warn('⚠️ No image data found in response')
+    if (!imageUrl) {
+      console.warn('⚠️ No image URL found in response')
       return res.status(200).json({ 
         imageUrl: null,
         error: 'No image generated'
       })
     }
 
-    return res.status(200).json({ imageUrl: generatedImageUrl })
+    const elapsed = Date.now() - startTime
+    console.log(`✅ Generated story image with DALL-E 3 in ${elapsed}ms`)
+    console.log(`🔗 Image URL: ${imageUrl.substring(0, 80)}...`)
+
+    return res.status(200).json({ imageUrl })
   } catch (error) {
     console.error('❌ Error generating story image:', error)
     return res.status(200).json({
