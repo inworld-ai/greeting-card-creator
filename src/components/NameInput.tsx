@@ -17,16 +17,16 @@ const VOICES: { id: VoiceId | 'custom'; label: string | JSX.Element; description
 
 function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) {
   const [name, setName] = useState('')
-  const [voiceId, setVoiceId] = useState<VoiceId | 'custom' | null>(null)
-
-  const handleSubmit = () => {
-    if (name.trim().length > 0 && voiceId) {
-      onSubmit(name.trim(), voiceId)
-    }
-  }
 
   const handleVoiceTranscript = (transcript: string) => {
     setName(transcript)
+  }
+
+  const handleNarratorSelect = (selectedVoiceId: VoiceId | 'custom') => {
+    // If name is entered, automatically proceed when narrator is selected
+    if (name.trim().length > 0) {
+      onSubmit(name.trim(), selectedVoiceId)
+    }
   }
 
   return (
@@ -41,7 +41,6 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder="Enter your character's name..."
             className="name-input-field"
             autoFocus
@@ -55,9 +54,10 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
             {VOICES.map((voice) => (
               <button
                 key={voice.id}
-                className={`voice-option ${voiceId === voice.id ? 'selected' : ''}`}
-                onClick={() => setVoiceId(voice.id)}
+                className={`voice-option ${!name.trim() ? 'disabled' : ''}`}
+                onClick={() => handleNarratorSelect(voice.id)}
                 type="button"
+                disabled={!name.trim()}
               >
                 <span className="voice-name">{voice.label}</span>
                 {voice.description && (
@@ -71,13 +71,6 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
         <div className="name-input-actions">
           <button onClick={onBack} className="back-button">
             ← Go Back
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!name.trim() || !voiceId}
-            className="submit-button"
-          >
-            Continue
           </button>
         </div>
       </div>

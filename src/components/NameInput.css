@@ -187,8 +187,22 @@
   border: 2px solid #22c55e;
 }
 
-.voice-option:active {
+.voice-option:active:not(:disabled) {
   transform: translateY(-1px) scale(1.01);
+}
+
+.voice-option:disabled,
+.voice-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.voice-option:disabled:hover,
+.voice-option.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
 }
 
 .voice-name {
