@@ -65,8 +65,8 @@
   }
 }
 
-/* Listening indicator - pulsing ring */
-.listening-indicator {
+/* Listening indicator - pulsing ring (scoped to microphone button) */
+.mic-pulse-ring {
   position: absolute;
   inset: -4px;
   border-radius: 16px;

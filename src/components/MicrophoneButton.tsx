@@ -105,7 +105,7 @@ function MicrophoneButton({ onTranscript, disabled = false }: MicrophoneButtonPr
           fill="currentColor"
         />
       </svg>
-      {isListening && <span className="listening-indicator" />}
+      {isListening && <span className="mic-pulse-ring" />}
     </button>
   )
 }
