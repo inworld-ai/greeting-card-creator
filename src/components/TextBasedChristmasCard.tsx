@@ -59,7 +59,7 @@ function TextBasedChristmasCard() {
     
     // Play the female elf announcement
     try {
-      const announcement = await synthesizeSpeech(`[happy] Creating your Christmas card for ${announceName}!`, {
+      const announcement = await synthesizeSpeech(`[happy] Inworld's elves are creating your Christmas card for ${announceName}!`, {
         voiceId: 'christmas_story_generator__female_elf_narrator'
       })
       announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
@@ -636,7 +636,7 @@ function TextBasedChristmasCard() {
           <button
             className="btn btn-primary"
             onClick={handleAddNarration}
-            style={{ fontSize: '1rem', padding: '10px 20px' }}
+            style={{ fontSize: '0.9rem', padding: '8px 16px' }}
           >
             Create Custom Narrator
           </button>
@@ -645,7 +645,7 @@ function TextBasedChristmasCard() {
           className={customVoiceId ? "btn btn-primary" : "btn btn-secondary"}
           onClick={handleShare}
           disabled={isSharing}
-          style={{ fontSize: '1rem', padding: '10px 20px' }}
+          style={{ fontSize: '0.9rem', padding: '8px 16px' }}
         >
           {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Card'}
         </button>
