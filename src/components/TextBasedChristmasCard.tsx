@@ -502,6 +502,22 @@ function TextBasedChristmasCard() {
             <span></span>
           </div>
         </div>
+        <p style={{
+          position: 'absolute',
+          bottom: '2rem',
+          fontSize: '0.9rem',
+          color: '#888',
+        }}>
+          🎁 A gift from{' '}
+          <a 
+            href="https://inworld.ai" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#166534', textDecoration: 'underline' }}
+          >
+            Inworld AI
+          </a>
+        </p>
       </div>
     )
   }
@@ -509,21 +525,39 @@ function TextBasedChristmasCard() {
   // Custom narrator step
   if (step === 'custom-narrator') {
     return (
-      <div style={{ background: '#faf7f5', minHeight: '100vh' }}>
-        <CustomNarrator
-          childName={displayName || recipientInfo}
-          onSubmit={(_apiKey: string, voiceId: string) => {
-            setCustomVoiceId(voiceId)
-            // Reset audio refs so we can replay with custom voice
-            hasPlayedRef.current = false
-            hasAskedFollowUpRef.current = false
-            isPreloadingRef.current = false
-            preloadedAudioRef.current = null
-            preloadedFollowUpRef.current = null
-            setStep('display')
-          }}
-          onBack={() => setStep('display')}
-        />
+      <div style={{ background: '#faf7f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
+          <CustomNarrator
+            childName={displayName || recipientInfo}
+            onSubmit={(_apiKey: string, voiceId: string) => {
+              setCustomVoiceId(voiceId)
+              // Reset audio refs so we can replay with custom voice
+              hasPlayedRef.current = false
+              hasAskedFollowUpRef.current = false
+              isPreloadingRef.current = false
+              preloadedAudioRef.current = null
+              preloadedFollowUpRef.current = null
+              setStep('display')
+            }}
+            onBack={() => setStep('display')}
+          />
+        </div>
+        <p style={{
+          textAlign: 'center',
+          padding: '2rem',
+          fontSize: '0.9rem',
+          color: '#888',
+        }}>
+          🎁 A gift from{' '}
+          <a 
+            href="https://inworld.ai" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#166534', textDecoration: 'underline' }}
+          >
+            Inworld AI
+          </a>
+        </p>
       </div>
     )
   }
@@ -611,6 +645,24 @@ function TextBasedChristmasCard() {
           Create Another
         </button>
       </div>
+      
+      <p style={{
+        textAlign: 'center',
+        marginTop: '2rem',
+        paddingBottom: '2rem',
+        fontSize: '0.9rem',
+        color: '#888',
+      }}>
+        🎁 A gift from{' '}
+        <a 
+          href="https://inworld.ai" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ color: '#166534', textDecoration: 'underline' }}
+        >
+          Inworld AI
+        </a>
+      </p>
     </div>
   )
 }
