@@ -181,7 +181,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       
       console.log('📝 Formatted conversation:\n', conversationText);
 
-      prompt = `Based on this conversation, write a VERY SHORT Christmas card (under 250 characters).
+      prompt = `Based on this conversation, write a SHORT Christmas card (under 300 characters).
 
 CONVERSATION:
 ${conversationText}
@@ -191,13 +191,13 @@ Extract: recipient name, sender relationship, and their quirk/obsession.
 FORMAT (follow EXACTLY):
 Dear [Name],
 
-[ONE short fun sentence about the quirk]. [ONE Christmas wish]. Merry Christmas!
+[3 short, fun sentences that reference the quirk and wish them a Merry Christmas]
 
 [Sign-off based on relationship, e.g., "Love, Dad"]
 
 RULES:
-- ONLY 2 sentences in body (plus "Merry Christmas!")
-- Total under 250 characters
+- Exactly 3 sentences in body
+- Total under 300 characters
 - Keep punchy and fun
 - Start DIRECTLY with "Dear"
 - End with sign-off on its own line`;
@@ -248,7 +248,7 @@ RULES:
       // Set the parsed name for the response
       parsedRecipientName = extractedName;
 
-      prompt = `Write a VERY SHORT Christmas card message (under 250 characters total).
+      prompt = `Write a SHORT Christmas card message (under 300 characters total).
 
 Recipient: ${extractedName}
 Anecdote: ${funnyStory}
@@ -257,16 +257,15 @@ Sign-off: ${signoff || (extractedRelationship ? `Love, [appropriate for ${extrac
 FORMAT (follow EXACTLY):
 Dear ${extractedName},
 
-[ONE short fun sentence about the anecdote]. [ONE Christmas wish]. Merry Christmas!
+[3 short, fun sentences that reference the anecdote and wish them a Merry Christmas]
 
 ${signoff || (extractedRelationship ? `[Sign-off for ${extractedRelationship}]` : 'With love')}
 
 CRITICAL RULES:
-- ONLY 2 sentences in the body (plus "Merry Christmas!")
-- Total message under 250 characters
+- Exactly 3 sentences in the body
+- Total message under 300 characters
 - Keep it punchy and fun
-- Do NOT write multiple paragraphs
-- Do NOT add extra sentences`;
+- Do NOT write multiple paragraphs`;
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -278,7 +277,7 @@ CRITICAL RULES:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
+        max_tokens: 200,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -294,16 +293,16 @@ CRITICAL RULES:
 
     console.log(`💌 Generated card message - Characters: ${cardMessage.length}`);
     
-    // Enforce 350 character limit
-    if (cardMessage.length > 350) {
-      console.log(`⚠️ Message exceeded 350 characters (${cardMessage.length} chars), truncating...`);
-      const truncated = cardMessage.substring(0, 347);
+    // Enforce 400 character limit (allowing some buffer over 300 target)
+    if (cardMessage.length > 400) {
+      console.log(`⚠️ Message exceeded 400 characters (${cardMessage.length} chars), truncating...`);
+      const truncated = cardMessage.substring(0, 397);
       const lastSentence = Math.max(
         truncated.lastIndexOf('.'),
         truncated.lastIndexOf('!'),
         truncated.lastIndexOf('?')
       );
-      cardMessage = lastSentence > 200 
+      cardMessage = lastSentence > 250 
         ? truncated.substring(0, lastSentence + 1) 
         : truncated + '...';
     }

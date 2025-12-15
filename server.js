@@ -2450,7 +2450,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       })
     }
 
-    const prompt = `Write a VERY SHORT Christmas card message (under 250 characters total).
+    const prompt = `Write a SHORT Christmas card message (under 300 characters total).
 
 Recipient: ${recipientName}
 Anecdote: ${funnyStory}
@@ -2459,16 +2459,15 @@ Sign-off: ${signoff || `Love, ${senderName}`}
 FORMAT (follow EXACTLY):
 Dear ${recipientName},
 
-[ONE short fun sentence about the anecdote]. [ONE Christmas wish]. Merry Christmas!
+[3 short, fun sentences that reference the anecdote and wish them a Merry Christmas]
 
 ${signoff || `Love, ${senderName}`}
 
 CRITICAL RULES:
-- ONLY 2 sentences in the body (plus "Merry Christmas!")
-- Total message under 250 characters
+- Exactly 3 sentences in the body
+- Total message under 300 characters
 - Keep it punchy and fun
-- Do NOT write multiple paragraphs
-- Do NOT add extra sentences`
+- Do NOT write multiple paragraphs`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -2479,7 +2478,7 @@ CRITICAL RULES:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
+        max_tokens: 200,
         messages: [
           {
             role: 'user',
@@ -2501,17 +2500,17 @@ CRITICAL RULES:
     const charCount = cardMessage.length
     console.log(`💌 Generated card message - Characters: ${charCount}`)
     
-    // Enforce 350 character limit - truncate at sentence boundary if needed
-    if (cardMessage.length > 350) {
-      console.log(`⚠️ Message exceeded 350 characters (${cardMessage.length} chars), truncating...`)
+    // Enforce 400 character limit - truncate at sentence boundary if needed
+    if (cardMessage.length > 400) {
+      console.log(`⚠️ Message exceeded 400 characters (${cardMessage.length} chars), truncating...`)
       // Try to truncate at a sentence boundary
-      const truncated = cardMessage.substring(0, 347)
+      const truncated = cardMessage.substring(0, 397)
       const lastPeriod = truncated.lastIndexOf('.')
       const lastExclamation = truncated.lastIndexOf('!')
       const lastQuestion = truncated.lastIndexOf('?')
       const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion)
       
-      if (lastSentenceEnd > 200) {
+      if (lastSentenceEnd > 250) {
         // If we found a sentence end reasonably close to the limit, use it
         cardMessage = truncated.substring(0, lastSentenceEnd + 1)
       } else {
