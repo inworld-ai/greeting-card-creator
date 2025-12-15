@@ -105,6 +105,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   const shouldStopAllAudioRef = useRef<boolean>(false) // Global flag to stop all audio immediately
   const allAudioElementsRef = useRef<Set<HTMLAudioElement>>(new Set()) // Track all audio elements created
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null) // Preloaded audio ready to play
+  const hasUsedPreloadedAudioRef = useRef<boolean>(false) // Track if we've already used the preloaded audio
   const isPreloadingRef = useRef<boolean>(false) // Track if we're currently preloading
   const preloadedChunksRef = useRef<HTMLAudioElement[]>([]) // All preloaded audio chunks
   const [isAudioPreloaded, setIsAudioPreloaded] = useState(false) // Track if audio is fully ready to play
@@ -614,11 +615,12 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       let firstWavChunkReady = false
       let firstAudio: HTMLAudioElement
       
-      // Check if we have preloaded audio from the loading screen
-      if (preloadedAudio && experienceType === 'story') {
+      // Check if we have preloaded audio from the loading screen that hasn't been used yet
+      if (preloadedAudio && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
         console.log('🎵 Using preloaded audio from loading screen (instant playback!)')
         firstAudio = preloadedAudio
         firstWavChunkReady = true
+        hasUsedPreloadedAudioRef.current = true
         
         // Start playing immediately
         try {
@@ -1488,55 +1490,88 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             console.log(`🎵 Audio preload status: preloaded=${!!preloadedAudioRef.current}, ready=${isAudioPreloaded}, chunks=${preloadedChunksRef.current.length}`)
             
             // Use preloaded audio if available and ready
-            if (preloadedAudioRef.current && isAudioPreloaded && preloadedChunksRef.current.length > 0) {
-              console.log('🎵 Using preloaded audio - INSTANT playback!')
-              
-              // Set up the audio refs and chain all preloaded chunks
-              audioRef.current = preloadedAudioRef.current
-              
-              // Set up chaining for all preloaded chunks
-              const allChunks = preloadedChunksRef.current
-              for (let i = 0; i < allChunks.length - 1; i++) {
-                const currentChunk = allChunks[i]
-                const nextChunk = allChunks[i + 1]
+            // Check for either: preloaded chunks array OR single preloaded audio from parent
+            if (preloadedAudioRef.current && isAudioPreloaded) {
+              // Check if we have a preloaded chunks array
+              if (preloadedChunksRef.current.length > 0) {
+                console.log('🎵 Using preloaded audio chunks - INSTANT playback!')
                 
-                currentChunk.onended = async () => {
-                  if (!shouldStopAllAudioRef.current) {
-                    try {
-                      await nextChunk.play()
-                    } catch (err) {
-                      console.error('Error playing next chunk:', err)
+                // Set up the audio refs and chain all preloaded chunks
+                audioRef.current = preloadedAudioRef.current
+                
+                // Set up chaining for all preloaded chunks
+                const allChunks = preloadedChunksRef.current
+                for (let i = 0; i < allChunks.length - 1; i++) {
+                  const currentChunk = allChunks[i]
+                  const nextChunk = allChunks[i + 1]
+                  
+                  currentChunk.onended = async () => {
+                    if (!shouldStopAllAudioRef.current) {
+                      try {
+                        await nextChunk.play()
+                      } catch (err) {
+                        console.error('Error playing next chunk:', err)
+                      }
                     }
                   }
                 }
-              }
-              
-              // Set up final chunk handler
-              const lastChunk = allChunks[allChunks.length - 1]
-              lastChunk.onended = () => {
-                console.log('🎵 All audio playback complete')
-                setIsAudioPlaying(false)
-                isNarrationInProgressRef.current = false
-              }
-              
-              // Start playing the first chunk IMMEDIATELY
-              try {
-                // Play should be instant since audio is already buffered
-                const playPromise = preloadedAudioRef.current.play()
-                setHasStartedNarration(true)
-                setIsAudioPlaying(true)
-                isNarrationInProgressRef.current = true
-                startPollingForAudioEnd()
                 
-                await playPromise
-                console.log('🎵 Preloaded audio playing!')
-              } catch (err: any) {
-                console.error('Error playing preloaded audio:', err)
-                if (err.name === 'NotAllowedError') {
-                  setNeedsUserInteraction(true)
-                } else {
-                  // Fall back to generating audio
-                  await handleStartNarration(storyText)
+                // Set up final chunk handler
+                const lastChunk = allChunks[allChunks.length - 1]
+                lastChunk.onended = () => {
+                  console.log('🎵 All audio playback complete')
+                  setIsAudioPlaying(false)
+                  isNarrationInProgressRef.current = false
+                }
+                
+                // Start playing the first chunk IMMEDIATELY
+                try {
+                  const playPromise = preloadedAudioRef.current.play()
+                  setHasStartedNarration(true)
+                  setIsAudioPlaying(true)
+                  isNarrationInProgressRef.current = true
+                  startPollingForAudioEnd()
+                  
+                  await playPromise
+                  console.log('🎵 Preloaded audio playing!')
+                } catch (err: any) {
+                  console.error('Error playing preloaded audio:', err)
+                  if (err.name === 'NotAllowedError') {
+                    setNeedsUserInteraction(true)
+                  } else {
+                    await handleStartNarration(storyText)
+                  }
+                }
+              } else {
+                // Single preloaded audio from parent (first ~3 seconds from loading screen)
+                console.log('🎵 Using preloaded audio from loading screen - INSTANT playback!')
+                audioRef.current = preloadedAudioRef.current
+                hasUsedPreloadedAudioRef.current = true // Mark as used
+                
+                try {
+                  // Play the preloaded first chunk immediately
+                  const playPromise = preloadedAudioRef.current.play()
+                  setHasStartedNarration(true)
+                  setIsAudioPlaying(true)
+                  isNarrationInProgressRef.current = true
+                  hasStartedNarrationForStoryRef.current = storyText
+                  startPollingForAudioEnd()
+                  
+                  await playPromise
+                  console.log('🎵 Preloaded audio (first chunk) playing!')
+                  
+                  // Generate the rest of the story audio in background
+                  // The first chunk will end, and we need the rest ready
+                  handleStartNarration(storyText)
+                } catch (err: any) {
+                  console.error('Error playing preloaded audio:', err)
+                  if (err.name === 'NotAllowedError') {
+                    setNeedsUserInteraction(true)
+                  } else {
+                    // Fall back to generating audio from scratch
+                    hasUsedPreloadedAudioRef.current = false // Reset so handleStartNarration can try
+                    await handleStartNarration(storyText)
+                  }
                 }
               }
             } else if (preloadedAudioRef.current && !isAudioPreloaded) {
