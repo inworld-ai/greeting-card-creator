@@ -412,7 +412,8 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         style={{ 
           marginTop: '20px',
           fontSize: '1.1rem',
-          padding: '16px 32px'
+          padding: '16px 32px',
+          alignSelf: 'center'
         }}
       >
         ← Go Back
