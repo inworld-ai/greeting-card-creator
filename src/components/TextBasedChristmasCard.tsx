@@ -675,13 +675,6 @@ function TextBasedChristmasCard() {
         >
           {isSharing ? '📤 Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : '📤 Share Card'}
         </button>
-        <button
-          className="btn btn-secondary"
-          onClick={handleStartOver}
-          style={{ fontSize: '1.2rem', padding: '12px 24px' }}
-        >
-          Create Another
-        </button>
       </div>
       
       <p style={{
