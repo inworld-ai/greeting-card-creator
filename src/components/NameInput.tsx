@@ -43,7 +43,6 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter your character's name..."
             className="name-input-field"
-            autoFocus
           />
           <MicrophoneButton onTranscript={handleVoiceTranscript} />
         </div>
