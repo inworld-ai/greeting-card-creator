@@ -601,7 +601,7 @@ Story Requirements:
 - Use short, punchy sentences with lots of action and movement
 - Include repetitive, rhythmic language
 - Add silly, unexpected twists and child-friendly humor
-- Keep it SHORT - approximately 150-180 words total, no more than 200 words
+- Keep it SHORT - approximately 110-120 words total, no more than 130 words
 - Use simple, direct language that a young child can understand
 - Make it engaging, energetic, and joyful
 - DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
