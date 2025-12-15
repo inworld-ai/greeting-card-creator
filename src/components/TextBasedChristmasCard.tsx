@@ -551,11 +551,19 @@ function TextBasedChristmasCard() {
     )
   }
 
-  // Custom narrator step
+  // Custom narrator step - matches Story Creator's centered layout
   if (step === 'custom-narrator') {
     return (
-      <div style={{ background: '#faf7f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ 
+        background: '#faf7f5', 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem'
+      }}>
+        <div style={{ width: '100%', maxWidth: '600px' }}>
           <CustomNarrator
             childName={displayName || recipientInfo}
             onSubmit={(_apiKey: string, voiceId: string) => {
@@ -576,6 +584,7 @@ function TextBasedChristmasCard() {
           padding: '2rem',
           fontSize: '0.9rem',
           color: '#888',
+          marginTop: '1rem'
         }}>
           🎁 A gift from{' '}
           <a 
