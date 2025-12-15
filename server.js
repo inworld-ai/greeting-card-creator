@@ -581,7 +581,7 @@ app.post('/api/generate-story', async (req, res) => {
     console.log(`📖 Generating story for "${childName}" about "${storyType}"`)
 
     // Build the story prompt
-    const systemPrompt = `You are a creative and playful Christmas storyteller who writes fun, energetic stories in the style of Robert Munsch. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness. Stories should be lighthearted, silly, and full of fun.`
+    const systemPrompt = `You are a creative and playful Christmas storyteller who writes VERY SHORT fun stories in the style of Robert Munsch. CRITICAL: Stories must be 110-120 words maximum - this is a strict limit. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness. Stories should be lighthearted, silly, and full of fun. Remember: 110-120 words MAXIMUM.`
 
     const userPrompt = `You are writing a personalized Christmas story for a child named ${childName}.
 
@@ -601,7 +601,7 @@ Story Requirements:
 - Use short, punchy sentences with lots of action and movement
 - Include repetitive, rhythmic language
 - Add silly, unexpected twists and child-friendly humor
-- Keep it SHORT - approximately 110-120 words total, no more than 130 words
+- CRITICAL WORD LIMIT: The story MUST be between 110-120 words. Count your words carefully. Do NOT exceed 120 words under any circumstances
 - Use simple, direct language that a young child can understand
 - Make it engaging, energetic, and joyful
 - DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
@@ -619,7 +619,7 @@ Story Requirements:
 - DO NOT use "Part 1", "Part 2", "Page 1", "Page 2", or any similar section labels
 - Write the story as one continuous narrative without section breaks or labels
 
-REMINDER: The story MUST be about "${storyType}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about ${storyType} and must end with ${childName} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words.`
+REMINDER: The story MUST be about "${storyType}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about ${storyType} and must end with ${childName} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words. WORD LIMIT: 110-120 words maximum - this is essential.`
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -631,7 +631,7 @@ REMINDER: The story MUST be about "${storyType}". Do not write about balloons, b
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 300,
         system: systemPrompt,
         messages: [
           {
