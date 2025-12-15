@@ -80,9 +80,10 @@ interface StoryNarrationProps {
   experienceType?: 'story' | 'year-review' | 'wish-list' | 'greeting-card'
   preloadedAudio?: HTMLAudioElement | null
   preloadedText?: string  // The text that was already converted to preloaded audio
+  fullFirstChunkAudio?: HTMLAudioElement | null  // Full audio for first chunk (after TTS completes)
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null, preloadedText = '' }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null, preloadedText = '', fullFirstChunkAudio = null }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -561,87 +562,127 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   // Ref to track if we're still generating remaining audio
   const isGeneratingRemainingRef = useRef<boolean>(false)
 
+  // Ref to store full first chunk audio when it arrives
+  const fullFirstChunkAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Store full first chunk audio when it arrives from parent
+  useEffect(() => {
+    if (fullFirstChunkAudio && experienceType === 'story') {
+      console.log('🎵 Full first chunk audio received and stored')
+      fullFirstChunkAudioRef.current = fullFirstChunkAudio
+      allAudioElementsRef.current.add(fullFirstChunkAudio)
+    }
+  }, [fullFirstChunkAudio, experienceType])
+
   // Generate remaining audio chunks and chain them to the first preloaded chunk
   const generateRemainingAudioChunks = async (text: string, firstChunkAudio: HTMLAudioElement) => {
-    console.log('🟡 Generating remaining audio chunks to chain after preloaded first chunk...')
+    console.log('🟡 Setting up audio chain: preloaded → full first chunk → remaining text...')
     isGeneratingRemainingRef.current = true
     
-    // Promise that resolves when remaining audio is ready
-    let remainingAudiosReady: HTMLAudioElement[] = []
+    // Get the duration of the preloaded audio for seeking in full audio
+    const preloadedDuration = firstChunkAudio.duration || 5 // Default to 5s if not available
+    console.log(`🟡 Preloaded audio duration: ${preloadedDuration.toFixed(1)}s`)
+    
+    // Promise that resolves when remaining text audio is ready
+    let remainingTextAudios: HTMLAudioElement[] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let remainingAudiosPromiseResolve: any = null
-    const remainingAudiosPromise = new Promise<HTMLAudioElement[]>(resolve => {
-      remainingAudiosPromiseResolve = resolve
+    let remainingTextAudiosResolve: any = null
+    const remainingTextAudiosPromise = new Promise<HTMLAudioElement[]>(resolve => {
+      remainingTextAudiosResolve = resolve
     })
     
     // Set up the onended handler IMMEDIATELY so we don't miss the event
     firstChunkAudio.onended = async () => {
-      console.log('🎵 Preloaded first chunk ended, waiting for remaining audio...')
+      console.log('🎵 Preloaded audio (~5s) ended, chaining to full first chunk audio...')
       
-      // Wait for remaining audio to be ready
-      const remainingAudios = await remainingAudiosPromise
-      
-      if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
+      // Check if we have the full first chunk audio
+      if (fullFirstChunkAudioRef.current && !shouldStopAllAudioRef.current) {
         try {
-          console.log('🎵 Starting remaining audio playback...')
-          await remainingAudios[0].play()
-          console.log('✅ Started playing remaining audio')
+          const fullAudio = fullFirstChunkAudioRef.current
+          
+          // Seek past the part we already played (the preloaded portion)
+          // Add a small buffer (0.1s) to avoid any overlap
+          const seekTime = Math.min(preloadedDuration - 0.1, fullAudio.duration - 1)
+          fullAudio.currentTime = seekTime
+          console.log(`🎵 Seeking full audio to ${seekTime.toFixed(1)}s (duration: ${fullAudio.duration.toFixed(1)}s)`)
+          
+          // When full first chunk audio ends, chain to remaining text audio
+          fullAudio.onended = async () => {
+            console.log('🎵 Full first chunk audio ended, chaining to remaining text...')
+            const remainingAudios = await remainingTextAudiosPromise
+            
+            if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
+              try {
+                await remainingAudios[0].play()
+                console.log('✅ Started playing remaining text audio')
+              } catch (err) {
+                console.error('Error playing remaining text audio:', err)
+              }
+            } else {
+              // No remaining text audio - playback complete
+              console.log('🎵 All audio playback complete!')
+              setIsAudioPlaying(false)
+              isNarrationInProgressRef.current = false
+              isGeneratingRemainingRef.current = false
+              if (checkAudioIntervalRef.current) {
+                clearInterval(checkAudioIntervalRef.current)
+                checkAudioIntervalRef.current = null
+              }
+            }
+          }
+          
+          await fullAudio.play()
+          console.log('✅ Full first chunk audio playing (from seek position)')
         } catch (err) {
-          console.error('Error playing remaining audio:', err)
+          console.error('Error playing full first chunk audio:', err)
+          // Fallback: just wait for remaining text audio
+          const remainingAudios = await remainingTextAudiosPromise
+          if (remainingAudios.length > 0) {
+            await remainingAudios[0].play()
+          }
         }
-      } else if (remainingAudios.length === 0) {
-        // No remaining audio - playback complete
-        console.log('🎵 All audio playback complete (short story)')
-        setIsAudioPlaying(false)
-        isNarrationInProgressRef.current = false
-        isGeneratingRemainingRef.current = false
-        if (checkAudioIntervalRef.current) {
-          clearInterval(checkAudioIntervalRef.current)
-          checkAudioIntervalRef.current = null
+      } else {
+        // No full first chunk audio available, wait for remaining text
+        console.log('⚠️ Full first chunk audio not ready, waiting for remaining text audio...')
+        const remainingAudios = await remainingTextAudiosPromise
+        if (!shouldStopAllAudioRef.current && remainingAudios.length > 0) {
+          try {
+            await remainingAudios[0].play()
+            console.log('✅ Started playing remaining text audio (fallback)')
+          } catch (err) {
+            console.error('Error playing remaining text audio:', err)
+          }
         }
       }
     }
     
     try {
-      // Find remaining text by removing the preloaded text from the full story
-      // preloadedText is the exact text that was sent to TTS (may include "Title: X" at start)
+      // Find remaining text AFTER what the first chunk covers (preloadedText)
+      // This is the text that neither preloaded nor fullFirstChunkAudio covers
       let remainingText = text
       
       if (preloadedText) {
-        // The preloaded text might have had "Title:" stripped for TTS, but we need to match
-        // against the original text which includes "Title:"
-        // Try to find where the preloaded content ends in the full text
-        
-        // First, strip "Title:" from preloadedText if present to get the actual content
-        let preloadedContent = preloadedText
-        const titleMatch = preloadedText.match(/^Title:\s*(.+?)(?:\n\n|\n)/i)
-        if (titleMatch) {
-          // preloadedText has title, so the preloaded audio covers from start to end of preloadedText
-          preloadedContent = preloadedText
-        }
-        
         // Find where preloadedText ends in the full text
-        const preloadedIndex = text.indexOf(preloadedContent)
+        const preloadedIndex = text.indexOf(preloadedText)
         if (preloadedIndex !== -1) {
-          remainingText = text.substring(preloadedIndex + preloadedContent.length).trim()
-          console.log(`🟡 Found preloaded text (${preloadedContent.length} chars), remaining text: ${remainingText.length} chars`)
+          remainingText = text.substring(preloadedIndex + preloadedText.length).trim()
+          console.log(`🟡 First chunk covers ${preloadedText.length} chars, remaining text: ${remainingText.length} chars`)
         } else {
           // Fallback: try to match just the last part of preloaded text
-          // Sometimes there might be slight differences in whitespace
-          const lastWords = preloadedContent.split(/\s+/).slice(-10).join(' ')
+          const lastWords = preloadedText.split(/\s+/).slice(-10).join(' ')
           const lastWordsIndex = text.indexOf(lastWords)
           if (lastWordsIndex !== -1) {
             remainingText = text.substring(lastWordsIndex + lastWords.length).trim()
-            console.log(`🟡 Found preloaded via last words, remaining text: ${remainingText.length} chars`)
+            console.log(`🟡 Found first chunk via last words, remaining text: ${remainingText.length} chars`)
           } else {
-            console.log('⚠️ Could not find preloaded text in full story, will regenerate all')
+            console.log('⚠️ Could not find first chunk text in full story')
           }
         }
       }
       
       if (!remainingText || remainingText.length < 10) {
-        console.log('🟡 Story is short enough that preloaded audio covers it all')
-        remainingAudiosPromiseResolve?.([])
+        console.log('🟡 First chunk covers the entire story')
+        remainingTextAudiosResolve?.([])
         hasStartedNarrationForStoryRef.current = text
         isGeneratingRemainingRef.current = false
         return
@@ -659,23 +700,23 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
       )
       
-      remainingAudiosReady = await Promise.all(audioPromises)
-      console.log(`✅ Generated ${remainingAudiosReady.length} remaining audio chunks`)
+      remainingTextAudios = await Promise.all(audioPromises)
+      console.log(`✅ Generated ${remainingTextAudios.length} remaining text audio chunks`)
       
       // Track all audio elements
-      remainingAudiosReady.forEach(audio => {
+      remainingTextAudios.forEach(audio => {
         allAudioElementsRef.current.add(audio)
       })
       
       // Chain remaining audios to each other
-      for (let i = 0; i < remainingAudiosReady.length - 1; i++) {
-        const current = remainingAudiosReady[i]
-        const next = remainingAudiosReady[i + 1]
+      for (let i = 0; i < remainingTextAudios.length - 1; i++) {
+        const current = remainingTextAudios[i]
+        const next = remainingTextAudios[i + 1]
         current.onended = async () => {
           if (!shouldStopAllAudioRef.current) {
             try {
               await next.play()
-              console.log(`✅ Playing chunk ${i + 3}`)
+              console.log(`✅ Playing remaining text chunk ${i + 2}`)
             } catch (err) {
               console.error('Error playing next chunk:', err)
             }
@@ -684,7 +725,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       
       // Set up final chunk ended handler
-      const lastAudio = remainingAudiosReady[remainingAudiosReady.length - 1]
+      const lastAudio = remainingTextAudios[remainingTextAudios.length - 1]
       lastAudio.onended = () => {
         console.log('🎵 All audio playback complete!')
         setIsAudioPlaying(false)
@@ -700,12 +741,12 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       isGeneratingRemainingRef.current = false
       
       // Resolve the promise so onended handler can play the audio
-      remainingAudiosPromiseResolve?.(remainingAudiosReady)
+      remainingTextAudiosResolve?.(remainingTextAudios)
       
     } catch (err) {
       console.error('Error generating remaining audio chunks:', err)
       isGeneratingRemainingRef.current = false
-      remainingAudiosPromiseResolve?.([])
+      remainingTextAudiosResolve?.([])
     }
   }
 

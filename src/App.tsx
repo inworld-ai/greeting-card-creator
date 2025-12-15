@@ -125,6 +125,7 @@ function App() {
   })
   const [firstChunkText, setFirstChunkText] = useState<string>('')
   const [preloadedAudio, setPreloadedAudio] = useState<HTMLAudioElement | null>(null)
+  const [fullFirstChunkAudio, setFullFirstChunkAudio] = useState<HTMLAudioElement | null>(null)
 
   // Update experience type when path changes
   useEffect(() => {
@@ -445,6 +446,15 @@ function App() {
     setFirstChunkText(chunkText)
     setPreloadedAudio(audio)
     setStep('narration')
+  }
+
+  const handleFullFirstChunkAudioReady = (fullAudio: HTMLAudioElement, chunkText: string) => {
+    console.log('🎵 Full first chunk audio ready, storing for seamless playback...')
+    setFullFirstChunkAudio(fullAudio)
+    // Also update firstChunkText if not already set (shouldn't happen, but safety)
+    if (!firstChunkText) {
+      setFirstChunkText(chunkText)
+    }
   }
 
   // Legacy handler for year-review and wish-list (text-only, no audio preload)
@@ -802,6 +812,7 @@ function App() {
                 customVoiceId={storyData.customVoiceId}
                 onStoryGenerated={handleStoryGenerated}
                 onFirstAudioReady={handleFirstAudioReady}
+                onFullFirstChunkAudioReady={handleFullFirstChunkAudioReady}
                 customApiKey={storyData.customApiKey}
                 onError={handleStoryGenerationError}
               />
@@ -852,6 +863,7 @@ function App() {
             experienceType={storyData.experienceType}
             preloadedAudio={preloadedAudio}
             preloadedText={firstChunkText}
+            fullFirstChunkAudio={fullFirstChunkAudio}
           />
         )}
       </div>
