@@ -17,6 +17,7 @@ interface StoryGenerationProps {
 
 function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStoryGenerated, onFirstAudioReady, customApiKey, onError }: StoryGenerationProps) {
   const hasStartedTTSRef = useRef(false)
+  const hasTransitionedRef = useRef(false) // Prevent double transition
   const firstChunkTextRef = useRef<string | null>(null)
   
   useEffect(() => {
@@ -39,23 +40,25 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             
             try {
               // Generate TTS for the first chunk with [happy] emotion tag
-              const audio = await synthesizeSpeech('[happy] ' + chunk.text, {
+              // The onFirstChunkReady callback fires after ~3 seconds of audio data
+              await synthesizeSpeech('[happy] ' + chunk.text, {
                 voiceId: customVoiceId || voiceId,
                 onFirstChunkReady: (preloadedAudio) => {
-                  console.log('🎵 First audio chunk ready! Transitioning to narration...')
-                  onFirstAudioReady(chunk.text, preloadedAudio)
+                  // Only transition once - when first ~3 seconds of audio is ready
+                  if (!hasTransitionedRef.current) {
+                    hasTransitionedRef.current = true
+                    console.log('🎵 First audio chunk (~3s) ready! Transitioning to narration...')
+                    onFirstAudioReady(chunk.text, preloadedAudio)
+                  }
                 }
               })
-              
-              // If onFirstChunkReady didn't fire (older TTS path), use the completed audio
-              if (audio && firstChunkTextRef.current) {
-                console.log('🎵 Audio fully generated, transitioning to narration...')
-                onFirstAudioReady(firstChunkTextRef.current, audio)
-              }
+              // Note: synthesizeSpeech returns full audio, but we've already transitioned
+              // via onFirstChunkReady callback, so we don't need to do anything here
             } catch (ttsError) {
               console.error('❌ TTS generation failed:', ttsError)
               // Fall back to transitioning without audio
-              if (firstChunkTextRef.current) {
+              if (firstChunkTextRef.current && !hasTransitionedRef.current) {
+                hasTransitionedRef.current = true
                 // Create a dummy silent audio element to allow transition
                 const silentAudio = new Audio()
                 onFirstAudioReady(firstChunkTextRef.current, silentAudio)

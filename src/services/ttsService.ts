@@ -107,9 +107,43 @@ function splitTextIntoChunks(text: string, maxLength: number = 1900): string[] {
 }
 
 /**
+ * Creates a WAV audio element from PCM data
+ */
+function createAudioFromPCM(pcmData: Uint8Array): Promise<HTMLAudioElement> {
+  const wavHeader = createWavHeader(pcmData.length, 24000)
+  const wavFile = new Uint8Array(wavHeader.byteLength + pcmData.length)
+  wavFile.set(new Uint8Array(wavHeader), 0)
+  wavFile.set(pcmData, wavHeader.byteLength)
+
+  const blob = new Blob([wavFile], { type: 'audio/wav' })
+  const url = URL.createObjectURL(blob)
+  const audio = new Audio(url)
+  audio.preload = 'auto'
+
+  // Clean up URL when audio ends or on error
+  audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true })
+  audio.addEventListener('error', () => URL.revokeObjectURL(url), { once: true })
+
+  return new Promise<HTMLAudioElement>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 10000)
+    audio.addEventListener('canplaythrough', () => {
+      clearTimeout(timeout)
+      resolve(audio)
+    }, { once: true })
+    audio.addEventListener('error', () => {
+      clearTimeout(timeout)
+      reject(new Error('Failed to load audio'))
+    }, { once: true })
+    audio.load()
+  })
+}
+
+/**
  * Creates an HTMLAudioElement from PCM audio stream
  * Receives newline-delimited JSON with base64-encoded raw PCM float32 data
- * Accumulates all chunks and creates a single WAV file for reliable playback
+ * 
+ * PROGRESSIVE: Fires onFirstChunkReady after ~3 seconds of audio data is received,
+ * allowing playback to start while the rest of the audio continues generating.
  */
 async function createAudioFromWAVStream(
   response: Response,
@@ -125,6 +159,12 @@ async function createAudioFromWAVStream(
   let buffer = ''
   const pcmChunks: Uint8Array[] = []
   let totalBytes = 0
+  
+  // At 24kHz, 32-bit float, mono: 96KB per second
+  // We want ~3 seconds of audio before triggering first chunk = ~288KB
+  const FIRST_CHUNK_THRESHOLD = 288000 // ~3 seconds of audio
+  let firstChunkFired = false
+  let firstChunkAudio: HTMLAudioElement | null = null
   
   console.log('🎵 Starting TTS audio stream...')
 
@@ -157,6 +197,29 @@ async function createAudioFromWAVStream(
           pcmChunks.push(pcmData)
           totalBytes += pcmData.length
           
+          // Fire first chunk callback when we have enough audio data (~3 seconds)
+          if (!firstChunkFired && totalBytes >= FIRST_CHUNK_THRESHOLD && onFirstChunkReady) {
+            firstChunkFired = true
+            console.log(`🎵 First ${(totalBytes / 1024).toFixed(1)}KB of audio ready (~${(totalBytes / 96000).toFixed(1)}s) - firing callback!`)
+            
+            // Create audio from accumulated chunks so far
+            const combinedPCM = new Uint8Array(totalBytes)
+            let offset = 0
+            for (const chunk of pcmChunks) {
+              combinedPCM.set(chunk, offset)
+              offset += chunk.length
+            }
+            
+            // Create and fire callback asynchronously (don't block stream reading)
+            createAudioFromPCM(combinedPCM).then(audio => {
+              firstChunkAudio = audio
+              console.log(`✅ First chunk audio ready: ${audio.duration?.toFixed(1)}s`)
+              onFirstChunkReady(audio)
+            }).catch(err => {
+              console.error('Error creating first chunk audio:', err)
+            })
+          }
+          
         } catch (err) {
           // Silently skip malformed chunks
         }
@@ -168,7 +231,7 @@ async function createAudioFromWAVStream(
     throw new Error('No audio data received from server')
   }
 
-  // Combine all PCM chunks
+  // Combine all PCM chunks for the full audio
   const combinedPCM = new Uint8Array(totalBytes)
   let offset = 0
   for (const chunk of pcmChunks) {
@@ -176,41 +239,20 @@ async function createAudioFromWAVStream(
     offset += chunk.length
   }
 
-  // Create WAV file with header (24kHz, float32, mono)
-  const wavHeader = createWavHeader(totalBytes, 24000)
-  const wavFile = new Uint8Array(wavHeader.byteLength + totalBytes)
-  wavFile.set(new Uint8Array(wavHeader), 0)
-  wavFile.set(combinedPCM, wavHeader.byteLength)
-
-  // Create audio element
-  const blob = new Blob([wavFile], { type: 'audio/wav' })
-  const url = URL.createObjectURL(blob)
-  const audio = new Audio(url)
-  audio.preload = 'auto'
-
-  // Wait for audio to be ready
-  await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 10000)
-    audio.addEventListener('canplaythrough', () => {
-      clearTimeout(timeout)
-      resolve()
-    }, { once: true })
-    audio.addEventListener('error', () => {
-      clearTimeout(timeout)
-      reject(new Error('Failed to load audio'))
-    }, { once: true })
-    audio.load()
-  })
-
-  console.log(`✅ Audio ready: ${(totalBytes / 1024).toFixed(1)}KB, duration: ${audio.duration?.toFixed(1)}s`)
+  // Create full audio element
+  const audio = await createAudioFromPCM(combinedPCM)
+  console.log(`✅ Full audio ready: ${(totalBytes / 1024).toFixed(1)}KB, duration: ${audio.duration?.toFixed(1)}s`)
   
-  // Notify callback
-  if (onFirstChunkReady) {
+  // If we never fired the first chunk callback (audio was shorter than threshold), fire it now
+  if (!firstChunkFired && onFirstChunkReady) {
+    console.log('🎵 Audio shorter than threshold, firing first chunk callback with full audio')
     onFirstChunkReady(audio)
   }
 
-  // Clean up URL when done
-  audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true })
+  // Store reference to first chunk audio for potential chaining
+  if (firstChunkAudio) {
+    (audio as any).__firstChunkAudio = firstChunkAudio
+  }
 
   return audio
 }
