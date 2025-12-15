@@ -297,32 +297,6 @@ function TextBasedChristmasCard() {
     setStep('custom-narrator')
   }
 
-  const handleStartOver = () => {
-    // Stop any playing audio
-    audioRef.current?.pause()
-    preloadedAudioRef.current?.pause()
-    preloadedFollowUpRef.current?.pause()
-    
-    // Reset all state
-    setStep('form')
-    setRecipientInfo('')
-    setFunnyStory('')
-    setSignoff('')
-    setCardMessage('')
-    setCoverImageUrl(null)
-    setDisplayName('')
-    setCustomVoiceId(null)
-    setIsFlipped(false)
-    setError(null)
-    setIsPlayingAudio(false)
-    setIsAudioReady(false)
-    hasPlayedRef.current = false
-    hasAskedFollowUpRef.current = false
-    isPreloadingRef.current = false
-    preloadedAudioRef.current = null
-    preloadedFollowUpRef.current = null
-  }
-
   // Form step
   if (step === 'form') {
     return (
