@@ -630,13 +630,13 @@ function TextBasedChristmasCard() {
         )}
       </div>
       
-      <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         {/* Only show Create Custom Narrator button if user hasn't created one yet */}
         {!customVoiceId && (
           <button
             className="btn btn-primary"
             onClick={handleAddNarration}
-            style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+            style={{ fontSize: '1rem', padding: '10px 20px' }}
           >
             🎙️ Create Custom Narrator
           </button>
@@ -645,7 +645,7 @@ function TextBasedChristmasCard() {
           className={customVoiceId ? "btn btn-primary" : "btn btn-secondary"}
           onClick={handleShare}
           disabled={isSharing}
-          style={{ fontSize: '1.2rem', padding: '12px 24px', minWidth: '140px' }}
+          style={{ fontSize: '1rem', padding: '10px 20px' }}
         >
           {isSharing ? '📤 Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : '📤 Share Card'}
         </button>
