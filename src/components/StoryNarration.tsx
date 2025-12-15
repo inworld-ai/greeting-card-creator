@@ -87,10 +87,13 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
-  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [_shareUrl, setShareUrl] = useState<string | null>(null)
   const [isSharing, setIsSharing] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
-  const [isLinkCopied, setIsLinkCopied] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState<'copied' | 'shared' | false>(false)
+  
+  // Suppress unused variable warning
+  void _shareUrl
   const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
   const [hasStartedNarration, setHasStartedNarration] = useState(false)
   const [isAudioPlaying, setIsAudioPlaying] = useState(false) // Track if audio is currently playing
@@ -1541,11 +1544,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                       })
                       setShareUrl(result.shareUrl)
                       // Use Web Share API (mobile) or clipboard (desktop)
-                      await shareUrlHelper(
+                      const shareResult = await shareUrlHelper(
                         result.shareUrl,
                         'A Christmas Story For You',
                         `Check out this personalized Christmas story for ${childName}!`
                       )
+                      if (shareResult !== 'cancelled') {
+                        setShareSuccess(shareResult as 'copied' | 'shared')
+                        setTimeout(() => setShareSuccess(false), 3000)
+                      }
                   } catch (err: any) {
                     setShareError(err.message || 'Failed to share story')
                   } finally {
@@ -1556,37 +1563,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 className="share-story-button"
                 style={{ order: 2 }}
               >
-                {isSharing ? 'Sharing...' : 'Share Story'}
+                {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Story'}
               </button>
-            ) : (
-              <div className="share-success" style={{ order: 2 }}>
-                  <input 
-                    type="text" 
-                    value={shareUrl} 
-                    readOnly 
-                    className="share-url-input"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                  />
-                <button 
-                  onClick={async () => {
-                    // Use Web Share API (mobile) or clipboard (desktop)
-                    await shareUrlHelper(
-                      shareUrl,
-                      'A Christmas Story For You',
-                      `Check out this personalized Christmas story for ${childName}!`
-                    )
-                    setIsLinkCopied(true)
-                    // Reset after 2 seconds
-                    setTimeout(() => {
-                      setIsLinkCopied(false)
-                    }, 2000)
-                  }}
-                  className="copy-link-button"
-                >
-                  {isLinkCopied ? '✓ Shared!' : 'Share Again'}
-                </button>
-            </div>
-            )}
             {shareError && (
               <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                 {shareError}
@@ -1862,13 +1840,17 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                       })
                         setShareUrl(result.shareUrl)
                         // Use Web Share API (mobile) or clipboard (desktop)
-                        await shareUrlHelper(
+                        const shareResult = await shareUrlHelper(
                           result.shareUrl,
                           experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
                           experienceType === 'greeting-card' 
                             ? `Check out this personalized Christmas card for ${childName}!`
                             : `Check out this personalized Christmas story for ${childName}!`
                         )
+                        if (shareResult !== 'cancelled') {
+                          setShareSuccess(shareResult as 'copied' | 'shared')
+                          setTimeout(() => setShareSuccess(false), 3000)
+                        }
                     } catch (err: any) {
                       setShareError(err.message || 'Failed to share story')
                     } finally {
@@ -1878,39 +1860,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   disabled={isSharing}
                   className="share-story-button"
                 >
-                  {isSharing ? 'Sharing...' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
+                  {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
               </button>
-              ) : (
-                <div className="share-success">
-                  <input 
-                    type="text" 
-                    value={shareUrl} 
-                    readOnly 
-                    className="share-url-input"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                  />
-                  <button 
-                    onClick={async () => {
-                      // Use Web Share API (mobile) or clipboard (desktop)
-                      await shareUrlHelper(
-                        shareUrl,
-                        experienceType === 'greeting-card' ? 'Christmas Card Creator' : 'A Christmas Story For You',
-                        experienceType === 'greeting-card' 
-                          ? `Check out this personalized Christmas card for ${childName}!`
-                          : `Check out this personalized Christmas story for ${childName}!`
-                      )
-                      setIsLinkCopied(true)
-                      // Reset after 2 seconds
-                      setTimeout(() => {
-                        setIsLinkCopied(false)
-                      }, 2000)
-                    }}
-                    className="copy-link-button"
-                  >
-                    {isLinkCopied ? '✓ Shared!' : 'Share Again'}
-              </button>
-                </div>
-            )}
               {shareError && (
                 <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
                   {shareError}
