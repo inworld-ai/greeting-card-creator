@@ -152,42 +152,45 @@
   flex: 1;
   min-width: 150px;
   padding: 18px 20px;
-  background: #28a745;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
+  color: #1a1a1a;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 24px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
   font-family: 'FeatureDeck', 'Georgia', serif;
+  position: relative;
 }
 
 .voice-option:not(.selected):hover {
-  transform: translateY(-2px);
-  background: #20c997;
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(76, 175, 80, 0.6);
+  background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 30%, #81c784 60%, #66bb6a 100%);
 }
 
 .voice-option.selected:hover {
   transform: translateY(-2px);
-  background: #20c997;
 }
 
 .voice-option.selected {
-  background: #155724;
+  background: linear-gradient(135deg, #81c784 0%, #66bb6a 30%, #4caf50 60%, #43a047 100%);
+  border: 2px solid rgba(34, 139, 34, 0.5);
 }
 
 .voice-option:active {
-  background: #155724;
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1.01);
 }
 
 .voice-name {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #1a1a1a;
   font-family: 'FeatureDeck', 'Georgia', serif;
+  text-align: center;
 }
 
 .voice-description {
