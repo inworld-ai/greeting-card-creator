@@ -1556,7 +1556,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 className="share-story-button"
                 style={{ order: 2 }}
               >
-                {isSharing ? 'Sharing...' : 'Share Story 🎁'}
+                {isSharing ? 'Sharing...' : 'Share Story'}
               </button>
             ) : (
               <div className="share-success" style={{ order: 2 }}>
@@ -1878,7 +1878,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                   disabled={isSharing}
                   className="share-story-button"
                 >
-                  {isSharing ? 'Sharing...' : experienceType === 'greeting-card' ? 'Share Card 🎁' : 'Share Story 🎁'}
+                  {isSharing ? 'Sharing...' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
               </button>
               ) : (
                 <div className="share-success">
