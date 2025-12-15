@@ -3,6 +3,7 @@ import { synthesizeSpeech } from '../services/ttsService'
 import { shareUrl } from '../services/shareService'
 import CustomNarrator from './CustomNarrator'
 import './GreetingCardDisplay.css'
+import './StoryGeneration.css'
 
 type Step = 'form' | 'generating' | 'display' | 'custom-narrator'
 
@@ -493,7 +494,7 @@ function TextBasedChristmasCard() {
         background: '#faf7f5',
       }}>
         <div className="loading-container">
-          <h2 className="loading-title" style={{ color: '#166534' }}>
+          <h2 className="loading-title">
             CREATING YOUR CHRISTMAS CARD...
           </h2>
           <div className="loading-dots">
