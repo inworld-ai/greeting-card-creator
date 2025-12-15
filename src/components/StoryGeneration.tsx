@@ -32,7 +32,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
         
         // Play the female elf announcement
         try {
-          const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas story for ${childName}. Santa helped us brainstorm! And, it's ready!`, {
+          const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas story for ${childName} right now. Santa helped us brainstorm! And, it's ready!`, {
             voiceId: 'christmas_story_generator__female_elf_narrator'
           })
           announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
