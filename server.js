@@ -2450,28 +2450,25 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       })
     }
 
-    const prompt = `Create a SHORT, fun, and comical personalized Christmas card message.
+    const prompt = `Write a VERY SHORT Christmas card message (under 250 characters total).
 
-Sender: ${senderName}
 Recipient: ${recipientName}
-${relationship ? `Relationship: ${relationship}` : ''}
-Funny or heartwarming anecdote about them: ${funnyStory}
+Anecdote: ${funnyStory}
+Sign-off: ${signoff || `Love, ${senderName}`}
 
-STRICT FORMAT - The message MUST follow this EXACT structure:
-1. Personalized greeting (e.g., "Dear ${recipientName}," or "Hey ${recipientName}!")
-2. EXACTLY 3 sentences that are fun and comical, referencing the anecdote
-3. Sign-off on its own line
+FORMAT (follow EXACTLY):
+Dear ${recipientName},
 
-CRITICAL: Only 3 sentences in the message body. No more, no less. Keep each sentence punchy and fun.
+[ONE short fun sentence about the anecdote]. [ONE Christmas wish]. Merry Christmas!
 
-SIGN-OFF: ${signoff ? `Use EXACTLY: "${signoff}"` : `Use a warm sign-off like "Love, ${senderName}" or "Merry Christmas! ${senderName}"`}
+${signoff || `Love, ${senderName}`}
 
-Example format:
-Dear [Name],
-
-[Sentence 1 - fun opener]. [Sentence 2 - reference the anecdote humorously]. [Sentence 3 - warm Christmas wish].
-
-[Sign-off]`
+CRITICAL RULES:
+- ONLY 2 sentences in the body (plus "Merry Christmas!")
+- Total message under 250 characters
+- Keep it punchy and fun
+- Do NOT write multiple paragraphs
+- Do NOT add extra sentences`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -2482,7 +2479,7 @@ Dear [Name],
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 150,
         messages: [
           {
             role: 'user',
@@ -2501,21 +2498,24 @@ Dear [Name],
     const data = await response.json()
     let cardMessage = data.content[0].text.trim()
 
-    // Enforce 700 character limit - truncate if necessary
-    if (cardMessage.length > 700) {
-      console.log(`⚠️ Message exceeded 700 characters (${cardMessage.length} chars), truncating...`)
-      // Try to truncate at a sentence boundary if possible
-      const truncated = cardMessage.substring(0, 697)
+    const charCount = cardMessage.length
+    console.log(`💌 Generated card message - Characters: ${charCount}`)
+    
+    // Enforce 350 character limit - truncate at sentence boundary if needed
+    if (cardMessage.length > 350) {
+      console.log(`⚠️ Message exceeded 350 characters (${cardMessage.length} chars), truncating...`)
+      // Try to truncate at a sentence boundary
+      const truncated = cardMessage.substring(0, 347)
       const lastPeriod = truncated.lastIndexOf('.')
       const lastExclamation = truncated.lastIndexOf('!')
       const lastQuestion = truncated.lastIndexOf('?')
       const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion)
       
-      if (lastSentenceEnd > 600) {
+      if (lastSentenceEnd > 200) {
         // If we found a sentence end reasonably close to the limit, use it
         cardMessage = truncated.substring(0, lastSentenceEnd + 1)
       } else {
-        // Otherwise just truncate at 697 and add ellipsis
+        // Otherwise just truncate at 347 and add ellipsis
         cardMessage = truncated + '...'
       }
     }
