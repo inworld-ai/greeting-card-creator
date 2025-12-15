@@ -1,18 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { generateStoryProgressive } from '../services/storyService'
+import { synthesizeSpeech } from '../services/ttsService'
 import './StoryGeneration.css'
-import type { StoryType } from '../App'
+import type { StoryType, VoiceId } from '../App'
 
 interface StoryGenerationProps {
   storyType: StoryType
   childName: string
+  voiceId: VoiceId
+  customVoiceId?: string
   onStoryGenerated: (storyText: string, generatedImageUrl?: string | null) => void
-  onFirstChunkReady?: (chunkText: string) => void
+  onFirstAudioReady?: (chunkText: string, preloadedAudio: HTMLAudioElement) => void
   customApiKey?: string
   onError?: () => void // Callback to handle errors (e.g., navigate back)
 }
 
-function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkReady, customApiKey, onError }: StoryGenerationProps) {
+function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStoryGenerated, onFirstAudioReady, customApiKey, onError }: StoryGenerationProps) {
+  const hasStartedTTSRef = useRef(false)
+  const firstChunkTextRef = useRef<string | null>(null)
+  
   useEffect(() => {
     // Log what we're about to send
     console.log('StoryGeneration - About to generate story progressively:', { storyType, childName })
@@ -22,13 +28,39 @@ function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkR
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
         
         // Start story generation
-        const storyPromise = generateStoryProgressive(storyType, childName, (chunk) => {
+        const storyPromise = generateStoryProgressive(storyType, childName, async (chunk) => {
           console.log(`🟡 Chunk ${chunk.chunkIndex} generated, length: ${chunk.text.length}`)
           
-          // When first chunk is ready, notify parent to start TTS
-          if (chunk.chunkIndex === 0 && onFirstChunkReady) {
-            console.log('🟡 First chunk ready, starting TTS...')
-            onFirstChunkReady(chunk.text)
+          // When first text chunk is ready, start TTS generation
+          if (chunk.chunkIndex === 0 && !hasStartedTTSRef.current && onFirstAudioReady) {
+            hasStartedTTSRef.current = true
+            firstChunkTextRef.current = chunk.text
+            console.log('🟡 First text chunk ready, starting TTS generation...')
+            
+            try {
+              // Generate TTS for the first chunk with [happy] emotion tag
+              const audio = await synthesizeSpeech('[happy] ' + chunk.text, {
+                voiceId: customVoiceId || voiceId,
+                onFirstChunkReady: (preloadedAudio) => {
+                  console.log('🎵 First audio chunk ready! Transitioning to narration...')
+                  onFirstAudioReady(chunk.text, preloadedAudio)
+                }
+              })
+              
+              // If onFirstChunkReady didn't fire (older TTS path), use the completed audio
+              if (audio && firstChunkTextRef.current) {
+                console.log('🎵 Audio fully generated, transitioning to narration...')
+                onFirstAudioReady(firstChunkTextRef.current, audio)
+              }
+            } catch (ttsError) {
+              console.error('❌ TTS generation failed:', ttsError)
+              // Fall back to transitioning without audio
+              if (firstChunkTextRef.current) {
+                // Create a dummy silent audio element to allow transition
+                const silentAudio = new Audio()
+                onFirstAudioReady(firstChunkTextRef.current, silentAudio)
+              }
+            }
           }
         }, customApiKey)
         
@@ -135,7 +167,7 @@ function StoryGeneration({ storyType, childName, onStoryGenerated, onFirstChunkR
     }
 
     generate()
-  }, [storyType, childName, onStoryGenerated, onFirstChunkReady, customApiKey, onError])
+  }, [storyType, childName, voiceId, customVoiceId, onStoryGenerated, onFirstAudioReady, customApiKey, onError])
 
   return (
     <div className="story-generation">

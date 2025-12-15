@@ -78,9 +78,10 @@ interface StoryNarrationProps {
   customVoiceId?: string
   isShared?: boolean
   experienceType?: 'story' | 'year-review' | 'wish-list' | 'greeting-card'
+  preloadedAudio?: HTMLAudioElement | null
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story' }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +116,16 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       isGeneratingRef.current = false
     }
   }, [])
+
+  // Store preloaded audio from parent (generated during loading screen)
+  useEffect(() => {
+    if (preloadedAudio && experienceType === 'story') {
+      console.log('🎵 Using preloaded audio from loading screen')
+      preloadedAudioRef.current = preloadedAudio
+      allAudioElementsRef.current.add(preloadedAudio)
+      setIsAudioPreloaded(true)
+    }
+  }, [preloadedAudio, experienceType])
 
   // Resume AudioContext on any user interaction to enable autoplay
   useEffect(() => {
@@ -597,64 +608,87 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // For greeting cards, prepend [happy] emotion tag to influence voice tone (won't be verbalized)
       const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
       const firstChunkWithTitle = emotionPrefix + (title ? `${title}. ${storyChunks[0]}` : storyChunks[0])
-      console.log(`🟡 Generating TTS for first chunk (${firstChunkWithTitle.length} chars, ~${firstChunkWithTitle.split(/\s+/).length} words) - should start in ~1-2 seconds...`)
       
-      // Start TTS on first chunk immediately (small chunk = fast generation)
-      // Use onFirstChunkReady to start playing as soon as first WAV chunk is ready (2-3 seconds)
       let firstWavChunkReady = false
-      const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
-        voiceId: customVoiceId || voiceId,
-        apiKey: customApiKey || undefined, // Only pass if provided (voice clones don't need user API key)
-        onAllChunksCreated: (allChunks) => {
-          // Track all WAV chunks from this text chunk
-          allChunks.forEach(chunk => {
-            allAudioElementsRef.current.add(chunk)
-          })
-          console.log(`🟡 Tracked ${allChunks.length} WAV chunks from first text chunk`)
-        },
-        onFirstChunkReady: (firstWavChunk) => {
-          // Start playing the first WAV chunk immediately when it's ready
-          // Don't wait for all WAV chunks to be generated
-          if (!firstWavChunkReady && !shouldStopAllAudioRef.current) {
-            firstWavChunkReady = true
-            console.log('🎵 First WAV chunk ready, starting playback immediately (before all chunks)...')
-            
-            // Track this audio element
-            allAudioElementsRef.current.add(firstWavChunk)
-            
-            // Start playing immediately
-            if (firstWavChunk.readyState >= 2) {
-              firstWavChunk.play().then(() => {
-                console.log('✅ First WAV chunk started playing immediately')
-                setHasStartedNarration(true)
-                setIsAudioPlaying(true) // Audio is now playing, disable restart button
-                setIsGeneratingAudio(false) // Hide "Preparing audio..." message
-                // Start polling immediately when audio starts
-                startPollingForAudioEnd()
-              }).catch(err => {
-                console.warn('⚠️ Autoplay prevented for first chunk:', err)
-                setNeedsUserInteraction(true)
-              })
-            } else {
-              firstWavChunk.addEventListener('canplay', () => {
-                if (!shouldStopAllAudioRef.current) {
-                  firstWavChunk.play().then(() => {
-                    console.log('✅ First WAV chunk started playing after canplay')
-                    setHasStartedNarration(true)
-                    setIsAudioPlaying(true) // Audio is now playing, disable restart button
-                    setIsGeneratingAudio(false) // Hide "Preparing audio..." message
-                    // Start polling immediately when audio starts
-                    startPollingForAudioEnd()
-                  }).catch(err => {
-                    console.warn('⚠️ Autoplay prevented for first chunk:', err)
-                    setNeedsUserInteraction(true)
-                  })
-                }
-              }, { once: true })
+      let firstAudio: HTMLAudioElement
+      
+      // Check if we have preloaded audio from the loading screen
+      if (preloadedAudio && experienceType === 'story') {
+        console.log('🎵 Using preloaded audio from loading screen (instant playback!)')
+        firstAudio = preloadedAudio
+        firstWavChunkReady = true
+        
+        // Start playing immediately
+        try {
+          await firstAudio.play()
+          console.log('✅ Preloaded audio started playing immediately')
+          setHasStartedNarration(true)
+          setIsAudioPlaying(true)
+          setIsGeneratingAudio(false)
+          startPollingForAudioEnd()
+        } catch (err) {
+          console.warn('⚠️ Autoplay prevented for preloaded audio:', err)
+          setNeedsUserInteraction(true)
+        }
+      } else {
+        console.log(`🟡 Generating TTS for first chunk (${firstChunkWithTitle.length} chars, ~${firstChunkWithTitle.split(/\s+/).length} words) - should start in ~1-2 seconds...`)
+        
+        // Start TTS on first chunk immediately (small chunk = fast generation)
+        // Use onFirstChunkReady to start playing as soon as first WAV chunk is ready (2-3 seconds)
+        firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
+          voiceId: customVoiceId || voiceId,
+          apiKey: customApiKey || undefined, // Only pass if provided (voice clones don't need user API key)
+          onAllChunksCreated: (allChunks) => {
+            // Track all WAV chunks from this text chunk
+            allChunks.forEach(chunk => {
+              allAudioElementsRef.current.add(chunk)
+            })
+            console.log(`🟡 Tracked ${allChunks.length} WAV chunks from first text chunk`)
+          },
+          onFirstChunkReady: (firstWavChunk) => {
+            // Start playing the first WAV chunk immediately when it's ready
+            // Don't wait for all WAV chunks to be generated
+            if (!firstWavChunkReady && !shouldStopAllAudioRef.current) {
+              firstWavChunkReady = true
+              console.log('🎵 First WAV chunk ready, starting playback immediately (before all chunks)...')
+              
+              // Track this audio element
+              allAudioElementsRef.current.add(firstWavChunk)
+              
+              // Start playing immediately
+              if (firstWavChunk.readyState >= 2) {
+                firstWavChunk.play().then(() => {
+                  console.log('✅ First WAV chunk started playing immediately')
+                  setHasStartedNarration(true)
+                  setIsAudioPlaying(true) // Audio is now playing, disable restart button
+                  setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+                  // Start polling immediately when audio starts
+                  startPollingForAudioEnd()
+                }).catch(err => {
+                  console.warn('⚠️ Autoplay prevented for first chunk:', err)
+                  setNeedsUserInteraction(true)
+                })
+              } else {
+                firstWavChunk.addEventListener('canplay', () => {
+                  if (!shouldStopAllAudioRef.current) {
+                    firstWavChunk.play().then(() => {
+                      console.log('✅ First WAV chunk started playing after canplay')
+                      setHasStartedNarration(true)
+                      setIsAudioPlaying(true) // Audio is now playing, disable restart button
+                      setIsGeneratingAudio(false) // Hide "Preparing audio..." message
+                      // Start polling immediately when audio starts
+                      startPollingForAudioEnd()
+                    }).catch(err => {
+                      console.warn('⚠️ Autoplay prevented for first chunk:', err)
+                      setNeedsUserInteraction(true)
+                    })
+                  }
+                }, { once: true })
+              }
             }
           }
-        }
-      })
+        })
+      }
       
       // Track this audio element and all its chunks
       allAudioElementsRef.current.add(firstAudio)
