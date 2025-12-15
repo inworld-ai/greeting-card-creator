@@ -2452,7 +2452,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
   console.log('💌 ==========================================')
   
   try {
-    const { senderName, recipientName, relationship, specialAboutThem, funnyStory } = req.body
+    const { senderName, recipientName, relationship, specialAboutThem, funnyStory, signoff } = req.body
 
     if (!senderName || !recipientName || !funnyStory) {
       return res.status(400).json({ 
@@ -2485,7 +2485,7 @@ ${specialAboutThem ? `- References the special thing about them` : ''}
 
 CRITICAL LENGTH REQUIREMENT: The message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
 
-CRITICAL SIGN-OFF REQUIREMENT: ${relationship ? `The message MUST end with a relationship-appropriate sign-off from ${senderName} to ${recipientName}. Examples based on the relationship "${relationship}":
+CRITICAL SIGN-OFF REQUIREMENT: ${signoff ? `The message MUST end with EXACTLY this sign-off: "${signoff}". Do NOT modify or change this sign-off - use it exactly as provided.` : (relationship ? `The message MUST end with a relationship-appropriate sign-off from ${senderName} to ${recipientName}. Examples based on the relationship "${relationship}":
 - If relationship is "wife" or "husband": "Your loving husband" or "Your loving wife"
 - If relationship is "best friend": "Your best friend" or "Your favorite friend"
 - If relationship is "grandmother" or "grandfather": "Your loving grandchild" or "Your favorite grandchild"
@@ -2494,7 +2494,7 @@ CRITICAL SIGN-OFF REQUIREMENT: ${relationship ? `The message MUST end with a rel
 - If relationship is "daughter" or "son": "Your loving parent" or "Your proud parent"
 - For other relationships, use an appropriate sign-off like "Your loving ${relationship}" or "Your favorite ${relationship}"
 
-The sign-off should feel warm, personal, and appropriate for the relationship. Do NOT use generic terms like "Friend" - always use the specific relationship.` : `The message MUST end with a warm closing like "Happy holidays!" or "Merry Christmas!" followed by the sender's name (${senderName}).`}
+The sign-off should feel warm, personal, and appropriate for the relationship. Do NOT use generic terms like "Friend" - always use the specific relationship.` : `The message MUST end with a warm closing like "Happy holidays!" or "Merry Christmas!" followed by the sender's name (${senderName}).`)}
 
 Make it feel genuine and fun, like something someone would write to someone they care about.`
 
