@@ -9,10 +9,10 @@ interface StoryTypeSelectionProps {
   onBack?: () => void
 }
 
-const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji: string; description: string }[] = [
-  { value: 'Meeting Santa Claus', label: <>Meeting<br />Santa Claus</>, emoji: '🎅', description: 'A magical visit with Santa at the North Pole' },
-  { value: 'Christmas Eve Adventure', label: 'Christmas Eve Adventure', emoji: '🎁', description: 'A special Christmas Eve journey' },
-  { value: 'Elf Workshop Visit', label: 'Elf Workshop Visit', emoji: '🧝', description: 'Helping the elves make toys for Christmas' },
+const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji: string }[] = [
+  { value: 'Meeting Santa Claus', label: <>Meeting<br />Santa Claus</>, emoji: '🎅' },
+  { value: 'Christmas Eve Adventure', label: 'Christmas Eve Adventure', emoji: '🎁' },
+  { value: 'Elf Workshop Visit', label: 'Elf Workshop Visit', emoji: '🧝' },
 ]
 
 function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
@@ -58,8 +58,7 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   return (
     <div className="story-type-selection">
       <p className="prompt-text">
-        What kind of Christmas story would you like?<br />
-        Type your idea, use the microphone, or choose a suggestion below!
+        Enter your Christmas story idea or choose a suggestion below!
       </p>
       
       <div className="text-input-container">
@@ -116,7 +115,6 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
             >
               <span className="story-type-emoji">{type.emoji}</span>
               <span className="story-type-label">{type.label}</span>
-              <span className="story-type-description">{type.description}</span>
             </button>
           ))}
         </div>
