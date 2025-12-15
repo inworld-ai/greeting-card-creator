@@ -134,7 +134,7 @@
 }
 
 .story-type-card {
-  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  background: #166534;
   border: none;
   border-radius: 16px;
   padding: 12px 16px;
@@ -169,7 +169,7 @@
 
 .story-type-card:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02);
-  background: linear-gradient(135deg, #1a7a3d 0%, #2ed573 100%);
+  background: #14532d;
   box-shadow: 0 4px 12px rgba(22, 101, 52, 0.3);
 }
 

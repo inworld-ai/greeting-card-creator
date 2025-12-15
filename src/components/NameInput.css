@@ -156,7 +156,7 @@
   height: 70px;
   flex-shrink: 0;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  background: #166534;
   color: white;
   border: none;
   border-radius: 16px;
@@ -174,7 +174,7 @@
 
 .voice-option:not(.selected):hover {
   transform: translateY(-3px) scale(1.02);
-  background: linear-gradient(135deg, #1a7a3d 0%, #2ed573 100%);
+  background: #14532d;
   box-shadow: 0 4px 12px rgba(22, 101, 52, 0.3);
 }
 
@@ -183,7 +183,7 @@
 }
 
 .voice-option.selected {
-  background: linear-gradient(135deg, #0d4a22 0%, #166534 100%);
+  background: #14532d;
   border: 2px solid #22c55e;
 }
 
@@ -202,7 +202,7 @@
 .voice-option.disabled:hover {
   transform: none;
   box-shadow: none;
-  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  background: #166534;
 }
 
 .voice-name {
