@@ -228,9 +228,12 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
             maxWidth: '500px',
             textAlign: 'center'
           }}>
-            <p style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#555', margin: '0 0 12px 0' }}>
-              <strong>🎤 Record a 10-15 second audio sample</strong> of yourself speaking clearly. 
-              <strong>Find a quiet place to record for the best results.</strong> An AI voice will be made instantly and ready to use! Follow this script when recording:
+            <p style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#555', margin: '0 0 12px 0' }}>
+              <strong>🎤 Record a 10-15 second audio sample of yourself speaking clearly.</strong>
+              <br /><br />
+              <strong>Find a quiet place to record for the best results.</strong>
+              <br /><br />
+              An AI voice will be made instantly and ready to use! Follow this script when recording:
             </p>
             <div style={{ 
               backgroundColor: '#fff', 
