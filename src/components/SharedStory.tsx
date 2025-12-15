@@ -184,7 +184,7 @@ function SharedStory() {
       <div className="app" style={{ background: '#faf7f5', minHeight: '100vh' }}>
         <div className="app-container" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
           <h1 className="app-title" style={{ marginBottom: '2rem' }}>
-            <span className="app-title-content">🎄 A Christmas Card For You</span>
+            <span className="app-title-content">A Christmas Card For You</span>
           </h1>
           
           <div className="greeting-card-display-container">
