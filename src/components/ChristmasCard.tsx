@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import './ChristmasCard.css'
 
 interface ChristmasCardProps {
@@ -13,12 +13,14 @@ interface ChristmasCardProps {
 
 function ChristmasCard({ imageUrl, title, content, childName: _childName, onCardOpen, isAudioReady = false, isAudioLoading = false }: ChristmasCardProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const hasTriggeredAudioRef = useRef(false) // Track if audio has already been triggered
 
   const handleOpenCard = () => {
     if (!isOpen) {
       setIsOpen(true)
-      // Notify parent that card was opened (triggers audio playback)
-      if (onCardOpen) {
+      // Only trigger audio playback on the FIRST open, not subsequent opens
+      if (onCardOpen && !hasTriggeredAudioRef.current) {
+        hasTriggeredAudioRef.current = true
         onCardOpen()
       }
     }
