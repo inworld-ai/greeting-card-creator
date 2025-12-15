@@ -132,8 +132,8 @@
 }
 
 .story-type-card {
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
-  border: 1px solid rgba(76, 175, 80, 0.2);
+  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  border: none;
   border-radius: 24px;
   padding: 16px 16px;
   cursor: pointer;
@@ -153,7 +153,7 @@
   left: -2px;
   right: -2px;
   bottom: -2px;
-  border: 2px solid rgba(34, 139, 34, 0.3);
+  border: 2px solid rgba(34, 197, 94, 0.5);
   border-radius: 24px;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -165,8 +165,8 @@
 
 .story-type-card:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02);
-  border-color: rgba(76, 175, 80, 0.6);
-  background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 30%, #81c784 60%, #66bb6a 100%);
+  background: linear-gradient(135deg, #1a7a3d 0%, #2ed573 100%);
+  box-shadow: 0 4px 12px rgba(22, 101, 52, 0.3);
 }
 
 .story-type-card:active:not(:disabled) {
@@ -188,7 +188,7 @@
 .story-type-label {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: white;
   text-align: center;
   font-family: 'FeatureDeck', 'Georgia', serif;
   letter-spacing: -0.02em;

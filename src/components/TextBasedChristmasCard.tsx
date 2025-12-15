@@ -442,6 +442,7 @@ function TextBasedChristmasCard() {
                 padding: '1rem 2rem',
                 fontSize: '1.2rem',
                 fontWeight: '600',
+                fontFamily: "'FeatureDeck', serif",
                 color: 'white',
                 background: 'linear-gradient(135deg, #166534 0%, #22c55e 100%)',
                 border: 'none',
