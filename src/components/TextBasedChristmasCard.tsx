@@ -46,18 +46,12 @@ function TextBasedChristmasCard() {
   useEffect(() => {
     if (hasPlayedWelcomeRef.current) return
     
-    const playWelcome = async () => {
+    const welcomeAudio = new Audio('/audio/welcome-card-creator.mp3')
+    
+    const playWelcome = () => {
       if (hasPlayedWelcomeRef.current) return
       hasPlayedWelcomeRef.current = true
-      
-      try {
-        const welcome = await synthesizeSpeech('[happy] Welcome to the Inworld Christmas Card Creator! Enter your details now!', {
-          voiceId: 'christmas_story_generator__female_elf_narrator'
-        })
-        welcome.play().catch(err => console.log('Welcome play error:', err))
-      } catch (err) {
-        console.log('Could not play welcome:', err)
-      }
+      welcomeAudio.play().catch(err => console.log('Welcome play error:', err))
     }
     
     // Try autoplay first
@@ -180,10 +174,7 @@ function TextBasedChristmasCard() {
 
         // Only preload follow-up prompt if no custom voice (user hasn't created one yet)
         if (!customVoiceId) {
-          const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
-          const followUpAudio = await synthesizeSpeech(followUpText, {
-            voiceId: 'christmas_story_generator__female_elf_narrator'
-          })
+          const followUpAudio = new Audio('/audio/click-custom-narrator.mp3')
           preloadedFollowUpRef.current = followUpAudio
           console.log('✅ Follow-up audio preloaded!')
         }
@@ -232,10 +223,7 @@ function TextBasedChristmasCard() {
             console.log('🎵 Playing preloaded follow-up audio...')
             followUpAudio = preloadedFollowUpRef.current
           } else {
-            const followUpText = 'Click Create Custom Narrator to add your own voice to the Christmas Card message.'
-            followUpAudio = await synthesizeSpeech(followUpText, {
-              voiceId: 'christmas_story_generator__female_elf_narrator'
-            })
+            followUpAudio = new Audio('/audio/click-custom-narrator.mp3')
           }
           audioRef.current = followUpAudio
           await followUpAudio.play()

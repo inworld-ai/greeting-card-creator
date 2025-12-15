@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import React from 'react'
 import './StoryTypeSelection.css'
 import MicrophoneButton from './MicrophoneButton'
-import { synthesizeSpeech } from '../services/ttsService'
 import type { StoryType } from '../App'
 
 interface StoryTypeSelectionProps {
@@ -25,18 +24,12 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   useEffect(() => {
     if (hasPlayedWelcomeRef.current) return
     
-    const playWelcome = async () => {
+    const welcomeAudio = new Audio('/audio/welcome-story-creator.mp3')
+    
+    const playWelcome = () => {
       if (hasPlayedWelcomeRef.current) return
       hasPlayedWelcomeRef.current = true
-      
-      try {
-        const welcome = await synthesizeSpeech('[happy] Welcome to the Inworld Christmas Story Creator! Enter your details now!', {
-          voiceId: 'christmas_story_generator__female_elf_narrator'
-        })
-        welcome.play().catch(err => console.log('Welcome play error:', err))
-      } catch (err) {
-        console.log('Could not play welcome:', err)
-      }
+      welcomeAudio.play().catch(err => console.log('Welcome play error:', err))
     }
     
     // Try autoplay first
