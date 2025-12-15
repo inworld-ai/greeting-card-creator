@@ -142,6 +142,27 @@ function App() {
     }
   }, [path, storyData.experienceType])
 
+  // Check backend connectivity on app load (for debugging)
+  useEffect(() => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
+    console.log('🔗 App loaded - API URL:', API_BASE_URL)
+    console.log('🔗 Environment:', import.meta.env.PROD ? 'Production' : 'Development')
+    
+    // Quick health check
+    fetch(`${API_BASE_URL}/health`)
+      .then(res => {
+        if (res.ok) {
+          console.log('✅ Backend connectivity: OK')
+        } else {
+          console.warn('⚠️ Backend returned non-OK status:', res.status)
+        }
+      })
+      .catch(err => {
+        console.error('❌ Backend connectivity FAILED:', err.message)
+        console.error('❌ This may indicate Railway is down or unreachable')
+      })
+  }, [])
+
   // Text-based Christmas Card route (simple form, no voice agent)
   // This must come AFTER all hooks to comply with React's rules of hooks
   if (path === '/christmascard') {

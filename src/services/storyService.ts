@@ -1,7 +1,10 @@
 import type { StoryType } from '../App'
 
-// Backend API URL - use relative URLs in production (Vercel), localhost in development
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+// Backend API URL - use Railway URL as fallback in production
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
+
+// Log API URL on first use for debugging
+console.log('📡 Story Service API URL:', API_BASE_URL)
 
 export interface StoryChunk {
   text: string

@@ -161,7 +161,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       const base64Audio = await convertAudioToBase64(audioBlob)
       
       // Call backend clone API
-      const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
       const response = await fetch(`${API_BASE_URL}/api/clone-voice`, {
         method: 'POST',
         headers: {

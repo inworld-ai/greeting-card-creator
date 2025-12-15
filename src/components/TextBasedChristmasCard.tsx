@@ -68,9 +68,10 @@ function TextBasedChristmasCard() {
     }
     
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
       
       console.log('🎄 Starting card generation...')
+      console.log('🔗 API URL:', API_BASE_URL)
       
       // Generate message and image in parallel
       const [messageResponse, imageResponse] = await Promise.all([
@@ -249,7 +250,7 @@ function TextBasedChristmasCard() {
     setIsSharing(true)
     setShareSuccess(false)
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001')
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
       
       const response = await fetch(`${API_BASE_URL}/api/share-story`, {
         method: 'POST',

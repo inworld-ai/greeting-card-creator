@@ -60,6 +60,19 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 // In-memory storage for shared stories (in production, use a database)
 const sharedStories = new Map()
 
+// Health check endpoint for connectivity testing
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: {
+      hasInworldKey: !!process.env.INWORLD_API_KEY,
+      hasGoogleKey: !!process.env.GOOGLE_API_KEY,
+      hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
+    }
+  })
+})
+
 // Inworld Voice Clone API endpoint
 app.post('/api/clone-voice', async (req, res) => {
   try {
