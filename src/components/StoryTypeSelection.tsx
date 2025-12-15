@@ -11,7 +11,7 @@ interface StoryTypeSelectionProps {
 
 const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji: string }[] = [
   { value: 'Meeting Santa Claus', label: <>Meeting<br />Santa Claus</>, emoji: '🎅' },
-  { value: 'Christmas Eve Adventure', label: 'Christmas Eve Adventure', emoji: '🎁' },
+  { value: 'Christmas Eve Adventure', label: 'Christmas Eve Adventure', emoji: '✨' },
   { value: 'Elf Workshop Visit', label: 'Elf Workshop Visit', emoji: '🧝' },
 ]
 
