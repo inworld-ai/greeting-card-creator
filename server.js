@@ -2652,14 +2652,16 @@ Make it feel like a magical message from the North Pole!`
   }
 })
 
-// Greeting card image generation using Google Nano Banana (Gemini 2.5 Flash Image)
+// Greeting card image generation using DALL-E 3
 app.post('/api/generate-greeting-card-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')
-  console.log('🎨 GREETING CARD IMAGE GENERATION ENDPOINT CALLED')
+  console.log('🎨 GREETING CARD IMAGE GENERATION ENDPOINT CALLED (DALL-E 3)')
   console.log('🎨 ==========================================')
   
+  const startTime = Date.now()
+  
   try {
-    const { recipientName, specialAboutThem, funnyStory, uploadedImageUrl } = req.body
+    const { recipientName, specialAboutThem, funnyStory } = req.body
 
     if (!recipientName || !funnyStory) {
       return res.status(400).json({ 
@@ -2667,66 +2669,46 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
       })
     }
 
-    if (!process.env.GOOGLE_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ 
-        error: 'Server configuration error: GOOGLE_API_KEY not set' 
+        error: 'Server configuration error: OPENAI_API_KEY not set' 
       })
     }
 
-    // Build image prompt based on details
-    // IMPORTANT: Do NOT show any people to avoid race/appearance issues
-    // IMPORTANT: Generate image in 1:1 square aspect ratio (Nano Banana default is 1024x1024)
-    let imagePrompt = `A beautiful, personalized Christmas greeting card illustration in square 1:1 aspect ratio (equal width and height). The card should display the text "Merry Christmas ${recipientName}" prominently. `
+    // Build image prompt for DALL-E 3
+    // DALL-E 3 is excellent at rendering text in images
+    let imagePrompt = `A beautiful, personalized Christmas greeting card illustration. The card should display the text "Merry Christmas ${recipientName}" prominently and clearly legible. `
     if (specialAboutThem) {
       imagePrompt += `The image should reflect: ${specialAboutThem}. `
     }
     imagePrompt += `Include items, objects, and elements that reference: ${funnyStory}. `
-    imagePrompt += `Style: cheerful, festive, humorous, cartoon-like, suitable for a greeting card. `
-    imagePrompt += `Christmas theme with warm colors. `
-    imagePrompt += `CRITICAL: Do NOT show any people, faces, or human figures. Only show objects, items, decorations, and Christmas elements related to the anecdote. `
-    imagePrompt += `CRITICAL: The image must be in square 1:1 aspect ratio (equal width and height, like 1024x1024 pixels). `
-    imagePrompt += `CRITICAL: Do NOT include any text like "Rough Draft" or any other labels or watermarks. Only include the text "Merry Christmas ${recipientName}" as specified.`
+    imagePrompt += `Style: cheerful, festive, humorous, cartoon-like illustration suitable for a greeting card. `
+    imagePrompt += `Christmas theme with warm colors, snow, and holiday decorations. `
+    imagePrompt += `IMPORTANT: Do NOT show any people, faces, or human figures. Only show objects, items, decorations, and Christmas elements related to the anecdote.`
 
-    // Prepare request body - if uploadedImageUrl is provided, use image editing mode
-    let requestBody
-    if (uploadedImageUrl) {
-      // Image editing mode: convert uploaded image to base64
-      // Note: uploadedImageUrl might be a data URL or blob URL, we'll need to handle it
-      // For now, we'll use text-to-image, but this can be enhanced to support image editing
-      requestBody = {
-        contents: [{
-          parts: [
-            { text: imagePrompt }
-          ]
-        }]
-      }
-    } else {
-      // Text-to-image mode
-      requestBody = {
-        contents: [{
-          parts: [
-            { text: imagePrompt }
-          ]
-        }]
-      }
-    }
+    console.log(`🎨 Generating image for: ${recipientName}`)
+    console.log(`🎨 Prompt: ${imagePrompt.substring(0, 150)}...`)
 
-    // Use Google's Gemini 2.5 Flash Image API (Nano Banana)
-    // Reference: https://ai.google.dev/gemini-api/docs/image-generation
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      }
-    )
+    // Use OpenAI DALL-E 3 API
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+        response_format: 'url'
+      })
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Google Gemini Image API error:', errorText)
+      console.error('❌ DALL-E 3 API error:', errorText)
       return res.status(200).json({ 
         imageUrl: null,
         error: 'Image generation temporarily unavailable'
@@ -2735,29 +2717,23 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
 
     const data = await response.json()
     
-    // Extract image from response
-    // The response contains parts with inlineData (base64 encoded image)
+    // Extract image URL from DALL-E response
     let imageUrl = null
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      for (const part of data.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          // Convert base64 to data URL
-          const mimeType = part.inlineData.mimeType || 'image/png'
-          imageUrl = `data:${mimeType};base64,${part.inlineData.data}`
-          break
-        }
-      }
+    if (data.data && data.data[0] && data.data[0].url) {
+      imageUrl = data.data[0].url
     }
 
     if (!imageUrl) {
-      console.warn('⚠️ No image data found in response')
+      console.warn('⚠️ No image URL found in response')
       return res.status(200).json({ 
         imageUrl: null,
         error: 'No image generated'
       })
     }
 
-    console.log(`✅ Generated greeting card image (${imageUrl.length} chars data URL)`)
+    const elapsed = Date.now() - startTime
+    console.log(`✅ Generated greeting card image with DALL-E 3 in ${elapsed}ms`)
+    console.log(`🔗 Image URL: ${imageUrl.substring(0, 80)}...`)
     
     return res.status(200).json({ imageUrl })
   } catch (error) {
