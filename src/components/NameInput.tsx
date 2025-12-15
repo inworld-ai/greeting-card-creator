@@ -50,7 +50,7 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
         </div>
         
         <div className="voice-selection">
-          <label className="voice-selection-label">Select a narrator:</label>
+          <label className="voice-selection-label">Select a story narrator:</label>
           <div className="voice-options">
             {VOICES.map((voice) => (
               <button
