@@ -127,21 +127,21 @@
 
 .story-type-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
 }
 
 .story-type-card {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 60%, #81c784 100%);
   border: 1px solid rgba(76, 175, 80, 0.2);
   border-radius: 24px;
-  padding: 28px 20px;
+  padding: 16px 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   /* Removed box-shadow for minimal look */
   position: relative;
 }
@@ -180,13 +180,13 @@
 }
 
 .story-type-emoji {
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   display: block;
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .story-type-label {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: #1a1a1a;
   text-align: center;

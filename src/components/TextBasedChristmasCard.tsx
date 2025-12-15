@@ -328,7 +328,7 @@ function TextBasedChristmasCard() {
             color: '#166534',
             marginBottom: '0.5rem',
           }}>
-            🎄 Christmas Card Creator
+            Christmas Card Creator
           </h1>
           <p style={{
             color: '#666',
@@ -458,7 +458,7 @@ function TextBasedChristmasCard() {
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              🎁 Create My Card
+              Create My Card
             </button>
           </form>
           
