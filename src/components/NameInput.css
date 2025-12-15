@@ -34,8 +34,8 @@
 .name-input-actions {
   display: flex;
   gap: 1rem;
-  justify-content: space-between;
-  margin-top: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
 }
 
 .name-input-field {

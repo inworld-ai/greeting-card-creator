@@ -68,19 +68,18 @@ function NameInput({ storyType: _storyType, onSubmit, onBack }: NameInputProps) 
           </div>
         </div>
         
-      </div>
-      
-      <div className="name-input-actions">
-        <button onClick={onBack} className="back-button">
-          ← Go Back
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={!name.trim() || !voiceId}
-          className="submit-button"
-        >
-          Continue
-        </button>
+        <div className="name-input-actions">
+          <button onClick={onBack} className="back-button">
+            ← Go Back
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim() || !voiceId}
+            className="submit-button"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   )
