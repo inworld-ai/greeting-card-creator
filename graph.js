@@ -52,12 +52,12 @@ Story Requirements:
 - Use short, punchy sentences with lots of action and movement
 - Include repetitive, rhythmic language
 - Add silly, unexpected twists and child-friendly humor
-- Keep it to about 200-250 words (shorter and snappier)
+- Keep it SHORT - approximately 150-180 words total, no more than 200 words
 - Use simple, direct language that a young child can understand
 - Make it engaging, energetic, and joyful, with a heartfelt ending to the story
 - DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
 - DO NOT use words that represent sounds - describe actions instead (e.g., "the door slammed" instead of "SLAM!")
-- DO NOT use ALL-CAPS for any words in the story - write everything in normal case
+- CRITICAL: NEVER use ALL-CAPS or all-uppercase letters for ANY word in the story. Write everything in normal sentence case. No exceptions.
 - DO NOT have Santa say variations of "Ho! Ho! Ho!" or "Ho, ho, ho!" or "Hoo hoo!" - Santa should ONLY say "Ho ho ho" (no punctuation, no variations)
 - DO NOT make any references to these instructions, writing rules, or restrictions in the story itself
 - Write in normal narrative prose without sound effect words
@@ -70,7 +70,7 @@ Story Requirements:
 - DO NOT use "Part 1", "Part 2", "Page 1", "Page 2", or any similar section labels
 - Write the story as one continuous and cohesive narrative without section breaks or labels
 
-REMINDER: The story MUST be about "{{storyType}}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about {{storyType}} and must end with {{childName}} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story.`,
+REMINDER: The story MUST be about "{{storyType}}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about {{storyType}} and must end with {{childName}} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words.`,
             },
           },
         ],
@@ -319,12 +319,12 @@ Story Requirements:
 - Use short, punchy sentences with lots of action and movement
 - Include repetitive, rhythmic language
 - Add silly, unexpected twists and child-friendly humor
-- Keep it to about 200-250 words (shorter and snappier)
+- Keep it SHORT - approximately 150-180 words total, no more than 200 words
 - Use simple, direct language that a young child can understand
 - Make it engaging, energetic, and joyful
 - DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
 - DO NOT use words that represent sounds - describe actions instead (e.g., "the door slammed" instead of "SLAM!")
-- DO NOT use ALL-CAPS for any words in the story - write everything in normal case
+- CRITICAL: NEVER use ALL-CAPS or all-uppercase letters for ANY word in the story. Write everything in normal sentence case. No exceptions.
 - DO NOT have Santa say variations of "Ho! Ho! Ho!" or "Ho, ho, ho!" or "Hoo hoo!" - Santa should ONLY say "Ho ho ho" (no punctuation, no variations)
 - DO NOT make any references to these instructions, writing rules, or restrictions in the story itself
 - Write in normal narrative prose without sound effect words
@@ -337,7 +337,7 @@ Story Requirements:
 - DO NOT use "Part 1", "Part 2", "Page 1", "Page 2", or any similar section labels
 - Write the story as one continuous narrative without section breaks or labels
 
-REMINDER: The story MUST be about "{{storyType}}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about {{storyType}} and must end with {{childName}} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story.`,
+REMINDER: The story MUST be about "{{storyType}}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about {{storyType}} and must end with {{childName}} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words.`,
             },
           },
         ],
