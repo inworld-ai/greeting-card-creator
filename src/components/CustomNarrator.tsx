@@ -217,19 +217,20 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       {/* Voice Clone Recording Only */}
       {useVoiceClone ? (
         // Voice Clone Flow
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ 
             marginTop: '10px', 
             padding: '18px', 
             backgroundColor: '#fff5f5', 
             borderRadius: '8px',
             border: '1px solid #f0d0d0',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            maxWidth: '500px',
+            textAlign: 'center'
           }}>
             <p style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#555', margin: '0 0 12px 0' }}>
               <strong>🎤 Record a 10-15 second audio sample</strong> of yourself speaking clearly. 
-              <strong style={{ display: 'block', marginTop: '8px' }}>Find a quiet place to record</strong> for the best results.
-              An AI voice will be made instantly and ready to use! Follow this script when recording:
+              <strong>Find a quiet place to record for the best results.</strong> An AI voice will be made instantly and ready to use! Follow this script when recording:
             </p>
             <div style={{ 
               backgroundColor: '#fff', 
