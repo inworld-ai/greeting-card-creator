@@ -59,7 +59,7 @@ function TextBasedChristmasCard() {
     
     // Play the female elf announcement
     try {
-      const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas card for ${announceName}!`, {
+      const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas card for ${announceName}. Oops, I spilled some paint! And, it's ready!`, {
         voiceId: 'christmas_story_generator__female_elf_narrator'
       })
       announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))

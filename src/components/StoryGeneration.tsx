@@ -30,6 +30,16 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
         
+        // Play the female elf announcement
+        try {
+          const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas story for ${childName}. Santa helped us brainstorm! And, it's ready!`, {
+            voiceId: 'christmas_story_generator__female_elf_narrator'
+          })
+          announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
+        } catch (err) {
+          console.log('Could not play announcement:', err)
+        }
+        
         // Start story generation
         const storyPromise = generateStoryProgressive(storyType, childName, async (chunk) => {
           console.log(`🟡 Chunk ${chunk.chunkIndex} generated, length: ${chunk.text.length}`)
