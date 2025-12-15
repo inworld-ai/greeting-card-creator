@@ -39,7 +39,7 @@ function LandingPage({ onSelectExperience }: LandingPageProps) {
           <div className="landing-option-icon">💌</div>
           <h2 className="landing-option-title">Christmas Card Creator</h2>
           <p className="landing-option-description">
-            Create a fun, comical personalized Christmas card with AI-generated image and message
+            Create a fun, comical personalized Christmas card with your own voice as the narration
           </p>
         </div>
       </div>
