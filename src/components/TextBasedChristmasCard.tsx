@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { synthesizeSpeech } from '../services/ttsService'
 import { shareUrl } from '../services/shareService'
 import CustomNarrator from './CustomNarrator'
+import MicrophoneButton from './MicrophoneButton'
 import './GreetingCardDisplay.css'
 import './StoryGeneration.css'
+import './MicrophoneButton.css'
 
 type Step = 'form' | 'generating' | 'display' | 'custom-narrator'
 
@@ -367,24 +369,27 @@ function TextBasedChristmasCard() {
               }}>
                 Who is this card for?
               </label>
-              <input
-                type="text"
-                value={recipientInfo}
-                onChange={(e) => setRecipientInfo(e.target.value)}
-                placeholder="e.g., My dad Ed, My best friend Sarah"
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  fontSize: '1rem',
-                  border: '2px solid #ddd',
-                  borderRadius: '12px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#166534'}
-                onBlur={(e) => e.target.style.borderColor = '#ddd'}
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                <input
+                  type="text"
+                  value={recipientInfo}
+                  onChange={(e) => setRecipientInfo(e.target.value)}
+                  placeholder="e.g., My dad Ed, My best friend Sarah"
+                  style={{
+                    flex: 1,
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    border: '2px solid #ddd',
+                    borderRadius: '12px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#166534'}
+                  onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                />
+                <MicrophoneButton onTranscript={(text) => setRecipientInfo(text)} />
+              </div>
             </div>
             
             <div style={{ textAlign: 'left' }}>
@@ -396,26 +401,29 @@ function TextBasedChristmasCard() {
               }}>
                 Share something funny or sweet about them
               </label>
-              <textarea
-                value={funnyStory}
-                onChange={(e) => setFunnyStory(e.target.value)}
-                placeholder="e.g., He's obsessed with golf and talks about his handicap at every family dinner"
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  fontSize: '1rem',
-                  border: '2px solid #ddd',
-                  borderRadius: '12px',
-                  outline: 'none',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#166534'}
-                onBlur={(e) => e.target.style.borderColor = '#ddd'}
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                <textarea
+                  value={funnyStory}
+                  onChange={(e) => setFunnyStory(e.target.value)}
+                  placeholder="e.g., He's obsessed with golf and talks about his handicap at every family dinner"
+                  rows={4}
+                  style={{
+                    flex: 1,
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    border: '2px solid #ddd',
+                    borderRadius: '12px',
+                    outline: 'none',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#166534'}
+                  onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                />
+                <MicrophoneButton onTranscript={(text) => setFunnyStory(prev => prev ? `${prev} ${text}` : text)} />
+              </div>
             </div>
             
             <div style={{ textAlign: 'left' }}>
@@ -427,24 +435,27 @@ function TextBasedChristmasCard() {
               }}>
                 How would you like to sign off?
               </label>
-              <input
-                type="text"
-                value={signoff}
-                onChange={(e) => setSignoff(e.target.value)}
-                placeholder="e.g., Love, Dad | Your favorite son | The whole family"
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  fontSize: '1rem',
-                  border: '2px solid #ddd',
-                  borderRadius: '12px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#166534'}
-                onBlur={(e) => e.target.style.borderColor = '#ddd'}
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                <input
+                  type="text"
+                  value={signoff}
+                  onChange={(e) => setSignoff(e.target.value)}
+                  placeholder="e.g., Love, Dad | Your favorite son | The whole family"
+                  style={{
+                    flex: 1,
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    border: '2px solid #ddd',
+                    borderRadius: '12px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#166534'}
+                  onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                />
+                <MicrophoneButton onTranscript={(text) => setSignoff(text)} />
+              </div>
             </div>
             
             {error && (
