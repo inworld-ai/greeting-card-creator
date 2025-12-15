@@ -2466,37 +2466,28 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       })
     }
 
-    const prompt = `Create a short, fun, and comical personalized Christmas card message. 
+    const prompt = `Create a SHORT, fun, and comical personalized Christmas card message.
 
 Sender: ${senderName}
 Recipient: ${recipientName}
 ${relationship ? `Relationship: ${relationship}` : ''}
-${specialAboutThem ? `What's special about them: ${specialAboutThem}` : ''}
-Funny or heartwarming anecdote: ${funnyStory}
+Funny or heartwarming anecdote about them: ${funnyStory}
 
-Write a warm, humorous Christmas card message (2-3 short paragraphs max) that:
-- Is fun and comical in tone
-${relationship ? `- Reflects the relationship between ${senderName} and ${recipientName} (${relationship})` : ''}
-${specialAboutThem ? `- References the special thing about them` : ''}
-- Includes the funny or heartwarming anecdote in a lighthearted way
-- Feels personal and heartfelt
-- Is appropriate for a Christmas card (not too long)
-- Ends with a warm closing
+STRICT FORMAT - The message MUST follow this EXACT structure:
+1. Personalized greeting (e.g., "Dear ${recipientName}," or "Hey ${recipientName}!")
+2. EXACTLY 3 sentences that are fun and comical, referencing the anecdote
+3. Sign-off on its own line
 
-CRITICAL LENGTH REQUIREMENT: The message MUST be no more than 700 characters total (including spaces and punctuation). Keep it concise and impactful.
+CRITICAL: Only 3 sentences in the message body. No more, no less. Keep each sentence punchy and fun.
 
-CRITICAL SIGN-OFF REQUIREMENT: ${signoff ? `The message MUST end with EXACTLY this sign-off: "${signoff}". Do NOT modify or change this sign-off - use it exactly as provided.` : (relationship ? `The message MUST end with a relationship-appropriate sign-off from ${senderName} to ${recipientName}. Examples based on the relationship "${relationship}":
-- If relationship is "wife" or "husband": "Your loving husband" or "Your loving wife"
-- If relationship is "best friend": "Your best friend" or "Your favorite friend"
-- If relationship is "grandmother" or "grandfather": "Your loving grandchild" or "Your favorite grandchild"
-- If relationship is "mother" or "father": "Your loving child" or "Your favorite child"
-- If relationship is "sister" or "brother": "Your loving sibling" or "Your favorite sibling"
-- If relationship is "daughter" or "son": "Your loving parent" or "Your proud parent"
-- For other relationships, use an appropriate sign-off like "Your loving ${relationship}" or "Your favorite ${relationship}"
+SIGN-OFF: ${signoff ? `Use EXACTLY: "${signoff}"` : `Use a warm sign-off like "Love, ${senderName}" or "Merry Christmas! ${senderName}"`}
 
-The sign-off should feel warm, personal, and appropriate for the relationship. Do NOT use generic terms like "Friend" - always use the specific relationship.` : `The message MUST end with a warm closing like "Happy holidays!" or "Merry Christmas!" followed by the sender's name (${senderName}).`)}
+Example format:
+Dear [Name],
 
-Make it feel genuine and fun, like something someone would write to someone they care about.`
+[Sentence 1 - fun opener]. [Sentence 2 - reference the anecdote humorously]. [Sentence 3 - warm Christmas wish].
+
+[Sign-off]`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
