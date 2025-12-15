@@ -47,9 +47,9 @@ RULES:
 - Style: Playful, silly, fun - Robert Munsch style
 - Sentences: Short and punchy
 - Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
-- No ALL-CAPS words
+- NEVER use ALL-CAPS or all-uppercase letters for ANY word
 - No sound effects (BOOM, ZAP, etc.)
-- Santa says "Ho ho ho" only (no punctuation variations)
+- NEVER include "Ho ho ho" or any variation - Santa should speak in normal sentences only
 
 CRITICAL LENGTH: 80-100 words maximum. Count carefully. This story should take 30-40 seconds to read aloud.`,
             },
@@ -295,9 +295,9 @@ RULES:
 - Style: Playful, silly, fun - Robert Munsch style
 - Sentences: Short and punchy
 - Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
-- No ALL-CAPS words
+- NEVER use ALL-CAPS or all-uppercase letters for ANY word
 - No sound effects (BOOM, ZAP, etc.)
-- Santa says "Ho ho ho" only (no punctuation variations)
+- NEVER include "Ho ho ho" or any variation - Santa should speak in normal sentences only
 
 CRITICAL LENGTH: 80-100 words maximum. Count carefully. This story should take 30-40 seconds to read aloud.`,
             },
