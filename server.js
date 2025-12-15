@@ -580,46 +580,27 @@ app.post('/api/generate-story', async (req, res) => {
     const startTime = Date.now()
     console.log(`📖 Generating story for "${childName}" about "${storyType}"`)
 
-    // Build the story prompt
-    const systemPrompt = `You are a creative and playful Christmas storyteller who writes VERY SHORT fun stories in the style of Robert Munsch. CRITICAL: Stories must be 110-120 words maximum - this is a strict limit. You MUST follow the user's story topic requirements exactly. All stories should have a Christmas theme and end with the child having a wonderful Christmas filled with joy, magic, and happiness. Stories should be lighthearted, silly, and full of fun. Remember: 110-120 words MAXIMUM.`
+    // Build the story prompt - VERY SHORT stories
+    const systemPrompt = `You write EXTREMELY SHORT Christmas stories (80-100 words ONLY, about 400-500 characters). Write fun, playful stories in Robert Munsch style. Be concise - every word counts.`
 
-    const userPrompt = `You are writing a personalized Christmas story for a child named ${childName}.
+    const userPrompt = `Write a VERY SHORT Christmas story for ${childName} about: "${storyType}"
 
-CRITICAL REQUIREMENT - THE STORY MUST BE ABOUT THIS EXACT TOPIC:
-"${storyType}"
+STRICT FORMAT:
+Title: [Short Title]
 
-DO NOT write about anything else. DO NOT substitute this topic with something similar. The story MUST be specifically and directly about: ${storyType}
+[Story: EXACTLY 6-8 short sentences. No more. Target: 80-100 words total.]
 
-Story Requirements:
-- Start with a title on the first line in the format: "Title: [Story Title]"
-- The main character is ${childName}
-- ${childName} is the hero of the story
-- The story is specifically about: ${storyType}
-- The story must feature ${storyType} as the central theme
-- Include classic Christmas elements: Santa Claus, reindeer, elves, Christmas trees, presents, snow, the North Pole, Christmas magic, etc.
-- Write in the style of Robert Munsch: playful, energetic, silly, and full of fun
-- Use short, punchy sentences with lots of action and movement
-- Include repetitive, rhythmic language
-- Add silly, unexpected twists and child-friendly humor
-- CRITICAL WORD LIMIT: The story MUST be between 110-120 words. Count your words carefully. Do NOT exceed 120 words under any circumstances
-- Use simple, direct language that a young child can understand
-- Make it engaging, energetic, and joyful
-- DO NOT use onomatopoeia or sound effect words like "BOOM!", "ZAP!", "WHOOSH!", "BANG!", "POP!", "CRASH!", "POW!", etc.
-- DO NOT use words that represent sounds - describe actions instead (e.g., "the door slammed" instead of "SLAM!")
-- CRITICAL: NEVER use ALL-CAPS or all-uppercase letters for ANY word in the story. Write everything in normal sentence case. No exceptions.
-- DO NOT have Santa say variations of "Ho! Ho! Ho!" or "Ho, ho, ho!" or "Hoo hoo!" - Santa should ONLY say "Ho ho ho" (no punctuation, no variations)
-- DO NOT make any references to these instructions, writing rules, or restrictions in the story itself
-- Write in normal narrative prose without sound effect words
-- The story MUST end with ${childName} having a wonderful Christmas, filled with joy, magic, and happiness
-- DO NOT end the story with ${childName} falling asleep, going to bed, or having dreams
-- DO NOT include any bedtime or sleep-related content in the ending
-- The ending should be active and joyful - ${childName} should be awake and experiencing the wonderful Christmas
-- Include a happy, uplifting ending that celebrates the magic of Christmas
-- Structure the story so it naturally flows in two parts (like two pages of a book)
-- DO NOT use "Part 1", "Part 2", "Page 1", "Page 2", or any similar section labels
-- Write the story as one continuous narrative without section breaks or labels
+RULES:
+- Main character: ${childName} (the hero)
+- Theme: ${storyType} with Christmas magic
+- Style: Playful, silly, fun - Robert Munsch style
+- Sentences: Short and punchy
+- Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
+- No ALL-CAPS words
+- No sound effects (BOOM, ZAP, etc.)
+- Santa says "Ho ho ho" only (no punctuation variations)
 
-REMINDER: The story MUST be about "${storyType}". Do not write about balloons, butterflies, or any other non-Christmas topic. The story must be about ${storyType} and must end with ${childName} having a wonderful Christmas filled with joy and magic - while AWAKE and actively experiencing it, NOT falling asleep. Write in Robert Munsch's playful, energetic style with short sentences, lots of action, silly humor, and fun! DO NOT use onomatopoeia or sound effect words - use normal narrative prose instead. DO NOT reference these instructions or writing rules in the story. NEVER use ALL-CAPS for any words. WORD LIMIT: 110-120 words maximum - this is essential.`
+CRITICAL LENGTH: 80-100 words maximum (about 400-500 characters). Count carefully. This story should take 30-40 seconds to read aloud. If your story is longer, cut it down.`
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -631,7 +612,7 @@ REMINDER: The story MUST be about "${storyType}". Do not write about balloons, b
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
+        max_tokens: 200,
         system: systemPrompt,
         messages: [
           {
@@ -658,7 +639,10 @@ REMINDER: The story MUST be about "${storyType}". Do not write about balloons, b
 
     const endTime = Date.now()
     const totalTime = endTime - startTime
-    console.log(`✅ Generated story (first 200 chars): ${storyText.substring(0, 200)}...`)
+    const wordCount = storyText.split(/\s+/).filter(w => w.length > 0).length
+    const charCount = storyText.length
+    console.log(`✅ Generated story - Words: ${wordCount}, Characters: ${charCount}`)
+    console.log(`✅ Story (first 200 chars): ${storyText.substring(0, 200)}...`)
     console.log(`Story mentions "${storyType}": ${storyText.toLowerCase().includes(storyType.toLowerCase())}`)
     console.log(`⏱️ Total story generation time: ${totalTime}ms (${(totalTime / 1000).toFixed(2)}s)`)
 
