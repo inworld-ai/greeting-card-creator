@@ -317,6 +317,7 @@ function TextBasedChristmasCard() {
           <h1 style={{
             fontFamily: "'FeatureDeck', serif",
             fontSize: '2.5rem',
+            fontWeight: 400,
             color: '#166534',
             marginBottom: '0.5rem',
           }}>
@@ -443,7 +444,7 @@ function TextBasedChristmasCard() {
                 padding: '1rem 2rem',
                 fontSize: '1.2rem',
                 fontWeight: '600',
-                fontFamily: "'FeatureDeck', serif",
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 color: 'white',
                 background: '#166534',
                 border: 'none',
@@ -497,7 +498,7 @@ function TextBasedChristmasCard() {
       }}>
         <div className="loading-container">
           <h2 className="loading-title">
-            CREATING YOUR CHRISTMAS CARD...
+            Creating your Christmas card...
           </h2>
           <div className="loading-dots">
             <span></span>

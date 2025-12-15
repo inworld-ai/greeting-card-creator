@@ -134,7 +134,7 @@ function GreetingCardGeneration({
   return (
     <div className="story-generation">
       <div className="loading-container">
-        <h2 className="loading-title">CREATING YOUR CHRISTMAS CARD...</h2>
+        <h2 className="loading-title">Creating your Christmas card...</h2>
         <div className="loading-dots">
           <span></span>
           <span></span>

@@ -190,7 +190,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
   return (
     <div className="story-generation">
       <div className="loading-container">
-        <h2 className="loading-title">CREATING YOUR CHRISTMAS STORY...</h2>
+        <h2 className="loading-title">Creating your Christmas story...</h2>
         <div className="loading-dots">
           <span></span>
           <span></span>
