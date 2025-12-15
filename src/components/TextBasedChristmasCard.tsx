@@ -40,6 +40,25 @@ function TextBasedChristmasCard() {
   const hasPlayedRef = useRef(false)
   const hasAskedFollowUpRef = useRef(false)
   const isPreloadingRef = useRef(false)
+  const hasPlayedWelcomeRef = useRef(false)
+
+  // Play welcome greeting when component mounts
+  useEffect(() => {
+    if (hasPlayedWelcomeRef.current) return
+    hasPlayedWelcomeRef.current = true
+    
+    const playWelcome = async () => {
+      try {
+        const welcome = await synthesizeSpeech('[happy] Welcome to the Inworld Christmas Card Creator! Enter your details now!', {
+          voiceId: 'christmas_story_generator__female_elf_narrator'
+        })
+        welcome.play().catch(err => console.log('Welcome autoplay prevented:', err))
+      } catch (err) {
+        console.log('Could not play welcome:', err)
+      }
+    }
+    playWelcome()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

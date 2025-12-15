@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import React from 'react'
 import './StoryTypeSelection.css'
 import MicrophoneButton from './MicrophoneButton'
+import { synthesizeSpeech } from '../services/ttsService'
 import type { StoryType } from '../App'
 
 interface StoryTypeSelectionProps {
@@ -18,6 +19,25 @@ const SUGGESTED_STORY_TYPES: { value: string; label: string | JSX.Element; emoji
 function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
   const [textInput, setTextInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const hasPlayedWelcomeRef = useRef(false)
+
+  // Play welcome greeting when component mounts
+  useEffect(() => {
+    if (hasPlayedWelcomeRef.current) return
+    hasPlayedWelcomeRef.current = true
+    
+    const playWelcome = async () => {
+      try {
+        const welcome = await synthesizeSpeech('[happy] Welcome to the Inworld Christmas Story Creator! Enter your details now!', {
+          voiceId: 'christmas_story_generator__female_elf_narrator'
+        })
+        welcome.play().catch(err => console.log('Welcome autoplay prevented:', err))
+      } catch (err) {
+        console.log('Could not play welcome:', err)
+      }
+    }
+    playWelcome()
+  }, [])
 
   const handleTextInput = (value: string) => {
     setTextInput(value)
