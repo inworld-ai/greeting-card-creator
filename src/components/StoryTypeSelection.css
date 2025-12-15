@@ -145,8 +145,8 @@
   gap: 4px;
   /* Removed box-shadow for minimal look */
   position: relative;
-  min-width: 120px;
-  max-width: 160px;
+  width: 140px;
+  flex-shrink: 0;
 }
 
 .story-type-card::before {
