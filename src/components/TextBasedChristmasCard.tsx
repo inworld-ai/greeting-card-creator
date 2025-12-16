@@ -473,7 +473,7 @@ function TextBasedChristmasCard() {
                   type="text"
                   value={signoff}
                   onChange={(e) => setSignoff(e.target.value)}
-                  placeholder="e.g., Love, Dad | Your favorite son | The whole family"
+                  placeholder="e.g., Love, Mom | Your favorite son | The whole family"
                   style={{
                     flex: 1,
                     padding: '1rem',
