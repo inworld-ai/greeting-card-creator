@@ -2630,10 +2630,10 @@ Make it feel like a magical message from the North Pole!`
   }
 })
 
-// Greeting card image generation using DALL-E 3
+// Greeting card image generation using OpenAI gpt-image-1.5
 app.post('/api/generate-greeting-card-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')
-  console.log('🎨 GREETING CARD IMAGE GENERATION ENDPOINT CALLED (DALL-E 3)')
+  console.log('🎨 GREETING CARD IMAGE GENERATION ENDPOINT CALLED (gpt-image-1.5)')
   console.log('🎨 ==========================================')
   
   const startTime = Date.now()
@@ -2653,8 +2653,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
       })
     }
 
-    // Build image prompt for DALL-E 3
-    // DALL-E 3 is excellent at rendering text in images
+    // Build image prompt for gpt-image-1.5
     let imagePrompt = `A beautiful, personalized Christmas greeting card illustration. The card should display the text "Merry Christmas ${recipientName}" prominently and clearly legible. `
     if (specialAboutThem) {
       imagePrompt += `The image should reflect: ${specialAboutThem}. `
@@ -2667,7 +2666,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
     console.log(`🎨 Generating image for: ${recipientName}`)
     console.log(`🎨 Prompt: ${imagePrompt.substring(0, 150)}...`)
 
-    // Use OpenAI DALL-E 3 API
+    // Use OpenAI gpt-image-1.5 API
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -2675,7 +2674,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5-2025-12-16',
         prompt: imagePrompt,
         n: 1,
         size: '1024x1024',
@@ -2686,7 +2685,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ DALL-E 3 API error:', errorText)
+      console.error('❌ gpt-image-1.5 API error:', errorText)
       return res.status(200).json({ 
         imageUrl: null,
         error: 'Image generation temporarily unavailable'
@@ -2695,7 +2694,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
 
     const data = await response.json()
     
-    // Extract image URL from DALL-E response
+    // Extract image URL from response
     let imageUrl = null
     if (data.data && data.data[0] && data.data[0].url) {
       imageUrl = data.data[0].url
@@ -2710,7 +2709,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
     }
 
     const elapsed = Date.now() - startTime
-    console.log(`✅ Generated greeting card image with DALL-E 3 in ${elapsed}ms`)
+    console.log(`✅ Generated greeting card image with gpt-image-1.5 in ${elapsed}ms`)
     console.log(`🔗 Image URL: ${imageUrl.substring(0, 80)}...`)
     
     return res.status(200).json({ imageUrl })
@@ -2723,10 +2722,10 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   }
 })
 
-// Story image generation endpoint for Christmas Story Creator using DALL-E 3
+// Story image generation endpoint for Christmas Story Creator using OpenAI gpt-image-1.5
 app.post('/api/generate-story-image', async (req, res) => {
   console.log('\n\n🎨 ==========================================')
-  console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED (DALL-E 3)')
+  console.log('🎨 STORY IMAGE GENERATION ENDPOINT CALLED (gpt-image-1.5)')
   console.log('🎨 ==========================================')
 
   const startTime = Date.now()
@@ -2748,7 +2747,7 @@ app.post('/api/generate-story-image', async (req, res) => {
       })
     }
 
-    // Build image prompt for DALL-E 3
+    // Build image prompt for gpt-image-1.5
     // Do NOT include the story title on the cover - just create an illustration related to the story plot
     // Include the character name somewhere in the image (but not as a title)
     // Do NOT depict the main character to avoid assumptions about race/appearance
@@ -2766,7 +2765,7 @@ app.post('/api/generate-story-image', async (req, res) => {
     console.log(`🎨 Story type: ${storyType}`)
     console.log(`🎨 Prompt: ${imagePrompt.substring(0, 150)}...`)
 
-    // Use OpenAI DALL-E 3 API
+    // Use OpenAI gpt-image-1.5 API
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -2774,7 +2773,7 @@ app.post('/api/generate-story-image', async (req, res) => {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5-2025-12-16',
         prompt: imagePrompt,
         n: 1,
         size: '1024x1024',
@@ -2785,7 +2784,7 @@ app.post('/api/generate-story-image', async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ DALL-E 3 API error:', errorText)
+      console.error('❌ gpt-image-1.5 API error:', errorText)
       console.error('❌ Response status:', response.status)
       return res.status(200).json({
         imageUrl: null,
@@ -2795,7 +2794,7 @@ app.post('/api/generate-story-image', async (req, res) => {
 
     const data = await response.json()
 
-    // Extract image URL from DALL-E response
+    // Extract image URL from response
     let imageUrl = null
     if (data.data && data.data[0] && data.data[0].url) {
       imageUrl = data.data[0].url
@@ -2810,7 +2809,7 @@ app.post('/api/generate-story-image', async (req, res) => {
     }
 
     const elapsed = Date.now() - startTime
-    console.log(`✅ Generated story image with DALL-E 3 in ${elapsed}ms`)
+    console.log(`✅ Generated story image with gpt-image-1.5 in ${elapsed}ms`)
     console.log(`🔗 Image URL: ${imageUrl.substring(0, 80)}...`)
 
     return res.status(200).json({ imageUrl })
