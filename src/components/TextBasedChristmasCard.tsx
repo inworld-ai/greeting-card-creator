@@ -41,6 +41,7 @@ function TextBasedChristmasCard() {
   const hasAskedFollowUpRef = useRef(false)
   const isPreloadingRef = useRef(false)
   const hasPlayedWelcomeRef = useRef(false)
+  const returningFromCustomNarratorRef = useRef(false)
 
   // Play welcome greeting on first user interaction (to avoid autoplay blocking)
   useEffect(() => {
@@ -187,6 +188,23 @@ function TextBasedChristmasCard() {
           const followUpAudio = new Audio('/audio/click-custom-narrator.mp3')
           preloadedFollowUpRef.current = followUpAudio
           console.log('✅ Follow-up audio preloaded!')
+        }
+        
+        // If returning from custom narrator, auto-play the message
+        if (returningFromCustomNarratorRef.current && customVoiceId) {
+          console.log('🎵 Auto-playing with custom narrator voice...')
+          returningFromCustomNarratorRef.current = false
+          
+          // Play the audio
+          audioRef.current = audio
+          setIsPlayingAudio(true)
+          
+          audio.addEventListener('ended', () => {
+            setIsPlayingAudio(false)
+            console.log('🎵 Custom narrator audio finished')
+          }, { once: true })
+          
+          await audio.play()
         }
       } catch (error) {
         console.error('Error preloading audio:', error)
@@ -582,11 +600,15 @@ function TextBasedChristmasCard() {
             onSubmit={(_apiKey: string, voiceId: string) => {
               setCustomVoiceId(voiceId)
               // Reset audio refs so we can replay with custom voice
-              hasPlayedRef.current = false
-              hasAskedFollowUpRef.current = false
+              hasPlayedRef.current = true // Mark as played so we don't double-play
+              hasAskedFollowUpRef.current = true // No follow-up needed with custom voice
               isPreloadingRef.current = false
               preloadedAudioRef.current = null
               preloadedFollowUpRef.current = null
+              // Mark that we're returning from custom narrator for auto-play
+              returningFromCustomNarratorRef.current = true
+              // Ensure card is flipped to show message
+              setIsFlipped(true)
               setStep('display')
             }}
             onBack={() => setStep('display')}
