@@ -407,7 +407,7 @@ function TextBasedChristmasCard() {
                   type="text"
                   value={recipientInfo}
                   onChange={(e) => setRecipientInfo(e.target.value)}
-                  placeholder="e.g., My dad Ed, My best friend Sarah"
+                  placeholder="e.g., My cousin Eddie"
                   style={{
                     flex: 1,
                     padding: '1rem',
@@ -438,7 +438,7 @@ function TextBasedChristmasCard() {
                 <textarea
                   value={funnyStory}
                   onChange={(e) => setFunnyStory(e.target.value)}
-                  placeholder="e.g., He's obsessed with golf and talks about his handicap at every family dinner"
+                  placeholder="e.g., He's obsessed with his RV and talks about it at every family dinner"
                   rows={4}
                   style={{
                     flex: 1,
@@ -473,7 +473,7 @@ function TextBasedChristmasCard() {
                   type="text"
                   value={signoff}
                   onChange={(e) => setSignoff(e.target.value)}
-                  placeholder="e.g., Love, Mom | Your favorite son | The whole family"
+                  placeholder="e.g., Love, Clark"
                   style={{
                     flex: 1,
                     padding: '1rem',
