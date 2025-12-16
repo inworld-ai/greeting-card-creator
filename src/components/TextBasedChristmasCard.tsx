@@ -509,15 +509,20 @@ function TextBasedChristmasCard() {
             marginTop: '2rem',
             fontSize: '0.9rem',
             color: '#888',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
           }}>
             🎁 A gift from{' '}
             <a 
               href="https://inworld.ai" 
               target="_blank" 
               rel="noopener noreferrer"
-              style={{ color: '#166534', textDecoration: 'underline' }}
+              style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
               Inworld AI
+              <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
             </a>
           </p>
         </div>
@@ -550,15 +555,20 @@ function TextBasedChristmasCard() {
           marginTop: '2rem',
           fontSize: '0.9rem',
           color: '#888',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px',
         }}>
           🎁 A gift from{' '}
           <a 
             href="https://inworld.ai" 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ color: '#166534', textDecoration: 'underline' }}
+            style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
             Inworld AI
+            <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
           </a>
         </p>
       </div>
@@ -600,16 +610,21 @@ function TextBasedChristmasCard() {
           padding: '2rem',
           fontSize: '0.9rem',
           color: '#888',
-          marginTop: '1rem'
+          marginTop: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px',
         }}>
           🎁 A gift from{' '}
           <a 
             href="https://inworld.ai" 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ color: '#166534', textDecoration: 'underline' }}
+            style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
             Inworld AI
+            <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
           </a>
         </p>
       </div>
@@ -689,7 +704,7 @@ function TextBasedChristmasCard() {
           disabled={isSharing}
           style={{ fontSize: '1rem', padding: '12px 14px', flex: 'none', width: 'auto', background: '#166534' }}
         >
-          {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Card'}
+          {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? 'Link Copied!' : shareSuccess === 'shared' ? 'Shared!' : 'Share Card'}
         </button>
       </div>
       
@@ -699,15 +714,20 @@ function TextBasedChristmasCard() {
         paddingBottom: '2rem',
         fontSize: '0.9rem',
         color: '#888',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
       }}>
         🎁 A gift from{' '}
         <a 
           href="https://inworld.ai" 
           target="_blank" 
           rel="noopener noreferrer"
-          style={{ color: '#166534', textDecoration: 'underline' }}
+          style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
         >
           Inworld AI
+          <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
         </a>
       </p>
     </div>

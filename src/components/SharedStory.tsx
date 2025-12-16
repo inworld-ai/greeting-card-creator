@@ -139,10 +139,11 @@ function SharedStory() {
           </div>
         </div>
         <footer className="inworld-footer">
-          <span style={{ color: '#888', fontSize: '0.9rem' }}>
+          <span style={{ color: '#888', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             🎁 A gift from{' '}
-            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline' }}>
+            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               Inworld AI
+              <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
             </a>
           </span>
         </footer>
@@ -166,10 +167,11 @@ function SharedStory() {
           </div>
         </div>
         <footer className="inworld-footer">
-          <span style={{ color: '#888', fontSize: '0.9rem' }}>
+          <span style={{ color: '#888', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             🎁 A gift from{' '}
-            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline' }}>
+            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               Inworld AI
+              <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
             </a>
           </span>
         </footer>
@@ -253,10 +255,11 @@ function SharedStory() {
         </div>
         
         <footer className="inworld-footer">
-          <span style={{ color: '#888', fontSize: '0.9rem' }}>
+          <span style={{ color: '#888', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             🎁 A gift from{' '}
-            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline' }}>
+            <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               Inworld AI
+              <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
             </a>
           </span>
         </footer>
