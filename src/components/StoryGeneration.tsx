@@ -172,9 +172,41 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
         const [fullStory, finalImageUrl] = await Promise.all([storyPromise, imagePromise])
         console.log('✅ Full story generated, length:', fullStory.length)
         
-        // Note: Remaining audio is now generated immediately in the first chunk handler above
-        // (when we split the text into first ~100 words and rest)
-        // No need to generate it again here
+        // Generate TTS for remaining text (text that wasn't covered by first chunk TTS)
+        // This handles the case where the first chunk is small but full story is much longer
+        if (firstChunkTextRef.current && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
+          const firstPartText = firstChunkTextRef.current
+          
+          // Find where firstPartText ends in the full story
+          const firstPartIndex = fullStory.indexOf(firstPartText)
+          let remainingText = ''
+          if (firstPartIndex !== -1) {
+            remainingText = fullStory.substring(firstPartIndex + firstPartText.length).trim()
+          } else {
+            // Fallback: try matching last few words
+            const lastWords = firstPartText.split(/\s+/).slice(-5).join(' ')
+            const lastWordsIndex = fullStory.indexOf(lastWords)
+            if (lastWordsIndex !== -1) {
+              remainingText = fullStory.substring(lastWordsIndex + lastWords.length).trim()
+            }
+          }
+          
+          if (remainingText && remainingText.length > 10) {
+            hasStartedRestTTSRef.current = true
+            console.log(`🎵 Full story has additional text (${remainingText.length} chars) - generating TTS...`)
+            
+            synthesizeSpeech('[happy] ' + remainingText, {
+              voiceId: customVoiceId || voiceId
+            }).then(remainingAudio => {
+              console.log(`✅ Additional story audio ready: ${remainingAudio.duration?.toFixed(1)}s`)
+              onRemainingAudioReady([remainingAudio])
+            }).catch(err => {
+              console.error('Error generating remaining audio:', err)
+            })
+          } else {
+            console.log('🎵 First part covers entire story, no additional audio needed')
+          }
+        }
         
         console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
         onStoryGenerated(fullStory, finalImageUrl)

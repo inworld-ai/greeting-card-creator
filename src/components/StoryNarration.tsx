@@ -1435,19 +1435,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
 
 
 
-  // Handle progressive story updates
+  // Handle progressive story updates - just track the current story text
   useEffect(() => {
-    if (isProgressive && onFullStoryReady && storyText && !fullStoryRef.current) {
-      // This is the first chunk - store it and notify parent when full story is ready
+    if (storyText && storyText !== fullStoryRef.current) {
       fullStoryRef.current = storyText
-    } else if (!isProgressive && storyText && storyText !== fullStoryRef.current) {
-      // Full story has arrived - update the ref
-      fullStoryRef.current = storyText
-      if (onFullStoryReady) {
-        onFullStoryReady(storyText)
-      }
     }
-  }, [storyText, isProgressive, onFullStoryReady])
+    // Note: Do NOT call onFullStoryReady here - it's already called by StoryGeneration
+    // Calling it here creates a redundant callback loop that triggers cleanup
+  }, [storyText])
 
   // For story experience: preload audio in background when image is ready
   // This allows instant playback when user clicks to open the card
