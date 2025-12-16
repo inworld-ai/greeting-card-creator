@@ -21,7 +21,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
   const hasStartedTTSRef = useRef(false)
   const hasTransitionedRef = useRef(false) // Prevent double transition
   const hasPassedFullAudioRef = useRef(false) // Prevent passing full audio multiple times
-  const hasStartedRemainingTTSRef = useRef(false) // Prevent generating remaining audio multiple times
+  const hasStartedRestTTSRef = useRef(false) // Prevent generating rest audio multiple times
   const firstChunkTextRef = useRef<string | null>(null)
   
   useEffect(() => {
@@ -59,7 +59,6 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
           // When first text chunk is ready, start TTS generation
           if (chunk.chunkIndex === 0 && !hasStartedTTSRef.current && onFirstAudioReady) {
             hasStartedTTSRef.current = true
-            firstChunkTextRef.current = chunk.text
             console.log('🟡 First text chunk ready, starting TTS generation...')
             
             try {
@@ -71,16 +70,27 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
                 textForTTS = titleMatch[1].trim() + '. ' + textForTTS.substring(titleMatch[0].length).trim()
               }
               
-              // Generate TTS for the first chunk with [happy] emotion tag
-              // The onFirstChunkReady callback fires after ~3 seconds of audio data
-              const fullAudio = await synthesizeSpeech('[happy] ' + textForTTS, {
+              // CRITICAL: Limit first TTS to ~100 words for fast generation
+              // This ensures full audio is ready before the ~4s preloaded chunk finishes playing
+              const words = textForTTS.split(/\s+/)
+              const MAX_FIRST_PART_WORDS = 100
+              const firstPartText = words.slice(0, MAX_FIRST_PART_WORDS).join(' ')
+              const restPartText = words.slice(MAX_FIRST_PART_WORDS).join(' ')
+              
+              console.log(`🟡 Splitting TTS: first ${MAX_FIRST_PART_WORDS} words (${firstPartText.length} chars), rest: ${restPartText.length} chars`)
+              
+              // Store only the first part as the "first chunk" text
+              firstChunkTextRef.current = firstPartText
+              
+              // Generate TTS for the FIRST PART only (fast - should complete in ~5-10s)
+              const fullAudio = await synthesizeSpeech('[happy] ' + firstPartText, {
                 voiceId: customVoiceId || voiceId,
                 onFirstChunkReady: (preloadedAudio) => {
                   // Only transition once - when first ~3 seconds of audio is ready
                   if (!hasTransitionedRef.current) {
                     hasTransitionedRef.current = true
                     console.log('🎵 First audio chunk (~3s) ready! Transitioning to narration...')
-                    onFirstAudioReady(chunk.text, preloadedAudio)
+                    onFirstAudioReady(firstPartText, preloadedAudio)
                   }
                 }
               })
@@ -88,8 +98,22 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
               // Pass the full audio when TTS completes (for seamless chaining)
               if (fullAudio && onFullFirstChunkAudioReady && !hasPassedFullAudioRef.current) {
                 hasPassedFullAudioRef.current = true
-                console.log('🎵 Full first chunk audio ready! Passing to narration...')
-                onFullFirstChunkAudioReady(fullAudio, chunk.text)
+                console.log(`🎵 Full first part audio ready (${fullAudio.duration?.toFixed(1)}s)! Passing to narration...`)
+                onFullFirstChunkAudioReady(fullAudio, firstPartText)
+              }
+              
+              // Start generating TTS for the REST immediately (in parallel, don't await)
+              if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
+                hasStartedRestTTSRef.current = true
+                console.log(`🎵 Starting TTS for rest of text (${restPartText.length} chars) in parallel...`)
+                synthesizeSpeech('[happy] ' + restPartText, {
+                  voiceId: customVoiceId || voiceId
+                }).then(restAudio => {
+                  console.log(`✅ Rest audio ready: ${restAudio.duration?.toFixed(1)}s`)
+                  onRemainingAudioReady([restAudio])
+                }).catch(err => {
+                  console.error('Error generating rest audio:', err)
+                })
               }
             } catch (ttsError) {
               console.error('❌ TTS generation failed:', ttsError)
@@ -148,42 +172,9 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
         const [fullStory, finalImageUrl] = await Promise.all([storyPromise, imagePromise])
         console.log('✅ Full story generated, length:', fullStory.length)
         
-        // START EARLY: Generate TTS for remaining text (after first chunk) immediately
-        // This way it will be ready by the time the first chunk audio finishes playing
-        if (firstChunkTextRef.current && onRemainingAudioReady && !hasStartedRemainingTTSRef.current) {
-          hasStartedRemainingTTSRef.current = true
-          const firstChunkText = firstChunkTextRef.current
-          
-          // Find remaining text after the first chunk
-          const firstChunkIndex = fullStory.indexOf(firstChunkText)
-          let remainingText = ''
-          if (firstChunkIndex !== -1) {
-            remainingText = fullStory.substring(firstChunkIndex + firstChunkText.length).trim()
-          } else {
-            // Fallback: try matching last words
-            const lastWords = firstChunkText.split(/\s+/).slice(-10).join(' ')
-            const lastWordsIndex = fullStory.indexOf(lastWords)
-            if (lastWordsIndex !== -1) {
-              remainingText = fullStory.substring(lastWordsIndex + lastWords.length).trim()
-            }
-          }
-          
-          if (remainingText && remainingText.length > 10) {
-            console.log(`🎵 Starting EARLY generation of remaining text audio (${remainingText.length} chars)...`)
-            
-            // Generate TTS for remaining text in background (don't await - let it run in parallel)
-            synthesizeSpeech('[happy] ' + remainingText, {
-              voiceId: customVoiceId || voiceId
-            }).then(remainingAudio => {
-              console.log(`✅ Remaining audio READY early: ${remainingAudio.duration?.toFixed(1)}s`)
-              onRemainingAudioReady([remainingAudio])
-            }).catch(err => {
-              console.error('Error generating remaining audio early:', err)
-            })
-          } else {
-            console.log('🎵 First chunk covers entire story, no remaining audio needed')
-          }
-        }
+        // Note: Remaining audio is now generated immediately in the first chunk handler above
+        // (when we split the text into first ~100 words and rest)
+        // No need to generate it again here
         
         console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
         onStoryGenerated(fullStory, finalImageUrl)
