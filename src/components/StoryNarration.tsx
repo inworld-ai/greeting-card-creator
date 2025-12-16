@@ -465,7 +465,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // Add title to the first chunk
       // For greeting cards, prepend [happy] emotion tag to influence voice tone (won't be verbalized)
       const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
-      const firstChunkWithTitle = emotionPrefix + (title ? `${title}. ${storyChunks[0]}` : storyChunks[0])
+      const firstChunkWithTitle = emotionPrefix + (title ? `${title}.\n\n${storyChunks[0]}` : storyChunks[0])
       
       // Generate first chunk audio
       const firstAudio = await synthesizeSpeech(firstChunkWithTitle, {
@@ -809,7 +809,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // Add title to the first chunk for TTS (if title exists)
       // For greeting cards, prepend [happy] emotion tag to influence voice tone (won't be verbalized)
       const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
-      const firstChunkWithTitle = emotionPrefix + (title ? `${title}. ${storyChunks[0]}` : storyChunks[0])
+      const firstChunkWithTitle = emotionPrefix + (title ? `${title}.\n\n${storyChunks[0]}` : storyChunks[0])
       
       let firstWavChunkReady = false
       let firstAudio: HTMLAudioElement
