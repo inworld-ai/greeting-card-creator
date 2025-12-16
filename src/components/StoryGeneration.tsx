@@ -79,8 +79,15 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             
             // Get the ORIGINAL text (before title transformation) for the first part
             // This ensures it matches the full story text for comparison in StoryNarration
-            const originalWords = chunk.text.split(/\s+/)
-            const originalFirstPartText = originalWords.slice(0, MAX_FIRST_PART_WORDS).join(' ')
+            // IMPORTANT: Preserve original whitespace (don't use split+join which normalizes spaces)
+            const wordMatches = [...chunk.text.matchAll(/\S+/g)]
+            const firstNWordMatches = wordMatches.slice(0, MAX_FIRST_PART_WORDS)
+            let originalFirstPartText = chunk.text
+            if (firstNWordMatches.length > 0) {
+              const lastMatch = firstNWordMatches[firstNWordMatches.length - 1]
+              const endPos = (lastMatch.index || 0) + lastMatch[0].length
+              originalFirstPartText = chunk.text.substring(0, endPos)
+            }
             
             console.log(`🟡 Splitting TTS: first ${MAX_FIRST_PART_WORDS} words (${firstPartText.length} chars), rest: ${restPartText.length} chars`)
             
