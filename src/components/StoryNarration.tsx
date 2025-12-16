@@ -814,6 +814,12 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       let firstWavChunkReady = false
       let firstAudio: HTMLAudioElement
       
+      // Promise to track when full audio is ready (for chaining from first WAV chunk)
+      let resolveFullAudioReady: ((audio: HTMLAudioElement) => void) | null = null
+      const fullAudioReadyPromise = new Promise<HTMLAudioElement>((resolve) => {
+        resolveFullAudioReady = resolve
+      })
+      
       // Check if we have preloaded audio from the loading screen that hasn't been used yet
       if (preloadedAudio && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
         console.log('🎵 Using preloaded audio from loading screen (instant playback!)')
@@ -858,6 +864,43 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               // Track this audio element
               allAudioElementsRef.current.add(firstWavChunk)
               
+              // CRITICAL: Set up onended handler NOW to chain to full audio when it's ready
+              // This must happen before the chunk finishes playing!
+              const firstWavChunkDuration = firstWavChunk.duration || 5
+              console.log(`🔗 Setting up early chaining - first WAV chunk duration: ${firstWavChunkDuration.toFixed(1)}s`)
+              
+              firstWavChunk.addEventListener('ended', async () => {
+                console.log('🔗 First WAV chunk ended, waiting for full audio to be ready...')
+                
+                // Check if we should stop
+                if (shouldStopAllAudioRef.current) {
+                  console.log('🛑 Audio playback stopped by cleanup flag')
+                  return
+                }
+                
+                // Wait for the full audio to be ready
+                const fullAudio = await fullAudioReadyPromise
+                console.log(`🔗 Full audio ready, seeking to ${firstWavChunkDuration.toFixed(1)}s and continuing...`)
+                
+                // Check again if we should stop
+                if (shouldStopAllAudioRef.current) {
+                  console.log('🛑 Audio playback stopped by cleanup flag')
+                  return
+                }
+                
+                // Seek past the part we already played
+                fullAudio.currentTime = firstWavChunkDuration
+                
+                // Play the rest of the audio
+                try {
+                  await fullAudio.play()
+                  console.log('✅ Full audio started playing from where first chunk left off')
+                } catch (err) {
+                  console.error('Error playing full audio:', err)
+                  setError('Error playing audio. Please try again.')
+                }
+              }, { once: true })
+              
               // Start playing immediately
               if (firstWavChunk.readyState >= 2) {
                 firstWavChunk.play().then(() => {
@@ -893,40 +936,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
       }
       
-      // CRITICAL FIX: If onFirstChunkReady played a partial audio (~3s), we need to chain it to the full audio
-      // The first chunk audio is stored in __firstChunkAudio property
+      // Resolve the promise so the first WAV chunk's onended handler can continue
+      if (resolveFullAudioReady !== null) {
+        console.log('🔗 Full audio ready, resolving promise for first WAV chunk chaining...')
+        ;(resolveFullAudioReady as (audio: HTMLAudioElement) => void)(firstAudio)
+      }
+      
+      // Track any first chunk audio from ttsService
       const firstChunkAudio = (firstAudio as any).__firstChunkAudio as HTMLAudioElement | undefined
-      if (firstChunkAudio && firstChunkAudio !== firstAudio) {
-        console.log('🔗 Setting up chaining from first ~3s chunk to full audio...')
-        
-        // Store the duration of the first chunk for seeking
-        const firstChunkDuration = firstChunkAudio.duration || 3 // Default to 3s if not available
-        console.log(`🔗 First chunk duration: ${firstChunkDuration.toFixed(1)}s`)
-        
-        // Set up onended to continue with the full audio
-        firstChunkAudio.addEventListener('ended', () => {
-          console.log('🔗 First ~3s chunk ended, continuing with full audio from where we left off...')
-          
-          // Check if we should stop
-          if (shouldStopAllAudioRef.current) {
-            console.log('🛑 Audio playback stopped by cleanup flag')
-            return
-          }
-          
-          // Seek the full audio to skip the part we already played
-          firstAudio.currentTime = firstChunkDuration
-          console.log(`🔗 Seeked full audio to ${firstChunkDuration.toFixed(1)}s`)
-          
-          // Play the full audio from that point
-          firstAudio.play().then(() => {
-            console.log('✅ Full audio started playing from where first chunk left off')
-          }).catch(err => {
-            console.error('Error playing full audio:', err)
-            setError('Error playing audio. Please try again.')
-          })
-        }, { once: true })
-        
-        // Track the first chunk audio
+      if (firstChunkAudio) {
         allAudioElementsRef.current.add(firstChunkAudio)
       }
       
