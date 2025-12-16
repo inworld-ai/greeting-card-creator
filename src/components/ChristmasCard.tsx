@@ -29,7 +29,7 @@ function ChristmasCard({ imageUrl, title, content, childName: _childName, onCard
   // Extract title from content if it starts with "Title: "
   const displayTitle = title || (content.startsWith('Title: ') 
     ? content.split('\n')[0].replace('Title: ', '')
-    : 'The Voice Before Christmas')
+    : '') // No fallback - let the title be empty if not provided
 
   // Remove title from content if it's in the content
   const displayContent = content.startsWith('Title: ')
@@ -62,7 +62,7 @@ function ChristmasCard({ imageUrl, title, content, childName: _childName, onCard
             // Inside Page
             <div className="card-inside">
               <div className="card-inside-content">
-                <h1 className="card-inside-title">{displayTitle}</h1>
+                {displayTitle && <h1 className="card-inside-title">{displayTitle}</h1>}
                 <div className="card-inside-story">
                   {displayContent.split('\n\n').map((paragraph, index) => (
                     <p key={index} className="story-paragraph">
