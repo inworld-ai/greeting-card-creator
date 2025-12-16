@@ -126,6 +126,7 @@ function App() {
   const [firstChunkText, setFirstChunkText] = useState<string>('')
   const [preloadedAudio, setPreloadedAudio] = useState<HTMLAudioElement | null>(null)
   const [fullFirstChunkAudio, setFullFirstChunkAudio] = useState<HTMLAudioElement | null>(null)
+  const [preloadedRemainingAudio, setPreloadedRemainingAudio] = useState<HTMLAudioElement[] | null>(null)
 
   // Update experience type when path changes
   useEffect(() => {
@@ -476,6 +477,11 @@ function App() {
     if (!firstChunkText) {
       setFirstChunkText(chunkText)
     }
+  }
+
+  const handleRemainingAudioReady = (remainingAudios: HTMLAudioElement[]) => {
+    console.log(`🎵 Remaining audio ready early! ${remainingAudios.length} chunks, ${remainingAudios[0]?.duration?.toFixed(1)}s`)
+    setPreloadedRemainingAudio(remainingAudios)
   }
 
   // Legacy handler for year-review and wish-list (text-only, no audio preload)
@@ -834,6 +840,7 @@ function App() {
                 onStoryGenerated={handleStoryGenerated}
                 onFirstAudioReady={handleFirstAudioReady}
                 onFullFirstChunkAudioReady={handleFullFirstChunkAudioReady}
+                onRemainingAudioReady={handleRemainingAudioReady}
                 customApiKey={storyData.customApiKey}
                 onError={handleStoryGenerationError}
               />
@@ -885,6 +892,7 @@ function App() {
             preloadedAudio={preloadedAudio}
             preloadedText={firstChunkText}
             fullFirstChunkAudio={fullFirstChunkAudio}
+            preloadedRemainingAudio={preloadedRemainingAudio}
           />
         )}
       </div>

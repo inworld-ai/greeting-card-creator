@@ -81,9 +81,10 @@ interface StoryNarrationProps {
   preloadedAudio?: HTMLAudioElement | null
   preloadedText?: string  // The text that was already converted to preloaded audio
   fullFirstChunkAudio?: HTMLAudioElement | null  // Full audio for first chunk (after TTS completes)
+  preloadedRemainingAudio?: HTMLAudioElement[] | null  // Pre-generated remaining audio (generated early during loading)
 }
 
-function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null, preloadedText = '', fullFirstChunkAudio = null }: StoryNarrationProps) {
+function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, imageUrl, onRestart: _onRestart, isProgressive = false, onFullStoryReady, customApiKey, customVoiceId, isShared = false, experienceType = 'story', preloadedAudio = null, preloadedText = '', fullFirstChunkAudio = null, preloadedRemainingAudio = null }: StoryNarrationProps) {
   // REMOVED: isAudioReady state - story page shows immediately
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false) // Track audio generation for button state
   const [error, setError] = useState<string | null>(null)
@@ -691,20 +692,27 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         return
       }
       
-      // Split remaining text into chunks for better TTS (300 words each)
-      const remainingChunks = splitStoryIntoSmallChunks(remainingText, 300, 300)
-      console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks (${remainingText.length} chars)...`)
-      
-      // Generate all remaining chunks
-      const audioPromises = remainingChunks.map((chunk) => 
-        synthesizeSpeech(chunk, {
-          voiceId: customVoiceId || voiceId,
-          apiKey: customApiKey || undefined,
-        })
-      )
-      
-      remainingTextAudios = await Promise.all(audioPromises)
-      console.log(`✅ Generated ${remainingTextAudios.length} remaining text audio chunks`)
+      // Check if we have preloaded remaining audio (generated early during loading)
+      if (preloadedRemainingAudio && preloadedRemainingAudio.length > 0) {
+        console.log(`✅ Using PRELOADED remaining audio! ${preloadedRemainingAudio.length} chunks, ${preloadedRemainingAudio[0].duration?.toFixed(1)}s - NO WAIT!`)
+        remainingTextAudios = preloadedRemainingAudio
+      } else {
+        // Fall back to generating audio on demand
+        // Split remaining text into chunks for better TTS (300 words each)
+        const remainingChunks = splitStoryIntoSmallChunks(remainingText, 300, 300)
+        console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks (${remainingText.length} chars)...`)
+        
+        // Generate all remaining chunks
+        const audioPromises = remainingChunks.map((chunk) => 
+          synthesizeSpeech(chunk, {
+            voiceId: customVoiceId || voiceId,
+            apiKey: customApiKey || undefined,
+          })
+        )
+        
+        remainingTextAudios = await Promise.all(audioPromises)
+        console.log(`✅ Generated ${remainingTextAudios.length} remaining text audio chunks`)
+      }
       
       // Track all audio elements
       remainingTextAudios.forEach(audio => {

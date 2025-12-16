@@ -12,14 +12,16 @@ interface StoryGenerationProps {
   onStoryGenerated: (storyText: string, generatedImageUrl?: string | null) => void
   onFirstAudioReady?: (chunkText: string, preloadedAudio: HTMLAudioElement) => void
   onFullFirstChunkAudioReady?: (fullAudio: HTMLAudioElement, chunkText: string) => void  // Full audio when TTS completes
+  onRemainingAudioReady?: (remainingAudios: HTMLAudioElement[]) => void  // Pre-generated remaining audio
   customApiKey?: string
   onError?: () => void // Callback to handle errors (e.g., navigate back)
 }
 
-function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStoryGenerated, onFirstAudioReady, onFullFirstChunkAudioReady, customApiKey, onError }: StoryGenerationProps) {
+function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStoryGenerated, onFirstAudioReady, onFullFirstChunkAudioReady, onRemainingAudioReady, customApiKey, onError }: StoryGenerationProps) {
   const hasStartedTTSRef = useRef(false)
   const hasTransitionedRef = useRef(false) // Prevent double transition
   const hasPassedFullAudioRef = useRef(false) // Prevent passing full audio multiple times
+  const hasStartedRemainingTTSRef = useRef(false) // Prevent generating remaining audio multiple times
   const firstChunkTextRef = useRef<string | null>(null)
   
   useEffect(() => {
@@ -145,6 +147,44 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
         // Wait for both story and image to complete in parallel
         const [fullStory, finalImageUrl] = await Promise.all([storyPromise, imagePromise])
         console.log('✅ Full story generated, length:', fullStory.length)
+        
+        // START EARLY: Generate TTS for remaining text (after first chunk) immediately
+        // This way it will be ready by the time the first chunk audio finishes playing
+        if (firstChunkTextRef.current && onRemainingAudioReady && !hasStartedRemainingTTSRef.current) {
+          hasStartedRemainingTTSRef.current = true
+          const firstChunkText = firstChunkTextRef.current
+          
+          // Find remaining text after the first chunk
+          const firstChunkIndex = fullStory.indexOf(firstChunkText)
+          let remainingText = ''
+          if (firstChunkIndex !== -1) {
+            remainingText = fullStory.substring(firstChunkIndex + firstChunkText.length).trim()
+          } else {
+            // Fallback: try matching last words
+            const lastWords = firstChunkText.split(/\s+/).slice(-10).join(' ')
+            const lastWordsIndex = fullStory.indexOf(lastWords)
+            if (lastWordsIndex !== -1) {
+              remainingText = fullStory.substring(lastWordsIndex + lastWords.length).trim()
+            }
+          }
+          
+          if (remainingText && remainingText.length > 10) {
+            console.log(`🎵 Starting EARLY generation of remaining text audio (${remainingText.length} chars)...`)
+            
+            // Generate TTS for remaining text in background (don't await - let it run in parallel)
+            synthesizeSpeech('[happy] ' + remainingText, {
+              voiceId: customVoiceId || voiceId
+            }).then(remainingAudio => {
+              console.log(`✅ Remaining audio READY early: ${remainingAudio.duration?.toFixed(1)}s`)
+              onRemainingAudioReady([remainingAudio])
+            }).catch(err => {
+              console.error('Error generating remaining audio early:', err)
+            })
+          } else {
+            console.log('🎵 First chunk covers entire story, no remaining audio needed')
+          }
+        }
+        
         console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
         onStoryGenerated(fullStory, finalImageUrl)
       } catch (error: any) {
