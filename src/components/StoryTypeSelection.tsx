@@ -105,7 +105,7 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
             value={textInput}
             onChange={(e) => handleTextInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="eg A snowball fight with Scrooge"
+            placeholder="e.g., A snowball fight"
             className="story-type-input"
             autoFocus
           />
