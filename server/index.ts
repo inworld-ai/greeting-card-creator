@@ -590,7 +590,7 @@ app.post('/api/tts', async (req, res) => {
       nodes: [
         new RemoteTTSNode({
           speakerId: selectedVoiceId,
-          modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1.5-mini',
+          modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1.5',
           sampleRate: 24000,
           temperature: 1.1,
         }),
