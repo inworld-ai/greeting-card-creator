@@ -829,7 +829,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       })
       
       // Check if we have preloaded audio from the loading screen that hasn't been used yet
-      if (preloadedAudio && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
+      // Also verify the audio source is still valid (not destroyed by cleanup/replay)
+      if (preloadedAudio && preloadedAudio.src && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
         console.log('🎵 Using preloaded audio from loading screen (instant playback!)')
         firstAudio = preloadedAudio
         firstWavChunkReady = true
