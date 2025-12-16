@@ -1869,7 +1869,27 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               )}
             </>
           )}
-          {experienceType === 'greeting-card' && (
+          {experienceType === 'story' && !isShared && (
+            <button 
+              onClick={() => {
+                // Replay the story narration
+                if (audioRef.current) {
+                  audioRef.current.currentTime = 0
+                  audioRef.current.play().catch(console.error)
+                  setIsAudioPlaying(true)
+                } else if (preloadedAudioRef.current) {
+                  preloadedAudioRef.current.currentTime = 0
+                  preloadedAudioRef.current.play().catch(console.error)
+                  setIsAudioPlaying(true)
+                }
+              }} 
+              className="restart-button"
+              style={{ background: '#166534' }}
+            >
+              Replay Story 🔄
+            </button>
+          )}
+          {(experienceType === 'greeting-card' || experienceType === 'story') && (
             <button 
               onClick={() => {
                 // Use browser refresh to ensure all audio stops completely
