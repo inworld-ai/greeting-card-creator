@@ -70,37 +70,44 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
                 textForTTS = titleMatch[1].trim() + '. ' + textForTTS.substring(titleMatch[0].length).trim()
               }
               
-              // CRITICAL: Limit first TTS to ~100 words for fast generation
-              // This ensures full audio is ready before the ~4s preloaded chunk finishes playing
-              const words = textForTTS.split(/\s+/)
-              const MAX_FIRST_PART_WORDS = 100
-              const firstPartText = words.slice(0, MAX_FIRST_PART_WORDS).join(' ')
-              const restPartText = words.slice(MAX_FIRST_PART_WORDS).join(' ')
-              
-              console.log(`🟡 Splitting TTS: first ${MAX_FIRST_PART_WORDS} words (${firstPartText.length} chars), rest: ${restPartText.length} chars`)
-              
-              // Store only the first part as the "first chunk" text
-              firstChunkTextRef.current = firstPartText
-              
-              // Generate TTS for the FIRST PART only (fast - should complete in ~5-10s)
-              const fullAudio = await synthesizeSpeech('[happy] ' + firstPartText, {
-                voiceId: customVoiceId || voiceId,
-                onFirstChunkReady: (preloadedAudio) => {
-                  // Only transition once - when first ~3 seconds of audio is ready
-                  if (!hasTransitionedRef.current) {
-                    hasTransitionedRef.current = true
-                    console.log('🎵 First audio chunk (~3s) ready! Transitioning to narration...')
-                    onFirstAudioReady(firstPartText, preloadedAudio)
-                  }
+            // CRITICAL: Limit first TTS to ~100 words for fast generation
+            // This ensures full audio is ready before the ~4s preloaded chunk finishes playing
+            const words = textForTTS.split(/\s+/)
+            const MAX_FIRST_PART_WORDS = 100
+            const firstPartText = words.slice(0, MAX_FIRST_PART_WORDS).join(' ')
+            const restPartText = words.slice(MAX_FIRST_PART_WORDS).join(' ')
+            
+            // Get the ORIGINAL text (before title transformation) for the first part
+            // This ensures it matches the full story text for comparison in StoryNarration
+            const originalWords = chunk.text.split(/\s+/)
+            const originalFirstPartText = originalWords.slice(0, MAX_FIRST_PART_WORDS).join(' ')
+            
+            console.log(`🟡 Splitting TTS: first ${MAX_FIRST_PART_WORDS} words (${firstPartText.length} chars), rest: ${restPartText.length} chars`)
+            
+            // Store only the first part as the "first chunk" text (original format for matching)
+            firstChunkTextRef.current = originalFirstPartText
+            
+            // Generate TTS for the FIRST PART only (fast - should complete in ~5-10s)
+            const fullAudio = await synthesizeSpeech('[happy] ' + firstPartText, {
+              voiceId: customVoiceId || voiceId,
+              onFirstChunkReady: (preloadedAudio) => {
+                // Only transition once - when first ~3 seconds of audio is ready
+                if (!hasTransitionedRef.current) {
+                  hasTransitionedRef.current = true
+                  console.log('🎵 First audio chunk (~3s) ready! Transitioning to narration...')
+                  // Pass ORIGINAL text (not TTS-transformed) so it matches full story in StoryNarration
+                  onFirstAudioReady(originalFirstPartText, preloadedAudio)
                 }
-              })
-              
-              // Pass the full audio when TTS completes (for seamless chaining)
-              if (fullAudio && onFullFirstChunkAudioReady && !hasPassedFullAudioRef.current) {
-                hasPassedFullAudioRef.current = true
-                console.log(`🎵 Full first part audio ready (${fullAudio.duration?.toFixed(1)}s)! Passing to narration...`)
-                onFullFirstChunkAudioReady(fullAudio, firstPartText)
               }
+            })
+              
+            // Pass the full audio when TTS completes (for seamless chaining)
+            if (fullAudio && onFullFirstChunkAudioReady && !hasPassedFullAudioRef.current) {
+              hasPassedFullAudioRef.current = true
+              console.log(`🎵 Full first part audio ready (${fullAudio.duration?.toFixed(1)}s)! Passing to narration...`)
+              // Pass ORIGINAL text (not TTS-transformed) so it matches full story
+              onFullFirstChunkAudioReady(fullAudio, originalFirstPartText)
+            }
               
               // Start generating TTS for the REST immediately (in parallel, don't await)
               if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
