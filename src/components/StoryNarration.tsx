@@ -829,10 +829,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       })
       
       // Check if we have preloaded audio from the loading screen that hasn't been used yet
-      // Also verify the audio source is still valid (not destroyed by cleanup/replay)
-      if (preloadedAudio && preloadedAudio.src && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
+      // Use preloadedAudioRef (not prop) because replay sets the ref to null
+      // Also verify the audio source is still valid (not destroyed by cleanup)
+      if (preloadedAudioRef.current && preloadedAudioRef.current.src && experienceType === 'story' && !hasUsedPreloadedAudioRef.current) {
         console.log('🎵 Using preloaded audio from loading screen (instant playback!)')
-        firstAudio = preloadedAudio
+        firstAudio = preloadedAudioRef.current
         firstWavChunkReady = true
         hasUsedPreloadedAudioRef.current = true
         
@@ -1638,7 +1639,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               className="share-story-button"
               style={{ order: 2 }}
             >
-              {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : 'Share Story'}
+              {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? 'Link Copied!' : shareSuccess === 'shared' ? 'Shared!' : 'Share Story'}
             </button>
             {shareError && (
               <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
@@ -1935,7 +1936,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 disabled={isSharing}
                 className="share-story-button"
               >
-                {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? '✅ Link Copied!' : shareSuccess === 'shared' ? '✅ Shared!' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
+                {isSharing ? 'Sharing...' : shareSuccess === 'copied' ? 'Link Copied!' : shareSuccess === 'shared' ? 'Shared!' : experienceType === 'greeting-card' ? 'Share Card' : 'Share Story'}
               </button>
               {shareError && (
                 <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', width: '100%' }}>
@@ -1975,7 +1976,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               className="restart-button"
               style={{ background: '#166534' }}
             >
-              Replay Story 🔄
+              Replay Story
             </button>
           )}
           {(experienceType === 'greeting-card' || experienceType === 'story') && (
