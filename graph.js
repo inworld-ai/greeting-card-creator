@@ -63,7 +63,7 @@ TARGET LENGTH: 150-200 words. This story should take about 1 minute to read alou
       new TextChunkingNode(),
       new RemoteTTSNode({
         speakerId: selectedVoiceId,
-        modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1.5',
+        modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1-max',
         sampleRate: 24000,
         temperature: 1.1,
       }),
@@ -98,7 +98,7 @@ export function createTTSOnlyGraph(apiKey, voiceId = null) {
       // Removed TextChunkingNode - not needed for small chunks, adds overhead
       new RemoteTTSNode({
         speakerId: selectedVoiceId,
-        modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1.5',
+        modelId: process.env.INWORLD_MODEL_ID || 'inworld-tts-1-max',
         sampleRate: 24000,
         temperature: 1.1,
       }),

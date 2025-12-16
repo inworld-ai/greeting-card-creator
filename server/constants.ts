@@ -2,7 +2,7 @@
 export const DEFAULT_VOICE_ID = 'christmas_story_generator__female_elf_narrator';
 export const DEFAULT_LLM_MODEL_NAME = 'gpt-4o-mini';
 export const DEFAULT_PROVIDER = 'openai';
-export const DEFAULT_TTS_MODEL_ID = 'inworld-tts-1.5'; // Inworld TTS 1.5
+export const DEFAULT_TTS_MODEL_ID = 'inworld-tts-1-max'; // Higher quality TTS
 export const DEFAULT_VAD_MODEL_PATH = 'models/silero_vad.onnx';
 
 // Audio Configuration (used by graph-based VAD)

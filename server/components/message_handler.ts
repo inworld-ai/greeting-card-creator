@@ -179,7 +179,7 @@ export class MessageHandler {
         nodes: [
           new RemoteTTSNode({
             speakerId: voiceId,
-            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1.5',
+            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1-max',
             sampleRate: 24000,
             temperature: 1.1,
             speakingRate: 1,
@@ -271,7 +271,7 @@ export class MessageHandler {
         nodes: [
           new RemoteTTSNode({
             speakerId: voiceId,
-            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1.5',
+            modelId: process.env.TTS_MODEL_ID || 'inworld-tts-1-max',
             sampleRate: 24000,
             temperature: 1.1,
             speakingRate: 1,
