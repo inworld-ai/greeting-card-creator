@@ -1010,70 +1010,86 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         // Get the last WAV chunk of the first text chunk to chain to the second text chunk
         const firstTextChunkLastAudio = (firstAudio as any).__lastChunk || firstAudio
         
-        // Generate all remaining chunks in parallel, but chain them as soon as first WAV chunk is ready
+        // Generate all remaining chunks in parallel
+        // Use Promise-based approach for text chunk 2 (early start), full audio for chunks 3+
+        
+        // Promise for text chunk 2's full audio (for early start chaining)
+        let resolveChunk2FullAudio: ((audio: HTMLAudioElement) => void) | null = null
+        const chunk2FullAudioPromise = new Promise<HTMLAudioElement>((resolve) => {
+          resolveChunk2FullAudio = resolve
+        })
+        
         const audioPromises = remainingChunks.map((chunk, chunkIndex) => {
-          return synthesizeSpeech(chunk, { 
+          const audioPromise = synthesizeSpeech(chunk, { 
             voiceId: customVoiceId || voiceId, 
-            apiKey: customApiKey || undefined, // Only pass if provided (voice clones don't need user API key)
-            onAllChunksCreated: (allChunks) => {
-              // Track all WAV chunks from this text chunk
-              allChunks.forEach(wavChunk => {
-                allAudioElementsRef.current.add(wavChunk)
-              })
-              console.log(`🟡 Tracked ${allChunks.length} WAV chunks from text chunk ${chunkIndex + 2}`)
+            apiKey: customApiKey || undefined,
+            onFirstChunkReady: chunkIndex === 0 ? (firstWavChunk) => {
+              // Only use early start for text chunk 2 (first remaining chunk)
+              allAudioElementsRef.current.add(firstWavChunk)
               
-              // Set up ended handler on the last WAV chunk of this text chunk
-              // This is the actual last chunk of the entire story
-              if (allChunks.length > 0 && chunkIndex === remainingChunks.length - 1) {
-                const lastChunk = allChunks[allChunks.length - 1]
-                if ((lastChunk as any).__isLastWavChunk) {
-                  const lastChunkHandler = () => {
-                    console.log('🟡🟡🟡 LAST WAV CHUNK OF ENTIRE STORY ENDED! 🟡🟡🟡')
-                    console.log('🟡 Setting isAudioPlaying to false and enabling restart button')
-                    setIsAudioPlaying(false)
-                    isNarrationInProgressRef.current = false
-                    if (checkAudioIntervalRef.current) {
-                      clearInterval(checkAudioIntervalRef.current)
-                      checkAudioIntervalRef.current = null
-                    }
-                    if (onFullStoryReady && fullStoryRef.current) {
-                      onFullStoryReady(fullStoryRef.current)
-                    }
-                  }
-                  lastChunk.addEventListener('ended', lastChunkHandler, { once: true })
-                  console.log('🟡 Set up last WAV chunk handler for final text chunk')
-                }
-              }
-            },
-            onFirstChunkReady: (firstWavChunk) => {
-              // Chain this text chunk's first WAV chunk to the previous text chunk's last WAV chunk
-              if (chunkIndex === 0) {
-                // This is the first remaining chunk - chain it to the first text chunk's last WAV chunk
-                const handler = async () => {
-                  console.log(`🟡 Text chunk 1 ended, attempting to play text chunk 2 (early chaining)...`)
-                  try {
-                    // Check stop flag before playing
-                    if (shouldStopAllAudioRef.current) {
-                      console.log('🛑 Audio playback stopped by cleanup flag')
-                      return
-                    }
-                    const playPromise = firstWavChunk.play()
-                    if (playPromise !== undefined) {
-                      await playPromise
-                      console.log(`✅ Text chunk 2 started playing successfully (early start)`)
-                    }
-                  } catch (err: any) {
-                    console.error('Error playing next text chunk:', err)
-                    setError('Error playing next part of story. Please try again.')
-                  }
+              const chunkDuration = firstWavChunk.duration || 3
+              console.log(`🔗 Text chunk 2 first WAV ready: ${chunkDuration.toFixed(1)}s`)
+              
+              // Set up onended to chain to text chunk 2's full audio
+              firstWavChunk.addEventListener('ended', async () => {
+                console.log(`🔗 Text chunk 2 first WAV ended, waiting for full audio...`)
+                
+                if (shouldStopAllAudioRef.current) {
+                  console.log('🛑 Audio playback stopped by cleanup flag')
+                  return
                 }
                 
-                firstTextChunkLastAudio.onended = null
-                firstTextChunkLastAudio.addEventListener('ended', handler, { once: true })
-                console.log(`🔗 Early chaining: first text chunk's last WAV → second text chunk's first WAV`)
+                const fullAudio = await chunk2FullAudioPromise
+                console.log(`🔗 Text chunk 2 full audio ready, seeking to ${chunkDuration.toFixed(1)}s...`)
+                
+                if (shouldStopAllAudioRef.current) {
+                  console.log('🛑 Audio playback stopped by cleanup flag')
+                  return
+                }
+                
+                fullAudio.currentTime = chunkDuration
+                try {
+                  await fullAudio.play()
+                  console.log(`✅ Text chunk 2 full audio playing from ${chunkDuration.toFixed(1)}s`)
+                } catch (err) {
+                  console.error(`Error playing text chunk 2 full audio:`, err)
+                  setError('Error playing audio. Please try again.')
+                }
+              }, { once: true })
+              
+              // Chain text chunk 1 → text chunk 2 first WAV
+              const handler = async () => {
+                console.log(`🟡 Text chunk 1 ended, starting text chunk 2 first WAV...`)
+                try {
+                  if (shouldStopAllAudioRef.current) {
+                    console.log('🛑 Audio playback stopped by cleanup flag')
+                    return
+                  }
+                  await firstWavChunk.play()
+                  console.log(`✅ Text chunk 2 first WAV started playing`)
+                } catch (err: any) {
+                  console.error('Error playing next text chunk:', err)
+                  setError('Error playing next part of story. Please try again.')
+                }
               }
-            }
+              
+              firstTextChunkLastAudio.onended = null
+              firstTextChunkLastAudio.addEventListener('ended', handler, { once: true })
+              console.log(`🔗 Early chaining: text chunk 1 → text chunk 2 first WAV`)
+            } : undefined  // No early start for chunks 3+
           })
+          
+          // Resolve text chunk 2's Promise when its full audio is ready
+          if (chunkIndex === 0) {
+            audioPromise.then(fullAudio => {
+              console.log(`🔗 Text chunk 2 full audio generated, resolving promise...`)
+              if (resolveChunk2FullAudio) {
+                ;(resolveChunk2FullAudio as (audio: HTMLAudioElement) => void)(fullAudio)
+              }
+            })
+          }
+          
+          return audioPromise
         })
         
         Promise.all(audioPromises).then((audioChunks) => {
