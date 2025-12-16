@@ -749,31 +749,35 @@ app.post('/api/generate-story', async (req, res) => {
               role: 'system',
               content: {
                 type: 'template',
-                template: `You write EXTREMELY SHORT Christmas stories (80-100 words ONLY). Write fun, playful stories in Robert Munsch style. Be concise - every word counts.`,
+                template: `You write SHORT Christmas stories (150-200 words) with a clear beginning, middle, and end. Write fun, playful stories in Robert Munsch style.`,
               },
             },
             {
               role: 'user',
               content: {
                 type: 'template',
-                template: `Write a VERY SHORT Christmas story for {{childName}} about: "{{storyType}}"
+                template: `Write a SHORT Christmas story for {{childName}} about: "{{storyType}}"
 
 STRICT FORMAT:
 Title: [Short Title]
 
-[Story: EXACTLY 6-8 short sentences. No more. Target: 80-100 words total.]
+[Story with BEGINNING, MIDDLE, and END - about 150-200 words total]
+
+STRUCTURE:
+- BEGINNING (2-3 sentences): Set the scene, introduce {{childName}}
+- MIDDLE (5-6 sentences): The adventure/problem unfolds with Christmas magic
+- END (2-3 sentences): Happy resolution, warm Christmas feeling
 
 RULES:
 - Main character: {{childName}} (the hero)
 - Theme: {{storyType}} with Christmas magic
 - Style: Playful, silly, fun - Robert Munsch style
-- Sentences: Short and punchy
 - Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
 - NEVER use ALL-CAPS or all-uppercase letters for ANY word
 - No sound effects (BOOM, ZAP, etc.)
-- NEVER include "Ho ho ho" or any variation (Ho, ho, ho / Ho! Ho! Ho! / etc.) - Santa should speak in normal sentences only
+- NEVER include "Ho ho ho" or any variation - Santa should speak in normal sentences only
 
-CRITICAL LENGTH: 80-100 words maximum. Count carefully. This story should take 30-40 seconds to read aloud.`,
+TARGET LENGTH: 150-200 words. This story should take about 1 minute to read aloud.`,
               },
             },
           ],

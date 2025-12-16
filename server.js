@@ -580,27 +580,31 @@ app.post('/api/generate-story', async (req, res) => {
     const startTime = Date.now()
     console.log(`📖 Generating story for "${childName}" about "${storyType}"`)
 
-    // Build the story prompt - VERY SHORT stories
-    const systemPrompt = `You write EXTREMELY SHORT Christmas stories (80-100 words ONLY, about 400-500 characters). Write fun, playful stories in Robert Munsch style. Be concise - every word counts.`
+    // Build the story prompt - SHORT stories with proper structure
+    const systemPrompt = `You write SHORT Christmas stories (150-200 words) with a clear beginning, middle, and end. Write fun, playful stories in Robert Munsch style.`
 
-    const userPrompt = `Write a VERY SHORT Christmas story for ${childName} about: "${storyType}"
+    const userPrompt = `Write a SHORT Christmas story for ${childName} about: "${storyType}"
 
 STRICT FORMAT:
 Title: [Short Title]
 
-[Story: EXACTLY 6-8 short sentences. No more. Target: 80-100 words total.]
+[Story with BEGINNING, MIDDLE, and END - about 150-200 words total]
+
+STRUCTURE:
+- BEGINNING (2-3 sentences): Set the scene, introduce ${childName}
+- MIDDLE (5-6 sentences): The adventure/problem unfolds with Christmas magic
+- END (2-3 sentences): Happy resolution, warm Christmas feeling
 
 RULES:
 - Main character: ${childName} (the hero)
 - Theme: ${storyType} with Christmas magic
 - Style: Playful, silly, fun - Robert Munsch style
-- Sentences: Short and punchy
 - Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
 - No ALL-CAPS words
 - No sound effects (BOOM, ZAP, etc.)
-- Santa says "Ho ho ho" only (no punctuation variations)
+- NEVER include "Ho ho ho" or any variation - Santa should speak in normal sentences only
 
-CRITICAL LENGTH: 80-100 words maximum (about 400-500 characters). Count carefully. This story should take 30-40 seconds to read aloud. If your story is longer, cut it down.`
+TARGET LENGTH: 150-200 words. This story should take about 1 minute to read aloud.`
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
