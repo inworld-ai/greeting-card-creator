@@ -893,6 +893,43 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
       }
       
+      // CRITICAL FIX: If onFirstChunkReady played a partial audio (~3s), we need to chain it to the full audio
+      // The first chunk audio is stored in __firstChunkAudio property
+      const firstChunkAudio = (firstAudio as any).__firstChunkAudio as HTMLAudioElement | undefined
+      if (firstChunkAudio && firstChunkAudio !== firstAudio) {
+        console.log('🔗 Setting up chaining from first ~3s chunk to full audio...')
+        
+        // Store the duration of the first chunk for seeking
+        const firstChunkDuration = firstChunkAudio.duration || 3 // Default to 3s if not available
+        console.log(`🔗 First chunk duration: ${firstChunkDuration.toFixed(1)}s`)
+        
+        // Set up onended to continue with the full audio
+        firstChunkAudio.addEventListener('ended', () => {
+          console.log('🔗 First ~3s chunk ended, continuing with full audio from where we left off...')
+          
+          // Check if we should stop
+          if (shouldStopAllAudioRef.current) {
+            console.log('🛑 Audio playback stopped by cleanup flag')
+            return
+          }
+          
+          // Seek the full audio to skip the part we already played
+          firstAudio.currentTime = firstChunkDuration
+          console.log(`🔗 Seeked full audio to ${firstChunkDuration.toFixed(1)}s`)
+          
+          // Play the full audio from that point
+          firstAudio.play().then(() => {
+            console.log('✅ Full audio started playing from where first chunk left off')
+          }).catch(err => {
+            console.error('Error playing full audio:', err)
+            setError('Error playing audio. Please try again.')
+          })
+        }, { once: true })
+        
+        // Track the first chunk audio
+        allAudioElementsRef.current.add(firstChunkAudio)
+      }
+      
       // Track this audio element and all its chunks
       allAudioElementsRef.current.add(firstAudio)
       if ((firstAudio as any).__lastChunk) {
