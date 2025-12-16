@@ -1871,16 +1871,30 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           )}
           {experienceType === 'story' && !isShared && (
             <button 
-              onClick={() => {
-                // Replay the story narration
-                if (audioRef.current) {
-                  audioRef.current.currentTime = 0
-                  audioRef.current.play().catch(console.error)
-                  setIsAudioPlaying(true)
-                } else if (preloadedAudioRef.current) {
-                  preloadedAudioRef.current.currentTime = 0
-                  preloadedAudioRef.current.play().catch(console.error)
-                  setIsAudioPlaying(true)
+              onClick={async () => {
+                // Replay the story narration by regenerating audio
+                console.log('🔄 Replay requested - regenerating narration...')
+                
+                // Stop any current audio
+                cleanupAudio()
+                
+                // Reset all audio state
+                hasStartedNarrationForStoryRef.current = ''
+                isNarrationInProgressRef.current = false
+                hasUsedPreloadedAudioRef.current = false
+                isPreloadingRef.current = false
+                preloadedAudioRef.current = null
+                preloadedChunksRef.current = []
+                setIsAudioPreloaded(false)
+                setHasStartedNarration(false)
+                isGeneratingRef.current = false
+                
+                // Brief delay to allow cleanup to complete
+                await new Promise(resolve => setTimeout(resolve, 150))
+                
+                // Start fresh narration
+                if (storyText) {
+                  await handleStartNarration(storyText)
                 }
               }} 
               className="restart-button"
