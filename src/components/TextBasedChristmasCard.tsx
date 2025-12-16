@@ -299,6 +299,7 @@ function TextBasedChristmasCard() {
           childName: recipientInfo,
           experienceType: 'greeting-card',
           imageUrl: coverImageUrl,
+          customVoiceId: customVoiceId || undefined,
         })
       })
       
