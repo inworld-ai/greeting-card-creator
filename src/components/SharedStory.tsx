@@ -280,7 +280,7 @@ function SharedStory() {
           customApiKey={storyData.customApiKey}
           customVoiceId={storyData.customVoiceId}
           isShared={true}
-          experienceType={storyData.imageUrl ? 'year-review' : (storyData.storyType ? 'story' : 'wish-list')}
+          experienceType={storyData.storyType ? 'story' : (storyData.imageUrl ? 'year-review' : 'wish-list')}
         />
       </div>
       <footer className="inworld-footer">
