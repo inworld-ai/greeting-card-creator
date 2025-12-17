@@ -82,27 +82,11 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             // Store only the first part as the "first chunk" text (original format for matching)
             firstChunkTextRef.current = originalFirstPartText
             
-            // PARALLEL TTS GENERATION: Start BOTH chunks at the same time!
-            // This ensures chunk 2 is ready by the time chunk 1 finishes playing
+            // NOTE: We only generate TTS for the first 50 words here (fast start)
+            // The FULL remaining text TTS is generated after the full story is received
+            // This ensures we cover ALL text, not just the first streaming chunk
             
-            // Start TTS for REST (chunk 2) FIRST in background - don't await
-            let restAudioPromise: Promise<HTMLAudioElement> | null = null
-            if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
-              hasStartedRestTTSRef.current = true
-              console.log(`🎵 Starting TTS for chunk 2 (${restPartText.length} chars) in PARALLEL with chunk 1...`)
-              restAudioPromise = synthesizeSpeech(restPartText, {
-                voiceId: customVoiceId || voiceId
-              })
-              // Handle completion in background
-              restAudioPromise.then(restAudio => {
-                console.log(`✅ Chunk 2 audio ready: ${restAudio.duration?.toFixed(1)}s (was generating in parallel!)`)
-                onRemainingAudioReady([restAudio])
-              }).catch(err => {
-                console.error('Error generating chunk 2 audio:', err)
-              })
-            }
-            
-            // Generate TTS for FIRST PART (chunk 1) - this triggers the transition
+            // Generate TTS for FIRST PART (first 50 words) - this triggers the transition
             const fullAudio = await synthesizeSpeech(firstPartText, {
               voiceId: customVoiceId || voiceId,
               onFirstChunkReady: (preloadedAudio) => {
@@ -176,12 +160,12 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
           return null
         })
         
-        // Wait for both story and image to complete in parallel
-        const [fullStory, finalImageUrl] = await Promise.all([storyPromise, imagePromise])
+        // Wait for story first, then start remaining TTS immediately (don't wait for image!)
+        const fullStory = await storyPromise
         console.log('✅ Full story generated, length:', fullStory.length)
         
-        // Generate TTS for remaining text (text that wasn't covered by first chunk TTS)
-        // This handles the case where the first chunk is small but full story is much longer
+        // Generate TTS for remaining text IMMEDIATELY (while image is still generating)
+        // This ensures remaining audio is ready before user finishes listening to first chunk
         if (firstChunkTextRef.current && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
           const firstPartText = firstChunkTextRef.current
           
@@ -201,20 +185,23 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
           
           if (remainingText && remainingText.length > 10) {
             hasStartedRestTTSRef.current = true
-            console.log(`🎵 Full story has additional text (${remainingText.length} chars) - generating TTS...`)
+            console.log(`🎵 Full story ready! Generating TTS for remaining text (${remainingText.length} chars) in parallel with image...`)
             
             synthesizeSpeech(remainingText, {
               voiceId: customVoiceId || voiceId
             }).then(remainingAudio => {
-              console.log(`✅ Additional story audio ready: ${remainingAudio.duration?.toFixed(1)}s`)
+              console.log(`✅ Remaining story audio ready: ${remainingAudio.duration?.toFixed(1)}s`)
               onRemainingAudioReady([remainingAudio])
             }).catch(err => {
               console.error('Error generating remaining audio:', err)
             })
           } else {
-            console.log('🎵 First part covers entire story, no additional audio needed')
+            console.log('🎵 First 50 words covers entire story, no additional audio needed')
           }
         }
+        
+        // Now wait for image
+        const finalImageUrl = await imagePromise
         
         console.log('✅ Story generation complete, calling onStoryGenerated with imageUrl:', finalImageUrl ? 'present' : 'null')
         onStoryGenerated(fullStory, finalImageUrl)
