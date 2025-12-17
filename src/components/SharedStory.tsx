@@ -138,30 +138,33 @@ function SharedStory() {
         
         console.log(`🎵 SharedStory: Preloading first ${Math.min(100, words.length)} words (${firstPartText.length} chars)...`)
         
-        // Generate TTS for first chunk - wait for FULL audio (not just first WAV chunk)
-        // This eliminates the pause between first chunk and rest
+        // PARALLEL TTS GENERATION: Start BOTH chunks at the same time!
+        // This ensures chunk 2 is ready by the time chunk 1 finishes playing
+        
+        // Start TTS for REST (chunk 2) FIRST in background - don't await
+        let restAudioPromise: Promise<HTMLAudioElement> | null = null
+        if (restPartText && restPartText.length > 10) {
+          console.log(`🎵 SharedStory: Starting TTS for chunk 2 (${restPartText.length} chars) in PARALLEL...`)
+          restAudioPromise = synthesizeSpeech(restPartText, {
+            voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
+          })
+          // Handle completion in background
+          restAudioPromise.then(restAudio => {
+            console.log(`🎵 SharedStory: Chunk 2 audio ready (${restAudio.duration?.toFixed(1)}s) - was generating in parallel!`)
+            setStoryRemainingAudio([restAudio])
+          }).catch(err => {
+            console.error('Error generating chunk 2 audio:', err)
+          })
+        }
+        
+        // Generate TTS for first chunk - wait for FULL audio
         const audio = await synthesizeSpeech(firstPartText, {
           voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
         })
         
-        console.log(`🎵 SharedStory: Full first chunk audio ready (${audio.duration?.toFixed(1)}s)! Showing story...`)
+        console.log(`🎵 SharedStory: Full chunk 1 audio ready (${audio.duration?.toFixed(1)}s)! Chunk 2 should be almost ready...`)
         setStoryPreloadedAudio(audio)
         setAudioLoading(false)
-        
-        // Start generating rest of audio in background (will be passed to StoryNarration)
-        if (restPartText && restPartText.length > 10) {
-          console.log(`🎵 SharedStory: Starting TTS for remaining ${restPartText.length} chars in background...`)
-          // Don't await - let it generate in background
-          synthesizeSpeech(restPartText, {
-            voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
-          }).then(restAudio => {
-            console.log(`🎵 SharedStory: Background TTS for rest complete (${restAudio.duration?.toFixed(1)}s)`)
-            // Store in state so it can be passed to StoryNarration
-            setStoryRemainingAudio([restAudio])
-          }).catch(err => {
-            console.error('Error generating rest audio in background:', err)
-          })
-        }
       } catch (error) {
         console.error('Error preloading story audio:', error)
         // Show story anyway on error

@@ -82,7 +82,27 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             // Store only the first part as the "first chunk" text (original format for matching)
             firstChunkTextRef.current = originalFirstPartText
             
-            // Generate TTS for the FIRST PART only (fast - should complete in ~5-10s)
+            // PARALLEL TTS GENERATION: Start BOTH chunks at the same time!
+            // This ensures chunk 2 is ready by the time chunk 1 finishes playing
+            
+            // Start TTS for REST (chunk 2) FIRST in background - don't await
+            let restAudioPromise: Promise<HTMLAudioElement> | null = null
+            if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
+              hasStartedRestTTSRef.current = true
+              console.log(`🎵 Starting TTS for chunk 2 (${restPartText.length} chars) in PARALLEL with chunk 1...`)
+              restAudioPromise = synthesizeSpeech(restPartText, {
+                voiceId: customVoiceId || voiceId
+              })
+              // Handle completion in background
+              restAudioPromise.then(restAudio => {
+                console.log(`✅ Chunk 2 audio ready: ${restAudio.duration?.toFixed(1)}s (was generating in parallel!)`)
+                onRemainingAudioReady([restAudio])
+              }).catch(err => {
+                console.error('Error generating chunk 2 audio:', err)
+              })
+            }
+            
+            // Generate TTS for FIRST PART (chunk 1) - this triggers the transition
             const fullAudio = await synthesizeSpeech(firstPartText, {
               voiceId: customVoiceId || voiceId,
               onFirstChunkReady: (preloadedAudio) => {
@@ -99,24 +119,10 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             // Pass the full audio when TTS completes (for seamless chaining)
             if (fullAudio && onFullFirstChunkAudioReady && !hasPassedFullAudioRef.current) {
               hasPassedFullAudioRef.current = true
-              console.log(`🎵 Full first part audio ready (${fullAudio.duration?.toFixed(1)}s)! Passing to narration...`)
+              console.log(`🎵 Full chunk 1 audio ready (${fullAudio.duration?.toFixed(1)}s)! Chunk 2 should be almost ready too...`)
               // Pass ORIGINAL text (not TTS-transformed) so it matches full story
               onFullFirstChunkAudioReady(fullAudio, originalFirstPartText)
             }
-              
-              // Start generating TTS for the REST immediately (in parallel, don't await)
-              if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
-                hasStartedRestTTSRef.current = true
-                console.log(`🎵 Starting TTS for rest of text (${restPartText.length} chars) in parallel...`)
-                synthesizeSpeech(restPartText, {
-                  voiceId: customVoiceId || voiceId
-                }).then(restAudio => {
-                  console.log(`✅ Rest audio ready: ${restAudio.duration?.toFixed(1)}s`)
-                  onRemainingAudioReady([restAudio])
-                }).catch(err => {
-                  console.error('Error generating rest audio:', err)
-                })
-              }
             } catch (ttsError) {
               console.error('❌ TTS generation failed:', ttsError)
               // Fall back to transitioning without audio
