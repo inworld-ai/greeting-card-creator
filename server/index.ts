@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { parse } from 'url';
 import { RawData, WebSocketServer } from 'ws';
 import { query, body } from 'express-validator';
+import { createClient, RedisClientType } from 'redis';
 
 // Import InworldError dynamically (may not be available in all environments)
 let InworldError: any = class extends Error { context?: any; };
@@ -63,8 +64,45 @@ app.use(express.static('frontend'));
 
 const inworldApp = new InworldApp();
 
-// In-memory storage for shared stories
-const sharedStories = new Map();
+// In-memory storage for shared stories (fallback if Redis unavailable)
+const sharedStoriesMap = new Map();
+
+// Redis client for persistent storage
+let redisClient: RedisClientType | null = null;
+let redisConnected = false;
+
+// Initialize Redis if REDIS_URL is available
+async function initRedis() {
+  if (!process.env.REDIS_URL) {
+    console.log('⚠️ REDIS_URL not set - using in-memory storage (stories will be lost on restart)');
+    return;
+  }
+  
+  try {
+    redisClient = createClient({ url: process.env.REDIS_URL });
+    
+    redisClient.on('error', (err) => {
+      console.error('❌ Redis error:', err.message);
+      redisConnected = false;
+    });
+    
+    redisClient.on('connect', () => {
+      console.log('✅ Redis connected');
+      redisConnected = true;
+    });
+    
+    await redisClient.connect();
+    console.log('🗄️ Redis initialized for persistent story storage');
+  } catch (error: any) {
+    console.error('❌ Failed to connect to Redis:', error.message);
+    console.log('⚠️ Falling back to in-memory storage');
+    redisClient = null;
+    redisConnected = false;
+  }
+}
+
+// Initialize Redis on startup
+initRedis();
 
 // Health check
 app.get('/health', (req, res) => {
@@ -676,7 +714,7 @@ app.post('/api/share-story', async (req, res) => {
 
     const storyId = `story_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    sharedStories.set(storyId, {
+    const storyData = {
       storyText,
       childName,
       voiceId,
@@ -688,9 +726,24 @@ app.post('/api/share-story', async (req, res) => {
       senderName,
       relationship,
       createdAt: new Date().toISOString()
-    });
-    
-    console.log('📤 Story stored with ID:', storyId, 'customVoiceId:', customVoiceId);
+    };
+
+    // Try Redis first, fall back to in-memory Map
+    if (redisClient && redisConnected) {
+      try {
+        // Store in Redis with 30-day TTL (2592000 seconds)
+        await redisClient.set(`story:${storyId}`, JSON.stringify(storyData), { EX: 2592000 });
+        console.log('📤 Story stored in Redis with ID:', storyId, 'customVoiceId:', customVoiceId);
+      } catch (redisError: any) {
+        console.error('⚠️ Redis store failed, using in-memory fallback:', redisError.message);
+        sharedStoriesMap.set(storyId, storyData);
+        console.log('📤 Story stored in memory with ID:', storyId);
+      }
+    } else {
+      // Fallback to in-memory storage
+      sharedStoriesMap.set(storyId, storyData);
+      console.log('📤 Story stored in memory with ID:', storyId, 'customVoiceId:', customVoiceId);
+    }
 
     const shareUrl = `${req.headers.origin || 'https://inworld-christmas.vercel.app'}/share/${storyId}`;
     res.json({ storyId, shareUrl });
@@ -704,7 +757,28 @@ app.post('/api/share-story', async (req, res) => {
 app.get('/api/story/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const story = sharedStories.get(id);
+    let story = null;
+
+    // Try Redis first, fall back to in-memory Map
+    if (redisClient && redisConnected) {
+      try {
+        const redisData = await redisClient.get(`story:${id}`);
+        if (redisData) {
+          story = JSON.parse(redisData);
+          console.log('📥 Retrieved story from Redis:', id);
+        }
+      } catch (redisError: any) {
+        console.error('⚠️ Redis retrieve failed:', redisError.message);
+      }
+    }
+    
+    // Fallback to in-memory if not found in Redis
+    if (!story) {
+      story = sharedStoriesMap.get(id);
+      if (story) {
+        console.log('📥 Retrieved story from memory:', id);
+      }
+    }
 
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
