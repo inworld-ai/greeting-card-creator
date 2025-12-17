@@ -177,30 +177,8 @@ function TextBasedChristmasCard() {
     }
   }
 
-  // Regenerate audio when custom voice is added (after initial generation)
-  // Initial audio is generated during card creation (in handleGenerate)
-  useEffect(() => {
-    // Only run if we have a custom voice AND we've already preloaded default audio
-    if (step !== 'display' || !cardMessage || !customVoiceId || !isPreloadingRef.current) return
-    
-    // Reset to allow regeneration with custom voice
-    const regenerateWithCustomVoice = async () => {
-      try {
-        console.log('🎵 Regenerating audio with custom voice...')
-        
-        const audio = await synthesizeSpeech('[happy] ' + cardMessage, {
-          voiceId: customVoiceId
-        })
-        preloadedAudioRef.current = audio
-        setIsAudioReady(true)
-        console.log('✅ Card audio regenerated with custom voice!')
-      } catch (error) {
-        console.error('Error regenerating audio with custom voice:', error)
-      }
-    }
-
-    regenerateWithCustomVoice()
-  }, [step, cardMessage, customVoiceId])
+  // Note: Custom voice audio is now generated immediately in the CustomNarrator onSubmit handler
+  // This ensures audio is ready before the card is shown
 
   // Play message audio when user clicks to see the message
   const playMessageAudio = async () => {
@@ -630,14 +608,30 @@ function TextBasedChristmasCard() {
         <div style={{ width: '100%', maxWidth: '600px' }}>
           <CustomNarrator
             childName={displayName || recipientInfo}
-            onSubmit={(_apiKey: string, voiceId: string) => {
+            onSubmit={async (_apiKey: string, voiceId: string) => {
               setCustomVoiceId(voiceId)
               // Reset audio refs so we can replay with custom voice
               hasPlayedRef.current = false // Allow audio to play when user clicks
               hasAskedFollowUpRef.current = true // No follow-up needed with custom voice
-              isPreloadingRef.current = false
-              preloadedAudioRef.current = null
               preloadedFollowUpRef.current = null
+              
+              // Generate audio with custom voice IMMEDIATELY (before showing card)
+              console.log('🎵 Generating card audio with custom voice...')
+              try {
+                const audio = await synthesizeSpeech('[happy] ' + cardMessage, {
+                  voiceId: voiceId
+                })
+                preloadedAudioRef.current = audio
+                isPreloadingRef.current = true // Mark as preloaded
+                setIsAudioReady(true)
+                console.log('✅ Card audio with custom voice ready!')
+              } catch (error) {
+                console.error('Error generating custom voice audio:', error)
+                // Clear refs so it will generate on-demand if needed
+                preloadedAudioRef.current = null
+                isPreloadingRef.current = false
+              }
+              
               // Show cover art first (not flipped) so user can click to reveal
               setIsFlipped(false)
               setStep('display')
