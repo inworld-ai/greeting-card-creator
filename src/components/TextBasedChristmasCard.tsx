@@ -693,7 +693,7 @@ function TextBasedChristmasCard() {
             className="btn btn-secondary greeting-card-view-message-button"
             onClick={handleFlipToMessage}
           >
-            Click to see the message
+            Click to hear the message
           </button>
         )}
         

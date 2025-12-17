@@ -32,6 +32,7 @@ function SharedStory() {
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null)
   const [storyPreloadedAudio, setStoryPreloadedAudio] = useState<HTMLAudioElement | null>(null) // For story experience
   const [storyRemainingAudio, setStoryRemainingAudio] = useState<HTMLAudioElement[] | null>(null) // Remaining audio for story
+  const [cardAudioLoading, setCardAudioLoading] = useState(true) // Wait for card audio to preload
   const hasPlayedRef = useRef(false)
   const isPreloadingRef = useRef(false)
   const isStoryPreloadingRef = useRef(false)
@@ -66,10 +67,18 @@ function SharedStory() {
     loadStory()
   }, [storyId])
 
-  // Preload audio for greeting cards
+  // Preload audio for greeting cards - wait until audio is ready before showing card
   useEffect(() => {
+    // If not a greeting card, mark audio as ready immediately
+    if (storyData && storyData.experienceType !== 'greeting-card') {
+      setCardAudioLoading(false)
+      return
+    }
+    
     if (!storyData || storyData.experienceType !== 'greeting-card' || !storyData.storyText || isPreloadingRef.current) return
     isPreloadingRef.current = true
+    
+    console.log('🎵 SharedStory: Preloading greeting card audio...')
 
     const preloadAudio = async () => {
       try {
@@ -77,8 +86,12 @@ function SharedStory() {
           voiceId: storyData.customVoiceId || 'Craig'
         })
         preloadedAudioRef.current = audio
+        console.log('✅ SharedStory: Greeting card audio preloaded and ready!')
+        setCardAudioLoading(false)
       } catch (error) {
         console.error('Error preloading audio:', error)
+        // Show card anyway on error
+        setCardAudioLoading(false)
       }
     }
 
@@ -195,12 +208,13 @@ function SharedStory() {
     navigate('/')
   }
 
-  // Determine if this is a story type that needs audio preloading
+  // Determine experience types
   const isStoryExperience = storyData?.experienceType === 'story' || 
                             (storyData?.storyType && storyData?.experienceType !== 'greeting-card')
+  const isGreetingCard = storyData?.experienceType === 'greeting-card'
   
-  // Show loading if data is loading OR if story audio is still preloading
-  const showLoading = loading || (isStoryExperience && audioLoading)
+  // Show loading if data is loading OR if audio is still preloading (for either stories or cards)
+  const showLoading = loading || (isStoryExperience && audioLoading) || (isGreetingCard && cardAudioLoading)
 
   if (showLoading) {
     return (
@@ -210,7 +224,7 @@ function SharedStory() {
             <div className="loading-container">
               <h2 className="loading-title" style={{ display: 'none' }}>Loading...</h2>
               <p className="loading-status">
-                {loading ? 'Loading...' : 'Preparing your story...'}
+                {loading ? 'Loading...' : isGreetingCard ? 'Preparing your card...' : 'Preparing your story...'}
               </p>
               <div className="loading-dots">
                 <span></span>
@@ -310,7 +324,7 @@ function SharedStory() {
                   className="btn btn-secondary greeting-card-view-message-button"
                   onClick={handleFlipToMessage}
                 >
-                  Click to see the message
+                  Click to hear the message
                 </button>
               )}
               
