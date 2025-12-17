@@ -131,12 +131,12 @@ function SharedStory() {
           console.log('🎵 SharedStory: Stripped "Title:" prefix for TTS')
         }
         
-        // Get first ~100 words for fast initial audio
+        // Get first ~50 words for fast initial audio (smaller = faster generation)
         const words = textForTTS.split(/\s+/)
-        const firstPartText = words.slice(0, 100).join(' ')
-        const restPartText = words.slice(100).join(' ')
+        const firstPartText = words.slice(0, 50).join(' ')
+        const restPartText = words.slice(50).join(' ')
         
-        console.log(`🎵 SharedStory: Preloading first ${Math.min(100, words.length)} words (${firstPartText.length} chars)...`)
+        console.log(`🎵 SharedStory: Preloading first ${Math.min(50, words.length)} words (${firstPartText.length} chars)...`)
         
         // PARALLEL TTS GENERATION: Start BOTH chunks at the same time!
         // This ensures chunk 2 is ready by the time chunk 1 finishes playing

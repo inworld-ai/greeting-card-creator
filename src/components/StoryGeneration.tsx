@@ -58,10 +58,10 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
                 textForTTS = titleMatch[1].trim() + '. ' + textForTTS.substring(titleMatch[0].length).trim()
               }
               
-            // CRITICAL: Limit first TTS to ~100 words for fast generation
-            // This ensures full audio is ready before the ~4s preloaded chunk finishes playing
+            // CRITICAL: Limit first TTS to ~50 words for fast generation
+            // Smaller chunks generate faster and are more likely to be ready before playback needs them
             const words = textForTTS.split(/\s+/)
-            const MAX_FIRST_PART_WORDS = 100
+            const MAX_FIRST_PART_WORDS = 50
             const firstPartText = words.slice(0, MAX_FIRST_PART_WORDS).join(' ')
             const restPartText = words.slice(MAX_FIRST_PART_WORDS).join(' ')
             

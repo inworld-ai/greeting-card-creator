@@ -201,8 +201,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   }
 
   // Helper function to split story into smaller chunks for faster TTS start
-  // First chunk is smaller (100 words) for ultra-fast start, rest are larger (300 words)
-  const splitStoryIntoSmallChunks = (text: string, firstChunkWords: number = 100, restChunkWords: number = 300): string[] => {
+  // Uniform 50-word chunks for consistent, fast generation and seamless chaining
+  const splitStoryIntoSmallChunks = (text: string, firstChunkWords: number = 50, restChunkWords: number = 50): string[] => {
     // Extract title first (we'll add it back to first chunk)
     const [_title, storyBody] = extractTitleAndStory(text)
     
@@ -492,8 +492,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // Extract title for TTS
       const [title] = extractTitleAndStory(text)
       
-      // Split story into chunks
-      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300)
+      // Split story into uniform 50-word chunks for fast, parallel generation
+      const storyChunks = splitStoryIntoSmallChunks(text, 50, 50)
       console.log(`🟡 Preloading ${storyChunks.length} audio chunks in background...`)
 
       // Add title to the first chunk
@@ -766,8 +766,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         }
       } else {
         // Fall back to generating audio on demand
-        // Split remaining text into chunks for better TTS (300 words each)
-        const remainingChunks = splitStoryIntoSmallChunks(remainingText, 300, 300)
+        // Split remaining text into uniform 50-word chunks for fast generation
+        const remainingChunks = splitStoryIntoSmallChunks(remainingText, 50, 50)
         console.log(`🟡 Generating TTS for ${remainingChunks.length} remaining text chunks (${remainingText.length} chars)...`)
         
         // Generate all remaining chunks
@@ -1059,8 +1059,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         // Extract title for TTS
         const [title] = extractTitleAndStory(text)
         
-        // Split story into chunks (use larger chunks for replay since we're waiting anyway)
-        const storyChunks = splitStoryIntoSmallChunks(text, 150, 300) // Larger first chunk for replay
+        // Split story into uniform 50-word chunks for fast, parallel generation
+        const storyChunks = splitStoryIntoSmallChunks(text, 50, 50)
         console.log(`🔄 REPLAY: Splitting into ${storyChunks.length} chunks for parallel generation`)
         
         // Prepare all chunks with title/emotion prefix
@@ -1165,9 +1165,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // Extract title for TTS
       const [title] = extractTitleAndStory(text)
       
-      // Split story into chunks: first chunk is tiny (100 words) for ultra-fast start
-      // This allows TTS to start in ~1-2 seconds while generating the rest
-      const storyChunks = splitStoryIntoSmallChunks(text, 100, 300) // First: 100 words, Rest: 300 words
+      // Split story into uniform 50-word chunks for fast generation and seamless chaining
+      // Smaller chunks = faster generation = less chance of gaps between chunks
+      const storyChunks = splitStoryIntoSmallChunks(text, 50, 50)
       console.log(`🟡 Splitting story into ${storyChunks.length} chunks (first: ${storyChunks[0]?.split(/\s+/).length || 0} words) for ultra-fast TTS start`)
 
       // Add title to the first chunk for TTS (if title exists)
