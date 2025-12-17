@@ -120,8 +120,9 @@ function createAudioFromPCM(pcmData: Uint8Array): Promise<HTMLAudioElement> {
   const audio = new Audio(url)
   audio.preload = 'auto'
 
-  // Clean up URL when audio ends or on error
-  audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true })
+  // NOTE: Do NOT auto-revoke blob URLs on 'ended' - this breaks replay functionality
+  // Blob URLs are cleaned up manually in StoryNarration.tsx cleanupAudio() when appropriate
+  // Only revoke on error (audio is unusable anyway)
   audio.addEventListener('error', () => URL.revokeObjectURL(url), { once: true })
 
   return new Promise<HTMLAudioElement>((resolve, reject) => {

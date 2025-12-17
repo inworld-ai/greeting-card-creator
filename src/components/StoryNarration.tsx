@@ -378,10 +378,11 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       narrationTimeoutRef.current = null
     }
     
-    // Stop and clean up audioRef
+    // Stop and clean up audioRef (but preserve if it's cached)
     if (audioRef.current) {
       const oldAudio = audioRef.current
-      console.log('🛑 Stopping audioRef audio element')
+      const isCached = cachedElements.has(oldAudio)
+      console.log('🛑 Stopping audioRef audio element', isCached ? '(preserving - cached)' : '')
       // Stop immediately - don't wait for pause
       oldAudio.pause()
       oldAudio.currentTime = 0
@@ -402,19 +403,23 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           // Ignore errors if stop doesn't exist
         }
       }
-      // Break the chain by removing src
-      if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
-        URL.revokeObjectURL(oldAudio.src)
+      // Only destroy if NOT cached (preserve blob URL for replay)
+      if (!isCached) {
+        if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(oldAudio.src)
+        }
+        oldAudio.src = ''
+        oldAudio.load() // Force reload to break any pending operations
       }
-      oldAudio.src = ''
-      oldAudio.load() // Force reload to break any pending operations
       audioRef.current = null
     }
     
     // Stop and clean up secondAudioRef
+    // Stop and clean up secondAudioRef (but preserve if it's cached)
     if (secondAudioRef.current) {
       const oldAudio = secondAudioRef.current
-      console.log('🛑 Stopping secondAudioRef audio element')
+      const isCached = cachedElements.has(oldAudio)
+      console.log('🛑 Stopping secondAudioRef audio element', isCached ? '(preserving - cached)' : '')
       oldAudio.pause()
       oldAudio.currentTime = 0
       oldAudio.onplay = null
@@ -432,11 +437,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           // Ignore errors if stop doesn't exist
         }
       }
-      if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
-        URL.revokeObjectURL(oldAudio.src)
+      // Only destroy if NOT cached (preserve blob URL for replay)
+      if (!isCached) {
+        if (oldAudio.src && oldAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(oldAudio.src)
+        }
+        oldAudio.src = ''
+        oldAudio.load() // Force reload to break any pending operations
       }
-      oldAudio.src = ''
-      oldAudio.load() // Force reload to break any pending operations
       secondAudioRef.current = null
     }
     
