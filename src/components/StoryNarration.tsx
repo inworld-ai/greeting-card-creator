@@ -819,6 +819,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       hasStartedNarrationForStoryRef.current = text
       isGeneratingRemainingRef.current = false
       
+      // Cache all audio for instant replay (so Replay button works mid-story)
+      // Use fullFirstChunkAudio if available (longer), otherwise use the preloaded first chunk
+      const firstChunkForCache = fullFirstChunkAudioRef.current || firstChunkAudio
+      cachedAllAudioRef.current = {
+        firstChunk: firstChunkForCache,
+        remainingChunks: remainingTextAudios
+      }
+      console.log(`💾 Cached ${remainingTextAudios.length + 1} audio chunks for instant replay`)
+      
       // Resolve the promise so onended handler can play the audio
       remainingTextAudiosResolve?.(remainingTextAudios)
       
