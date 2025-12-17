@@ -49,6 +49,9 @@ function StoryTypeSelection({ onSelect, onBack }: StoryTypeSelectionProps) {
     document.addEventListener('touchstart', handleInteraction, { once: true })
     
     return () => {
+      // Stop welcome audio when component unmounts (e.g., user hits back button)
+      welcomeAudio.pause()
+      welcomeAudio.currentTime = 0
       document.removeEventListener('click', handleInteraction)
       document.removeEventListener('touchstart', handleInteraction)
     }
