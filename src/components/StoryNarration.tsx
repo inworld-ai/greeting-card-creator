@@ -115,6 +115,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   const isPreloadingRef = useRef<boolean>(false) // Track if we're currently preloading
   const preloadedChunksRef = useRef<HTMLAudioElement[]>([]) // All preloaded audio chunks
   const preloadedRemainingAudioRef = useRef<HTMLAudioElement[] | null>(null) // Remaining audio from parent
+  const cachedAllAudioRef = useRef<{ firstChunk: HTMLAudioElement, remainingChunks: HTMLAudioElement[] } | null>(null) // Cache all audio for replay
   const [isAudioPreloaded, setIsAudioPreloaded] = useState(false) // Track if audio is fully ready to play
 
   useEffect(() => {
@@ -840,15 +841,101 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       isGeneratingRef.current = true
       setError(null)
       
-      // Stop and clean up any existing audio FIRST
-      cleanupAudio()
-      
       // Reset stop flag for new narration
       shouldStopAllAudioRef.current = false
 
       // Use provided text or current storyText
       const text = textToSpeak || storyText
       currentStoryTextRef.current = text
+      
+      // Check for cached audio from previous playback (for instant replay)
+      if (cachedAllAudioRef.current && cachedAllAudioRef.current.firstChunk.src) {
+        console.log('🎵 REPLAY: Using cached audio for instant playback!')
+        const { firstChunk, remainingChunks } = cachedAllAudioRef.current
+        
+        // Stop any currently playing audio first (but don't destroy cache)
+        firstChunk.pause()
+        remainingChunks.forEach(chunk => {
+          chunk.pause()
+        })
+        
+        // Reset all audio elements to beginning
+        firstChunk.currentTime = 0
+        remainingChunks.forEach(chunk => {
+          chunk.currentTime = 0
+        })
+        
+        // Track audio elements
+        allAudioElementsRef.current.add(firstChunk)
+        remainingChunks.forEach(chunk => allAudioElementsRef.current.add(chunk))
+        
+        // Set up chaining: first → remaining[0] → remaining[1] → ...
+        let previousAudio: HTMLAudioElement = firstChunk
+        
+        for (let i = 0; i < remainingChunks.length; i++) {
+          const nextAudio = remainingChunks[i]
+          const currentIdx = i
+          
+          // Remove any existing handlers
+          previousAudio.onended = null
+          
+          previousAudio.addEventListener('ended', async () => {
+            console.log(`🔗 REPLAY: Cached chunk ${currentIdx} ended, playing chunk ${currentIdx + 1}...`)
+            if (shouldStopAllAudioRef.current) {
+              console.log('🛑 Audio playback stopped by cleanup flag')
+              return
+            }
+            try {
+              await nextAudio.play()
+              console.log(`✅ REPLAY: Cached chunk ${currentIdx + 1} started playing`)
+            } catch (err) {
+              console.error(`Error playing cached chunk ${currentIdx + 1}:`, err)
+            }
+          }, { once: true })
+          
+          previousAudio = nextAudio
+        }
+        
+        // Set up final ended handler
+        const finalAudio = remainingChunks.length > 0 ? remainingChunks[remainingChunks.length - 1] : firstChunk
+        finalAudio.onended = null
+        finalAudio.addEventListener('ended', () => {
+          console.log('🎵 REPLAY: All cached audio playback complete!')
+          setIsAudioPlaying(false)
+          isNarrationInProgressRef.current = false
+          isGeneratingRef.current = false
+          if (checkAudioIntervalRef.current) {
+            clearInterval(checkAudioIntervalRef.current)
+            checkAudioIntervalRef.current = null
+          }
+        }, { once: true })
+        
+        // Start playing
+        audioRef.current = firstChunk
+        hasStartedNarrationForStoryRef.current = text
+        
+        try {
+          await firstChunk.play()
+          console.log('✅ REPLAY: Cached first chunk started playing')
+          setHasStartedNarration(true)
+          setIsAudioPlaying(true)
+          setIsGeneratingAudio(false)
+          startPollingForAudioEnd()
+        } catch (err) {
+          console.warn('⚠️ REPLAY: Error playing cached audio:', err)
+          // Clear cache and fall through to regenerate
+          cachedAllAudioRef.current = null
+        }
+        
+        // If we successfully started, we're done
+        if (cachedAllAudioRef.current) {
+          isGeneratingRef.current = false
+          return
+        }
+      }
+      
+      // Stop and clean up any existing audio (only if not using cache)
+      cleanupAudio()
 
       // Extract title for TTS
       const [title] = extractTitleAndStory(text)
@@ -1390,6 +1477,13 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
             secondAudioRef.current = audioChunks[0]
           }
           
+          // Cache all audio for instant replay
+          cachedAllAudioRef.current = {
+            firstChunk: firstAudio,
+            remainingChunks: audioChunks
+          }
+          console.log(`💾 Cached ${audioChunks.length + 1} audio chunks for instant replay`)
+          
           console.log(`✅ All ${audioChunks.length + 1} audio chunks ready and chained!`)
         }).catch(err => {
           console.error('Error generating remaining audio chunks:', err)
@@ -1397,6 +1491,13 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         })
       } else {
         // No remaining chunks, just mark as complete when first ends
+        // Cache for replay (single chunk case)
+        cachedAllAudioRef.current = {
+          firstChunk: firstAudio,
+          remainingChunks: []
+        }
+        console.log('💾 Cached 1 audio chunk for instant replay (single chunk story)')
+        
         firstAudio.onended = () => {
           console.log('🟡 Single chunk ended')
           setIsAudioPlaying(false) // Audio has ended, enable restart button
