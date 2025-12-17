@@ -26,11 +26,12 @@ function TextBasedChristmasCard() {
   const [isFlipped, setIsFlipped] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [shareSuccess, setShareSuccess] = useState<'copied' | 'shared' | false>(false)
-  const [_isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [_isAudioReady, setIsAudioReady] = useState(false)
+  const [isReplaying, setIsReplaying] = useState(false)
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false) // Track if audio has been played at least once
   
   // Suppress unused variable warnings (values tracked for future UI enhancements)
-  void _isPlayingAudio
   void _isAudioReady
   
   // Audio refs
@@ -184,6 +185,7 @@ function TextBasedChristmasCard() {
   const playMessageAudio = async () => {
     if (!cardMessage || hasPlayedRef.current) return
     hasPlayedRef.current = true
+    setHasPlayedOnce(true) // Track for UI (replay button)
 
     try {
       setIsPlayingAudio(true)
@@ -266,6 +268,38 @@ function TextBasedChristmasCard() {
     setIsFlipped(true)
     // Start playing audio immediately when card is flipped
     playMessageAudio()
+  }
+
+  // Replay the card message audio using cached audio
+  const handleReplay = async () => {
+    if (!preloadedAudioRef.current || isReplaying || isPlayingAudio) return
+    
+    console.log('🔄 Replaying card message audio...')
+    setIsReplaying(true)
+    setIsPlayingAudio(true)
+    
+    try {
+      const audio = preloadedAudioRef.current
+      
+      // Reset to beginning
+      audio.pause()
+      audio.currentTime = 0
+      
+      // Set up ended handler
+      audio.onended = null
+      audio.addEventListener('ended', () => {
+        console.log('🎵 Replay finished')
+        setIsPlayingAudio(false)
+        setIsReplaying(false)
+      }, { once: true })
+      
+      await audio.play()
+      console.log('✅ Replay started!')
+    } catch (error) {
+      console.error('Error replaying audio:', error)
+      setIsPlayingAudio(false)
+      setIsReplaying(false)
+    }
   }
 
   const handleShare = async () => {
@@ -671,6 +705,17 @@ function TextBasedChristmasCard() {
       </div>
       
       <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {/* Replay button - show when message has been played */}
+        {isFlipped && hasPlayedOnce && (
+          <button
+            className="btn btn-primary"
+            onClick={handleReplay}
+            disabled={isReplaying || isPlayingAudio}
+            style={{ fontSize: '1rem', padding: '12px 14px', flex: 'none', width: 'auto', background: '#166534' }}
+          >
+            {isReplaying ? 'Replaying...' : 'Replay'}
+          </button>
+        )}
         {/* Only show Create Custom Narrator button if user hasn't created one yet */}
         {!customVoiceId && (
           <button

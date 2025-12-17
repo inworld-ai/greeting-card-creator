@@ -322,9 +322,31 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     // Set global stop flag FIRST - this will prevent any chained audio from playing
     shouldStopAllAudioRef.current = true
     
+    // Build set of cached audio elements to PRESERVE (for replay)
+    const cachedElements = new Set<HTMLAudioElement>()
+    if (cachedAllAudioRef.current) {
+      cachedElements.add(cachedAllAudioRef.current.firstChunk)
+      cachedAllAudioRef.current.remainingChunks.forEach(chunk => cachedElements.add(chunk))
+      console.log(`🛑 Preserving ${cachedElements.size} cached audio elements for replay`)
+    }
+    
     // Stop ALL tracked audio elements (similar to page refresh)
+    // BUT preserve cached elements for replay
     allAudioElementsRef.current.forEach((audio) => {
       try {
+        // If this is a cached element, just pause it - don't destroy
+        if (cachedElements.has(audio)) {
+          console.log('🛑 Pausing cached audio element (preserving for replay)')
+          audio.pause()
+          audio.currentTime = 0
+          // Remove event listeners but keep src intact
+          audio.onplay = null
+          audio.onpause = null
+          audio.onended = null
+          audio.onerror = null
+          return // Don't destroy this element
+        }
+        
         console.log('🛑 Stopping tracked audio element')
         audio.pause()
         audio.currentTime = 0
@@ -347,7 +369,8 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
         console.warn('Error stopping tracked audio element:', e)
       }
     })
-    allAudioElementsRef.current.clear()
+    // Clear non-cached elements from tracking (keep cached ones)
+    allAudioElementsRef.current = cachedElements
     
     // Clear any pending narration timeout
     if (narrationTimeoutRef.current) {
