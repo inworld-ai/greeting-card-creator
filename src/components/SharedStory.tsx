@@ -254,13 +254,23 @@ function SharedStory() {
   const showLoading = loading || (isStoryExperience && audioLoading) || (isGreetingCard && cardAudioLoading)
 
   if (showLoading) {
+    // Determine the loading message - avoid "Loading..." for better UX
+    const loadingMessage = isGreetingCard 
+      ? 'Preparing your card...' 
+      : isStoryExperience 
+        ? 'Preparing your story...' 
+        : 'Preparing...'
+    
+    // Use larger font for cards
+    const fontSize = isGreetingCard ? '2rem' : '1.5rem'
+    
     return (
       <div className="app" style={{ background: '#faf7f5', minHeight: '100vh' }}>
         <div className="app-container">
           <div className="story-generation">
             <div className="loading-container">
-              <p className="loading-text" style={{ fontSize: '1.5rem', fontWeight: '500' }}>
-                {loading ? 'Loading...' : isGreetingCard ? 'Preparing your card...' : 'Preparing your story...'}
+              <p className="loading-text" style={{ fontSize, fontWeight: '500' }}>
+                {loadingMessage}
               </p>
               <div className="loading-dots">
                 <span></span>
