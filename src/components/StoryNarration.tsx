@@ -829,6 +829,97 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
   }
 
+  // Simple, direct replay function - bypasses complex handleStartNarration flow
+  // Uses cached audio directly for instant replay (like card replay)
+  const handleSimpleReplay = async () => {
+    if (!cachedAllAudioRef.current) {
+      console.log('⚠️ No cached audio available for simple replay, falling back to handleStartNarration')
+      await handleStartNarration(storyText, true)
+      return
+    }
+    
+    console.log('🎵 SIMPLE REPLAY: Using cached audio for instant playback!')
+    const { firstChunk, remainingChunks } = cachedAllAudioRef.current
+    
+    // Check if cache is valid (has src)
+    if (!firstChunk.src) {
+      console.log('⚠️ Cached audio has no src, falling back to handleStartNarration')
+      await handleStartNarration(storyText, true)
+      return
+    }
+    
+    setIsGeneratingAudio(true)
+    
+    // Stop any currently playing audio
+    shouldStopAllAudioRef.current = false
+    firstChunk.pause()
+    remainingChunks.forEach(chunk => chunk.pause())
+    
+    // Reset all audio elements to beginning
+    firstChunk.currentTime = 0
+    remainingChunks.forEach(chunk => {
+      chunk.currentTime = 0
+    })
+    
+    // Set up chaining: first → remaining[0] → remaining[1] → ...
+    let previousAudio: HTMLAudioElement = firstChunk
+    
+    for (let i = 0; i < remainingChunks.length; i++) {
+      const nextAudio = remainingChunks[i]
+      const currentIdx = i
+      
+      // Remove any existing handlers
+      previousAudio.onended = null
+      
+      previousAudio.addEventListener('ended', async () => {
+        console.log(`🔗 SIMPLE REPLAY: Chunk ${currentIdx} ended, playing chunk ${currentIdx + 1}...`)
+        if (shouldStopAllAudioRef.current) {
+          console.log('🛑 Audio playback stopped by cleanup flag')
+          return
+        }
+        try {
+          await nextAudio.play()
+          console.log(`✅ SIMPLE REPLAY: Chunk ${currentIdx + 1} started playing`)
+        } catch (err) {
+          console.error(`Error playing chunk ${currentIdx + 1}:`, err)
+        }
+      }, { once: true })
+      
+      previousAudio = nextAudio
+    }
+    
+    // Set up final ended handler
+    const finalAudio = remainingChunks.length > 0 ? remainingChunks[remainingChunks.length - 1] : firstChunk
+    finalAudio.onended = null
+    finalAudio.addEventListener('ended', () => {
+      console.log('🎵 SIMPLE REPLAY: All cached audio playback complete!')
+      setIsAudioPlaying(false)
+      isNarrationInProgressRef.current = false
+      if (checkAudioIntervalRef.current) {
+        clearInterval(checkAudioIntervalRef.current)
+        checkAudioIntervalRef.current = null
+      }
+    }, { once: true })
+    
+    // Start playing
+    audioRef.current = firstChunk
+    isNarrationInProgressRef.current = true
+    
+    try {
+      await firstChunk.play()
+      console.log('✅ SIMPLE REPLAY: Cached first chunk started playing')
+      setHasStartedNarration(true)
+      setIsAudioPlaying(true)
+      setIsGeneratingAudio(false)
+      startPollingForAudioEnd()
+    } catch (err) {
+      console.error('⚠️ SIMPLE REPLAY: Error playing cached audio:', err)
+      setIsGeneratingAudio(false)
+      // Fall back to full regeneration
+      await handleStartNarration(storyText, true)
+    }
+  }
+
   const handleStartNarration = async (textToSpeak?: string, isReplay: boolean = false) => {
     const text = textToSpeak || storyText
     
@@ -2232,21 +2323,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 // Replay the story narration using cached audio (instant!) or regenerate if needed
                 console.log('🔄 Replay requested...')
                 
-                // Reset flags to allow replay (but DON'T call cleanupAudio - it destroys the cache!)
-                hasStartedNarrationForStoryRef.current = ''
-                isNarrationInProgressRef.current = false
-                isGeneratingRef.current = false
-                
-                // Start narration - will use cache if available, or parallel generation for seamless replay
-                if (storyText) {
-                  await handleStartNarration(storyText, true) // isReplay = true
-                }
+                // Use simple replay for instant cached playback
+                console.log('🔄 Replay Story button clicked')
+                await handleSimpleReplay()
               }} 
               className="restart-button"
               style={{ background: '#166534' }}
-              disabled={isGeneratingAudio}
+              disabled={isGeneratingAudio || isAudioPlaying}
             >
-              {isGeneratingAudio ? 'Preparing Replay...' : 'Replay Story'}
+              {isGeneratingAudio ? 'Replaying...' : 'Replay Story'}
             </button>
           )}
           {(experienceType === 'greeting-card' || experienceType === 'story') && (

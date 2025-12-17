@@ -534,7 +534,7 @@ function TextBasedChristmasCard() {
             justifyContent: 'center',
             gap: '4px',
           }}>
-            🎁 A gift from{' '}
+            A gift from{' '}
             <a 
               href="https://inworld.ai" 
               target="_blank" 
@@ -580,7 +580,7 @@ function TextBasedChristmasCard() {
           justifyContent: 'center',
           gap: '4px',
         }}>
-          🎁 A gift from{' '}
+          A gift from{' '}
           <a 
             href="https://inworld.ai" 
             target="_blank" 
@@ -636,7 +636,7 @@ function TextBasedChristmasCard() {
           justifyContent: 'center',
           gap: '4px',
         }}>
-          🎁 A gift from{' '}
+          A gift from{' '}
           <a 
             href="https://inworld.ai" 
             target="_blank" 
@@ -750,7 +750,7 @@ function TextBasedChristmasCard() {
         justifyContent: 'center',
         gap: '4px',
       }}>
-        🎁 A gift from{' '}
+        A gift from{' '}
         <a 
           href="https://inworld.ai" 
           target="_blank" 
