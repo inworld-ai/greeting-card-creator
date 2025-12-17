@@ -254,15 +254,13 @@ function SharedStory() {
   const showLoading = loading || (isStoryExperience && audioLoading) || (isGreetingCard && cardAudioLoading)
 
   if (showLoading) {
-    // Determine the loading message - avoid "Loading..." for better UX
-    const loadingMessage = isGreetingCard 
-      ? 'Preparing your card...' 
-      : isStoryExperience 
-        ? 'Preparing your story...' 
-        : 'Preparing...'
+    // Determine the loading message - default to card message for consistent UX
+    const loadingMessage = isStoryExperience 
+      ? 'Preparing your story...' 
+      : 'Preparing your card...'
     
-    // Use larger font for cards
-    const fontSize = isGreetingCard ? '2rem' : '1.5rem'
+    // Use larger font for cards (default)
+    const fontSize = isStoryExperience ? '1.5rem' : '2rem'
     
     return (
       <div className="app" style={{ background: '#faf7f5', minHeight: '100vh' }}>
