@@ -105,42 +105,69 @@ function TextBasedChristmasCard() {
       console.log('🎄 Starting card generation...')
       console.log('🔗 API URL:', API_BASE_URL)
       
-      // Generate message and image in parallel
-      const [messageResponse, imageResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/generate-greeting-card-message`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientName: recipientInfo,
-            funnyStory: funnyStory,
-            signoff: signoff.trim() || undefined,
-          })
-        }),
-        fetch(`${API_BASE_URL}/api/generate-greeting-card-image`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientName: recipientInfo,
-            funnyStory: funnyStory,
-          })
+      // Start message and image generation in parallel
+      const messagePromise = fetch(`${API_BASE_URL}/api/generate-greeting-card-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientName: recipientInfo,
+          funnyStory: funnyStory,
+          signoff: signoff.trim() || undefined,
         })
-      ])
+      })
       
+      const imagePromise = fetch(`${API_BASE_URL}/api/generate-greeting-card-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientName: recipientInfo,
+          funnyStory: funnyStory,
+        })
+      })
+      
+      // Wait for message first (faster), then start TTS immediately
+      const messageResponse = await messagePromise
       if (!messageResponse.ok) {
         throw new Error('Failed to generate card message')
       }
       
       const messageData = await messageResponse.json()
-      setCardMessage(messageData.cardMessage)
-      // Use the parsed name from the API, or fall back to the original input
+      const cardMessageText = messageData.cardMessage
+      setCardMessage(cardMessageText)
       setDisplayName(messageData.parsedRecipientName || recipientInfo)
       
+      // Start TTS generation IMMEDIATELY while image is still generating
+      console.log('🎵 Message ready! Starting TTS in parallel with image generation...')
+      const ttsPromise = synthesizeSpeech('[happy] ' + cardMessageText, {
+        voiceId: 'Craig'  // Default voice - custom voice handled separately
+      }).then(audio => {
+        console.log('✅ Card audio ready (generated during image wait)!')
+        preloadedAudioRef.current = audio
+        setIsAudioReady(true)
+        isPreloadingRef.current = true // Mark as preloaded
+        
+        // Also preload the follow-up audio
+        const followUpAudio = new Audio('/audio/click-custom-narrator.mp3')
+        preloadedFollowUpRef.current = followUpAudio
+        console.log('✅ Follow-up audio preloaded!')
+        
+        return audio
+      }).catch(err => {
+        console.error('Error generating card audio:', err)
+        return null
+      })
+      
+      // Wait for image (slower)
+      const imageResponse = await imagePromise
       if (imageResponse.ok) {
         const imageData = await imageResponse.json()
         setCoverImageUrl(imageData.imageUrl || null)
       }
       
-      console.log('✅ Card generation complete!')
+      // Wait for TTS to complete before showing card (should already be done)
+      await ttsPromise
+      
+      console.log('✅ Card generation complete! Audio should be ready.')
       setStep('display')
       
     } catch (err: any) {
@@ -150,38 +177,29 @@ function TextBasedChristmasCard() {
     }
   }
 
-  // Preload audio when card is generated (while user looks at cover)
+  // Regenerate audio when custom voice is added (after initial generation)
+  // Initial audio is generated during card creation (in handleGenerate)
   useEffect(() => {
-    if (step !== 'display' || !cardMessage || isPreloadingRef.current) return
-    isPreloadingRef.current = true
-
-    const preloadAudio = async () => {
+    // Only run if we have a custom voice AND we've already preloaded default audio
+    if (step !== 'display' || !cardMessage || !customVoiceId || !isPreloadingRef.current) return
+    
+    // Reset to allow regeneration with custom voice
+    const regenerateWithCustomVoice = async () => {
       try {
-        console.log('🎵 Preloading card message audio...')
+        console.log('🎵 Regenerating audio with custom voice...')
         
-        // Preload main message audio with [happy] emotion tag for TTS
-        // The tag influences voice tone but won't be verbalized
-        // Use custom voice if available, otherwise use default Craig voice
         const audio = await synthesizeSpeech('[happy] ' + cardMessage, {
-          voiceId: customVoiceId || 'Craig'
+          voiceId: customVoiceId
         })
         preloadedAudioRef.current = audio
         setIsAudioReady(true)
-        console.log('✅ Card message audio preloaded and ready!')
-
-        // Only preload follow-up prompt if no custom voice (user hasn't created one yet)
-        if (!customVoiceId) {
-          const followUpAudio = new Audio('/audio/click-custom-narrator.mp3')
-          preloadedFollowUpRef.current = followUpAudio
-          console.log('✅ Follow-up audio preloaded!')
-        }
+        console.log('✅ Card audio regenerated with custom voice!')
       } catch (error) {
-        console.error('Error preloading audio:', error)
-        isPreloadingRef.current = false // Allow retry
+        console.error('Error regenerating audio with custom voice:', error)
       }
     }
 
-    preloadAudio()
+    regenerateWithCustomVoice()
   }, [step, cardMessage, customVoiceId])
 
   // Play message audio when user clicks to see the message
