@@ -33,6 +33,9 @@ function SharedStory() {
   const [storyPreloadedAudio, setStoryPreloadedAudio] = useState<HTMLAudioElement | null>(null) // For story experience
   const [storyRemainingAudio, setStoryRemainingAudio] = useState<HTMLAudioElement[] | null>(null) // Remaining audio for story
   const [cardAudioLoading, setCardAudioLoading] = useState(true) // Wait for card audio to preload
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [isReplaying, setIsReplaying] = useState(false)
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false)
   const hasPlayedRef = useRef(false)
   const isPreloadingRef = useRef(false)
   const isStoryPreloadingRef = useRef(false)
@@ -198,9 +201,35 @@ function SharedStory() {
         })
       }
       audioRef.current = audio
+      setIsPlayingAudio(true)
+      setHasPlayedOnce(true)
+      audio.onended = () => {
+        setIsPlayingAudio(false)
+      }
       await audio.play()
     } catch (error) {
       console.error('Error playing audio:', error)
+      setIsPlayingAudio(false)
+    }
+  }
+
+  // Replay card audio
+  const handleReplay = async () => {
+    if (!preloadedAudioRef.current) return
+    setIsReplaying(true)
+    setIsPlayingAudio(true)
+    try {
+      preloadedAudioRef.current.pause()
+      preloadedAudioRef.current.currentTime = 0
+      preloadedAudioRef.current.onended = () => {
+        setIsPlayingAudio(false)
+        setIsReplaying(false)
+      }
+      await preloadedAudioRef.current.play()
+    } catch (error) {
+      console.error('Error replaying audio:', error)
+      setIsPlayingAudio(false)
+      setIsReplaying(false)
     }
   }
 
@@ -225,10 +254,9 @@ function SharedStory() {
     return (
       <div className="app" style={{ background: '#faf7f5', minHeight: '100vh' }}>
         <div className="app-container">
-          <div className="story-narration">
+          <div className="story-generation">
             <div className="loading-container">
-              <h2 className="loading-title" style={{ display: 'none' }}>Loading...</h2>
-              <p className="loading-status">
+              <p className="loading-text">
                 {loading ? 'Loading...' : isGreetingCard ? 'Preparing your card...' : 'Preparing your story...'}
               </p>
               <div className="loading-dots">
@@ -343,11 +371,22 @@ function SharedStory() {
               )}
             </div>
             
-            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {/* Replay button - show when message has been played */}
+              {isFlipped && hasPlayedOnce && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleReplay}
+                  disabled={isReplaying || isPlayingAudio}
+                  style={{ fontSize: '1rem', padding: '12px 14px', flex: 'none', width: 'auto', background: '#166534' }}
+                >
+                  {isReplaying ? 'Replaying...' : 'Replay'}
+                </button>
+              )}
               <button
                 className="btn btn-primary"
                 onClick={handleRestart}
-                style={{ fontSize: '1.2rem', padding: '12px 24px' }}
+                style={{ fontSize: '1rem', padding: '12px 14px', flex: 'none', width: 'auto', background: '#166534' }}
               >
                 Create Your Own Card
               </button>
