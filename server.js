@@ -8,6 +8,10 @@ const wavEncoder = require('wav-encoder')
 
 dotenv.config()
 
+// DEPLOYMENT VERIFICATION - unique timestamp to confirm Railway is running updated code
+const DEPLOY_TIMESTAMP = new Date().toISOString()
+console.log('🚀🚀🚀 SERVER CODE VERSION DEPLOYED AT:', DEPLOY_TIMESTAMP)
+
 const app = express()
 const PORT = process.env.PORT || 3001
 
@@ -2380,6 +2384,8 @@ app.post('/api/generate-story-audio', async (req, res) => {
 
 // Share story endpoint
 app.post('/api/share-story', async (req, res) => {
+  console.log('📨📨📨 SHARE-STORY ENDPOINT HIT AT:', new Date().toISOString())
+  console.log('📨 Request body keys:', Object.keys(req.body || {}))
   try {
     const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId, experienceType, senderName, relationship } = req.body
     

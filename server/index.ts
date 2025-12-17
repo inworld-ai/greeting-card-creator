@@ -664,8 +664,11 @@ app.post('/api/tts', async (req, res) => {
 
 // Share story endpoint
 app.post('/api/share-story', async (req, res) => {
+  console.log('📨 SHARE-STORY ENDPOINT HIT');
   try {
-    const { storyText, childName, voiceId, storyType, imageUrl, experienceType, senderName, relationship } = req.body;
+    const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId, experienceType, senderName, relationship } = req.body;
+    
+    console.log('📤 Share story request - experienceType:', experienceType, 'customVoiceId:', customVoiceId);
 
     if (!storyText) {
       return res.status(400).json({ error: 'Missing storyText' });
@@ -679,11 +682,15 @@ app.post('/api/share-story', async (req, res) => {
       voiceId,
       storyType,
       imageUrl: imageUrl || null,
+      customApiKey,
+      customVoiceId,
       experienceType: experienceType || 'story',
       senderName,
       relationship,
       createdAt: new Date().toISOString()
     });
+    
+    console.log('📤 Story stored with ID:', storyId, 'customVoiceId:', customVoiceId);
 
     const shareUrl = `${req.headers.origin || 'https://inworld-christmas.vercel.app'}/share/${storyId}`;
     res.json({ storyId, shareUrl });
@@ -702,6 +709,8 @@ app.get('/api/story/:id', async (req, res) => {
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
     }
+    
+    console.log('📥 Retrieved story:', id, 'experienceType:', story.experienceType, 'customVoiceId:', story.customVoiceId);
 
     res.json(story);
   } catch (error: any) {
