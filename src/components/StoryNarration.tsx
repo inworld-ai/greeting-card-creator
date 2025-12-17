@@ -806,7 +806,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
   }
 
-  const handleStartNarration = async (textToSpeak?: string) => {
+  const handleStartNarration = async (textToSpeak?: string, isReplay: boolean = false) => {
     const text = textToSpeak || storyText
     
     // Prevent multiple simultaneous generations (but allow if we're just starting)
@@ -936,6 +936,117 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       
       // Stop and clean up any existing audio (only if not using cache)
       cleanupAudio()
+      
+      // For REPLAY: Use parallel generation for guaranteed seamless playback
+      // Generate ALL chunks upfront, wait for all to complete, then play
+      if (isReplay) {
+        console.log('🔄 REPLAY: Using parallel generation for seamless playback...')
+        
+        // Extract title for TTS
+        const [title] = extractTitleAndStory(text)
+        
+        // Split story into chunks (use larger chunks for replay since we're waiting anyway)
+        const storyChunks = splitStoryIntoSmallChunks(text, 150, 300) // Larger first chunk for replay
+        console.log(`🔄 REPLAY: Splitting into ${storyChunks.length} chunks for parallel generation`)
+        
+        // Prepare all chunks with title/emotion prefix
+        const emotionPrefix = experienceType === 'greeting-card' ? '[happy] ' : ''
+        const chunksForTTS = storyChunks.map((chunk, idx) => {
+          if (idx === 0 && title) {
+            return emotionPrefix + `${title}.\n\n${chunk}`
+          }
+          return emotionPrefix + chunk
+        })
+        
+        // Generate ALL chunks in parallel
+        console.log('🔄 REPLAY: Starting parallel TTS generation for all chunks...')
+        const audioPromises = chunksForTTS.map((chunk, idx) => {
+          console.log(`🔄 REPLAY: Starting TTS for chunk ${idx + 1}/${chunksForTTS.length} (${chunk.length} chars)`)
+          return synthesizeSpeech(chunk, {
+            voiceId: customVoiceId || voiceId,
+            apiKey: customApiKey || undefined
+          })
+        })
+        
+        // Wait for ALL to complete
+        const allAudioChunks = await Promise.all(audioPromises)
+        console.log(`✅ REPLAY: All ${allAudioChunks.length} audio chunks ready!`)
+        
+        // Check if we should stop
+        if (shouldStopAllAudioRef.current) {
+          console.log('🛑 REPLAY: Stopped during generation')
+          isGeneratingRef.current = false
+          setIsGeneratingAudio(false)
+          return
+        }
+        
+        // Track all audio elements
+        allAudioChunks.forEach(audio => {
+          allAudioElementsRef.current.add(audio)
+        })
+        
+        // Chain all chunks together
+        for (let i = 0; i < allAudioChunks.length - 1; i++) {
+          const currentAudio = allAudioChunks[i]
+          const nextAudio = allAudioChunks[i + 1]
+          const currentIdx = i
+          
+          currentAudio.onended = null
+          currentAudio.addEventListener('ended', async () => {
+            console.log(`🔗 REPLAY: Chunk ${currentIdx + 1} ended, playing chunk ${currentIdx + 2}...`)
+            if (shouldStopAllAudioRef.current) {
+              console.log('🛑 REPLAY: Stopped by cleanup flag')
+              return
+            }
+            try {
+              await nextAudio.play()
+              console.log(`✅ REPLAY: Chunk ${currentIdx + 2} started playing`)
+            } catch (err) {
+              console.error(`Error playing chunk ${currentIdx + 2}:`, err)
+            }
+          }, { once: true })
+        }
+        
+        // Set up final ended handler
+        const finalAudio = allAudioChunks[allAudioChunks.length - 1]
+        finalAudio.onended = null
+        finalAudio.addEventListener('ended', () => {
+          console.log('🎵 REPLAY: All audio playback complete!')
+          setIsAudioPlaying(false)
+          isNarrationInProgressRef.current = false
+          isGeneratingRef.current = false
+          if (checkAudioIntervalRef.current) {
+            clearInterval(checkAudioIntervalRef.current)
+            checkAudioIntervalRef.current = null
+          }
+        }, { once: true })
+        
+        // Cache for future replays
+        cachedAllAudioRef.current = {
+          firstChunk: allAudioChunks[0],
+          remainingChunks: allAudioChunks.slice(1)
+        }
+        console.log(`💾 REPLAY: Cached ${allAudioChunks.length} chunks for instant replay`)
+        
+        // Start playing
+        audioRef.current = allAudioChunks[0]
+        hasStartedNarrationForStoryRef.current = text
+        
+        try {
+          await allAudioChunks[0].play()
+          console.log('✅ REPLAY: Started seamless playback!')
+          setHasStartedNarration(true)
+          setIsAudioPlaying(true)
+          setIsGeneratingAudio(false)
+          startPollingForAudioEnd()
+        } catch (err) {
+          console.error('⚠️ REPLAY: Error starting playback:', err)
+          setError('Error playing audio. Please try again.')
+        }
+        
+        isGeneratingRef.current = false
+        return
+      }
 
       // Extract title for TTS
       const [title] = extractTitleAndStory(text)
@@ -2103,16 +2214,16 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 isNarrationInProgressRef.current = false
                 isGeneratingRef.current = false
                 
-                // Start narration - will use cache if available for instant replay
+                // Start narration - will use cache if available, or parallel generation for seamless replay
                 if (storyText) {
-                  await handleStartNarration(storyText)
+                  await handleStartNarration(storyText, true) // isReplay = true
                 }
               }} 
               className="restart-button"
               style={{ background: '#166534' }}
               disabled={isGeneratingAudio}
             >
-              {isGeneratingAudio ? 'Replaying...' : 'Replay Story'}
+              {isGeneratingAudio ? 'Preparing Replay...' : 'Replay Story'}
             </button>
           )}
           {(experienceType === 'greeting-card' || experienceType === 'story') && (
