@@ -2095,30 +2095,15 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
           {experienceType === 'story' && !isShared && (
             <button 
               onClick={async () => {
-                // Replay the story narration by regenerating audio
-                console.log('🔄 Replay requested - regenerating narration...')
+                // Replay the story narration using cached audio (instant!) or regenerate if needed
+                console.log('🔄 Replay requested...')
                 
-                // Show generating state on button
-                setIsGeneratingAudio(true)
-                
-                // Stop any current audio
-                cleanupAudio()
-                
-                // Reset all audio state
+                // Reset flags to allow replay (but DON'T call cleanupAudio - it destroys the cache!)
                 hasStartedNarrationForStoryRef.current = ''
                 isNarrationInProgressRef.current = false
-                hasUsedPreloadedAudioRef.current = false
-                isPreloadingRef.current = false
-                preloadedAudioRef.current = null
-                preloadedChunksRef.current = []
-                setIsAudioPreloaded(false)
-                setHasStartedNarration(false)
                 isGeneratingRef.current = false
                 
-                // Brief delay to allow cleanup to complete
-                await new Promise(resolve => setTimeout(resolve, 150))
-                
-                // Start fresh narration
+                // Start narration - will use cache if available for instant replay
                 if (storyText) {
                   await handleStartNarration(storyText)
                 }
