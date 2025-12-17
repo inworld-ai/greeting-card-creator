@@ -121,7 +121,7 @@ function SharedStory() {
         
         // Generate TTS for first chunk - wait for FULL audio (not just first WAV chunk)
         // This eliminates the pause between first chunk and rest
-        const audio = await synthesizeSpeech('[happy] ' + firstPartText, {
+        const audio = await synthesizeSpeech(firstPartText, {
           voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
         })
         
@@ -133,7 +133,7 @@ function SharedStory() {
         if (restPartText && restPartText.length > 10) {
           console.log(`🎵 SharedStory: Starting TTS for remaining ${restPartText.length} chars in background...`)
           // Don't await - let it generate in background
-          synthesizeSpeech('[happy] ' + restPartText, {
+          synthesizeSpeech(restPartText, {
             voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
           }).then(restAudio => {
             console.log(`🎵 SharedStory: Background TTS for rest complete (${restAudio.duration?.toFixed(1)}s)`)

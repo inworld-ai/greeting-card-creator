@@ -83,7 +83,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             firstChunkTextRef.current = originalFirstPartText
             
             // Generate TTS for the FIRST PART only (fast - should complete in ~5-10s)
-            const fullAudio = await synthesizeSpeech('[happy] ' + firstPartText, {
+            const fullAudio = await synthesizeSpeech(firstPartText, {
               voiceId: customVoiceId || voiceId,
               onFirstChunkReady: (preloadedAudio) => {
                 // Only transition once - when first ~3 seconds of audio is ready
@@ -108,7 +108,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
               if (restPartText && restPartText.length > 10 && onRemainingAudioReady && !hasStartedRestTTSRef.current) {
                 hasStartedRestTTSRef.current = true
                 console.log(`🎵 Starting TTS for rest of text (${restPartText.length} chars) in parallel...`)
-                synthesizeSpeech('[happy] ' + restPartText, {
+                synthesizeSpeech(restPartText, {
                   voiceId: customVoiceId || voiceId
                 }).then(restAudio => {
                   console.log(`✅ Rest audio ready: ${restAudio.duration?.toFixed(1)}s`)
@@ -197,7 +197,7 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
             hasStartedRestTTSRef.current = true
             console.log(`🎵 Full story has additional text (${remainingText.length} chars) - generating TTS...`)
             
-            synthesizeSpeech('[happy] ' + remainingText, {
+            synthesizeSpeech(remainingText, {
               voiceId: customVoiceId || voiceId
             }).then(remainingAudio => {
               console.log(`✅ Additional story audio ready: ${remainingAudio.duration?.toFixed(1)}s`)
