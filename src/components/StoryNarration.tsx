@@ -2317,7 +2317,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               )}
             </>
           )}
-          {experienceType === 'story' && !isShared && (
+          {experienceType === 'story' && (
             <button 
               onClick={async () => {
                 // Replay the story narration using cached audio (instant!) or regenerate if needed

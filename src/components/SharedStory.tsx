@@ -259,7 +259,7 @@ function SharedStory() {
         <div className="app-container">
           <div className="story-generation">
             <div className="loading-container">
-              <p className="loading-text">
+              <p className="loading-text" style={{ fontSize: '1.5rem', fontWeight: '500' }}>
                 {loading ? 'Loading...' : isGreetingCard ? 'Preparing your card...' : 'Preparing your story...'}
               </p>
               <div className="loading-dots">
