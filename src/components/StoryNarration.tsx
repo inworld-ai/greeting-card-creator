@@ -1513,13 +1513,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     }
 
     // Stop and clean up any existing audio IMMEDIATELY when story changes
-    // (unless we're in progressive mode and already playing)
-    if (!isProgressive || !hasStartedFirstChunkRef.current) {
+    // (unless we're in progressive mode and already playing, OR we have preloaded audio)
+    // Don't cleanup if preloadedAudio prop is provided (shared stories)
+    if ((!isProgressive || !hasStartedFirstChunkRef.current) && !preloadedAudio) {
       cleanupAudio()
     }
 
       // Reset state
-    if (!isProgressive || !hasStartedFirstChunkRef.current) {
+    if ((!isProgressive || !hasStartedFirstChunkRef.current) && !preloadedAudio) {
       setError(null)
     }
     }
@@ -1540,12 +1541,13 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       // Cleanup audio on story change - this runs when storyText changes
       // But only if we're not in progressive mode or haven't started yet
-      if (!isProgressive || !hasStartedFirstChunkRef.current) {
+      // AND we don't have preloaded audio (shared stories)
+      if ((!isProgressive || !hasStartedFirstChunkRef.current) && !preloadedAudio) {
         cleanupAudio()
         isGeneratingRef.current = false
       }
     }
-  }, [storyText, isProgressive]) // Re-run when storyText changes
+  }, [storyText, isProgressive, preloadedAudio]) // Re-run when storyText changes
 
   return (
     <div className="story-narration">
