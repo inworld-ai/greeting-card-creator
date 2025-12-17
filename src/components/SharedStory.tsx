@@ -31,6 +31,7 @@ function SharedStory() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null)
   const [storyPreloadedAudio, setStoryPreloadedAudio] = useState<HTMLAudioElement | null>(null) // For story experience
+  const [storyRemainingAudio, setStoryRemainingAudio] = useState<HTMLAudioElement[] | null>(null) // Remaining audio for story
   const hasPlayedRef = useRef(false)
   const isPreloadingRef = useRef(false)
   const isStoryPreloadingRef = useRef(false)
@@ -128,7 +129,7 @@ function SharedStory() {
         setStoryPreloadedAudio(audio)
         setAudioLoading(false)
         
-        // Start generating rest of audio in background (will be used by StoryNarration)
+        // Start generating rest of audio in background (will be passed to StoryNarration)
         if (restPartText && restPartText.length > 10) {
           console.log(`🎵 SharedStory: Starting TTS for remaining ${restPartText.length} chars in background...`)
           // Don't await - let it generate in background
@@ -136,6 +137,8 @@ function SharedStory() {
             voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
           }).then(restAudio => {
             console.log(`🎵 SharedStory: Background TTS for rest complete (${restAudio.duration?.toFixed(1)}s)`)
+            // Store in state so it can be passed to StoryNarration
+            setStoryRemainingAudio([restAudio])
           }).catch(err => {
             console.error('Error generating rest audio in background:', err)
           })
@@ -364,6 +367,7 @@ function SharedStory() {
           isShared={true}
           experienceType={storyData.storyType ? 'story' : (storyData.imageUrl ? 'year-review' : 'wish-list')}
           preloadedAudio={storyPreloadedAudio}
+          preloadedRemainingAudio={storyRemainingAudio}
         />
       </div>
       <footer className="inworld-footer">

@@ -114,6 +114,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
   const hasUsedPreloadedAudioRef = useRef<boolean>(false) // Track if we've already used the preloaded audio
   const isPreloadingRef = useRef<boolean>(false) // Track if we're currently preloading
   const preloadedChunksRef = useRef<HTMLAudioElement[]>([]) // All preloaded audio chunks
+  const preloadedRemainingAudioRef = useRef<HTMLAudioElement[] | null>(null) // Remaining audio from parent
   const [isAudioPreloaded, setIsAudioPreloaded] = useState(false) // Track if audio is fully ready to play
 
   useEffect(() => {
@@ -135,6 +136,14 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       // Don't auto-start - wait for user to click "Click to see the story"
     }
   }, [preloadedAudio, experienceType])
+  
+  // Store preloaded remaining audio from parent (SharedStory generates this in background)
+  useEffect(() => {
+    if (preloadedRemainingAudio && preloadedRemainingAudio.length > 0) {
+      console.log(`🎵 Remaining audio from parent stored: ${preloadedRemainingAudio.length} chunks, ${preloadedRemainingAudio[0].duration?.toFixed(1)}s`)
+      preloadedRemainingAudioRef.current = preloadedRemainingAudio
+    }
+  }, [preloadedRemainingAudio])
 
   // Resume AudioContext on any user interaction to enable autoplay
   useEffect(() => {
@@ -693,9 +702,44 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
       }
       
       // Check if we have preloaded remaining audio (generated early during loading)
-      if (preloadedRemainingAudio && preloadedRemainingAudio.length > 0) {
-        console.log(`✅ Using PRELOADED remaining audio! ${preloadedRemainingAudio.length} chunks, ${preloadedRemainingAudio[0].duration?.toFixed(1)}s - NO WAIT!`)
-        remainingTextAudios = preloadedRemainingAudio
+      // Use ref to get latest value (prop might not be updated yet)
+      const remainingAudioFromParent = preloadedRemainingAudioRef.current || preloadedRemainingAudio
+      
+      if (remainingAudioFromParent && remainingAudioFromParent.length > 0) {
+        console.log(`✅ Using PRELOADED remaining audio! ${remainingAudioFromParent.length} chunks, ${remainingAudioFromParent[0].duration?.toFixed(1)}s - NO WAIT!`)
+        remainingTextAudios = remainingAudioFromParent
+      } else if (isShared && preloadedAudio) {
+        // For shared stories with preloaded audio from parent (SharedStory),
+        // wait for the remaining audio to arrive via ref instead of generating our own
+        // (SharedStory generates audio with title-stripped text, we shouldn't generate with original text)
+        console.log('🟡 Shared story: waiting for remaining audio from parent...')
+        
+        // Poll for preloadedRemainingAudioRef to be populated (max 60 seconds)
+        const maxWaitTime = 60000
+        const pollInterval = 500
+        let waited = 0
+        
+        while (!preloadedRemainingAudioRef.current || preloadedRemainingAudioRef.current.length === 0) {
+          if (waited >= maxWaitTime || shouldStopAllAudioRef.current) {
+            console.log('⚠️ Timeout waiting for remaining audio from parent')
+            break
+          }
+          await new Promise(resolve => setTimeout(resolve, pollInterval))
+          waited += pollInterval
+          
+          // Log progress every 5 seconds
+          if (waited % 5000 === 0) {
+            console.log(`🟡 Still waiting for remaining audio... (${waited / 1000}s)`)
+          }
+        }
+        
+        if (preloadedRemainingAudioRef.current && preloadedRemainingAudioRef.current.length > 0) {
+          console.log(`✅ Remaining audio arrived from parent! ${preloadedRemainingAudioRef.current.length} chunks`)
+          remainingTextAudios = preloadedRemainingAudioRef.current
+        } else {
+          console.log('⚠️ No remaining audio received, story may be incomplete')
+          remainingTextAudios = []
+        }
       } else {
         // Fall back to generating audio on demand
         // Split remaining text into chunks for better TTS (300 words each)
