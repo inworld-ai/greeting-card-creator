@@ -2382,6 +2382,8 @@ app.post('/api/generate-story-audio', async (req, res) => {
 app.post('/api/share-story', async (req, res) => {
   try {
     const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId, experienceType, senderName, relationship } = req.body
+    
+    console.log('📤 Share story request - experienceType:', experienceType, 'customVoiceId:', customVoiceId)
 
     if (!storyText) {
       return res.status(400).json({ error: 'Missing required field: storyText' })
@@ -2404,6 +2406,8 @@ app.post('/api/share-story', async (req, res) => {
       relationship,
       createdAt: new Date().toISOString()
     })
+    
+    console.log('📤 Story stored with ID:', storyId, 'customVoiceId:', customVoiceId)
 
     // Return just the storyId - frontend will construct the full URL from window.location.origin
     // This is the most stable approach as it doesn't require environment variables
@@ -2425,6 +2429,8 @@ app.get('/api/story/:id', async (req, res) => {
     if (!story) {
       return res.status(404).json({ error: 'Story not found' })
     }
+    
+    console.log('📥 Retrieved story:', id, 'experienceType:', story.experienceType, 'customVoiceId:', story.customVoiceId)
 
     res.json(story)
   } catch (error) {

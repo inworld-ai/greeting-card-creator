@@ -311,6 +311,8 @@ function TextBasedChristmasCard() {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
       
+      console.log('📤 Sharing card with customVoiceId:', customVoiceId)
+      
       const response = await fetch(`${API_BASE_URL}/api/share-story`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -47,6 +47,7 @@ function SharedStory() {
 
       try {
         const data = await getSharedStory(storyId) as any
+        console.log('📥 SharedStory loaded data - experienceType:', data.experienceType, 'customVoiceId:', data.customVoiceId)
         setStoryData({
           storyText: data.storyText,
           childName: data.childName,
@@ -79,6 +80,8 @@ function SharedStory() {
     isPreloadingRef.current = true
     
     console.log('🎵 SharedStory: Preloading greeting card audio...')
+    console.log('🎵 SharedStory: customVoiceId from data:', storyData.customVoiceId)
+    console.log('🎵 SharedStory: Using voiceId:', storyData.customVoiceId || 'Craig')
 
     const preloadAudio = async () => {
       try {
@@ -186,8 +189,10 @@ function SharedStory() {
     try {
       let audio: HTMLAudioElement
       if (preloadedAudioRef.current) {
+        console.log('🎵 Playing preloaded card audio')
         audio = preloadedAudioRef.current
       } else {
+        console.log('🎵 No preloaded audio, generating with voiceId:', storyData.customVoiceId || 'Craig')
         audio = await synthesizeSpeech('[happy] ' + storyData.storyText, {
           voiceId: storyData.customVoiceId || 'Craig'
         })
