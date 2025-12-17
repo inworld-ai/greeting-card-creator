@@ -1951,6 +1951,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
                 // Replay the story narration by regenerating audio
                 console.log('🔄 Replay requested - regenerating narration...')
                 
+                // Show generating state on button
+                setIsGeneratingAudio(true)
+                
                 // Stop any current audio
                 cleanupAudio()
                 
@@ -1975,8 +1978,9 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               }} 
               className="restart-button"
               style={{ background: '#166534' }}
+              disabled={isGeneratingAudio}
             >
-              Replay Story
+              {isGeneratingAudio ? 'Replaying...' : 'Replay Story'}
             </button>
           )}
           {(experienceType === 'greeting-card' || experienceType === 'story') && (
