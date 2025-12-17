@@ -32,24 +32,12 @@ function StoryGeneration({ storyType, childName, voiceId, customVoiceId, onStory
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
         
-        // Play the female elf announcement (TTS for personalized part + MP3 for static ending)
+        // Play the status announcement MP3 immediately
         try {
-          // Pre-load the static ending MP3
-          const staticEnding = new Audio('/audio/story-status-ending.mp3')
-          
-          // Generate TTS for personalized part only
-          const announcement = await synthesizeSpeech(`[happy] The Inworld elves are creating your Christmas story for ${childName} right now.`, {
-            voiceId: 'christmas_story_generator__female_elf_narrator'
-          })
-          
-          // Chain: when TTS finishes, play the static MP3 ending
-          announcement.onended = () => {
-            staticEnding.play().catch(err => console.log('Static ending play error:', err))
-          }
-          
-          announcement.play().catch(err => console.log('Announcement autoplay prevented:', err))
+          const statusAudio = new Audio('/audio/story-status.mp3')
+          statusAudio.play().catch(err => console.log('Status audio autoplay prevented:', err))
         } catch (err) {
-          console.log('Could not play announcement:', err)
+          console.log('Could not play status audio:', err)
         }
         
         // Start story generation
