@@ -13,6 +13,7 @@ function SharedStory() {
   const { storyId } = useParams<{ storyId: string }>()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [audioLoading, setAudioLoading] = useState(true) // Wait for audio to preload for stories
   const [error, setError] = useState<string | null>(null)
   const [storyData, setStoryData] = useState<{
     storyText: string
@@ -29,8 +30,10 @@ function SharedStory() {
   const [isFlipped, setIsFlipped] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const preloadedAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [storyPreloadedAudio, setStoryPreloadedAudio] = useState<HTMLAudioElement | null>(null) // For story experience
   const hasPlayedRef = useRef(false)
   const isPreloadingRef = useRef(false)
+  const isStoryPreloadingRef = useRef(false)
 
   useEffect(() => {
     const loadStory = async () => {
@@ -81,6 +84,57 @@ function SharedStory() {
     preloadAudio()
   }, [storyData])
 
+  // Preload audio for story experience - wait for first chunk before showing
+  useEffect(() => {
+    const isStoryType = storyData?.experienceType === 'story' || 
+                        (storyData?.storyType && storyData?.experienceType !== 'greeting-card')
+    
+    if (!storyData || !isStoryType || !storyData.storyText || isStoryPreloadingRef.current) {
+      // Not a story type or no data - mark audio as ready (no preload needed)
+      if (storyData && !isStoryType) {
+        setAudioLoading(false)
+      }
+      return
+    }
+    
+    isStoryPreloadingRef.current = true
+    console.log('🎵 SharedStory: Starting audio preload for story...')
+
+    const preloadStoryAudio = async () => {
+      try {
+        // Get first ~100 words for fast initial audio
+        const words = storyData.storyText.split(/\s+/)
+        const firstPartText = words.slice(0, 100).join(' ')
+        
+        console.log(`🎵 SharedStory: Preloading first ${Math.min(100, words.length)} words (${firstPartText.length} chars)...`)
+        
+        // Generate TTS for first chunk with callback when first WAV chunk is ready
+        const audio = await synthesizeSpeech('[happy] ' + firstPartText, {
+          voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig',
+          onFirstChunkReady: (firstWavChunk) => {
+            // First ~3-4 seconds of audio is ready - can show the story now
+            console.log('🎵 SharedStory: First audio chunk ready! Showing story...')
+            setStoryPreloadedAudio(firstWavChunk)
+            setAudioLoading(false)
+          }
+        })
+        
+        // If onFirstChunkReady didn't fire (older path), use full audio
+        if (!storyPreloadedAudio) {
+          console.log('🎵 SharedStory: Full audio ready, showing story...')
+          setStoryPreloadedAudio(audio)
+          setAudioLoading(false)
+        }
+      } catch (error) {
+        console.error('Error preloading story audio:', error)
+        // Show story anyway on error
+        setAudioLoading(false)
+      }
+    }
+
+    preloadStoryAudio()
+  }, [storyData])
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -123,13 +177,23 @@ function SharedStory() {
     navigate('/')
   }
 
-  if (loading) {
+  // Determine if this is a story type that needs audio preloading
+  const isStoryExperience = storyData?.experienceType === 'story' || 
+                            (storyData?.storyType && storyData?.experienceType !== 'greeting-card')
+  
+  // Show loading if data is loading OR if story audio is still preloading
+  const showLoading = loading || (isStoryExperience && audioLoading)
+
+  if (showLoading) {
     return (
       <div className="app" style={{ background: '#faf7f5', minHeight: '100vh' }}>
         <div className="app-container">
           <div className="story-narration">
             <div className="loading-container">
-              <h2 className="loading-title">Loading...</h2>
+              <h2 className="loading-title" style={{ display: 'none' }}>Loading...</h2>
+              <p className="loading-status">
+                {loading ? 'Loading...' : 'Preparing your story...'}
+              </p>
               <div className="loading-dots">
                 <span></span>
                 <span></span>
@@ -284,13 +348,15 @@ function SharedStory() {
           customVoiceId={storyData.customVoiceId}
           isShared={true}
           experienceType={storyData.storyType ? 'story' : (storyData.imageUrl ? 'year-review' : 'wish-list')}
+          preloadedAudio={storyPreloadedAudio}
         />
       </div>
       <footer className="inworld-footer">
-        <span style={{ color: '#888', fontSize: '0.9rem' }}>
+        <span style={{ color: '#888', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
           🎁 A gift from{' '}
-          <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline' }}>
+          <a href="https://inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#166534', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             Inworld AI
+            <img src="/inworld-favicon.ico" alt="" style={{ width: '1em', height: '1em', verticalAlign: 'middle' }} />
           </a>
         </span>
       </footer>
