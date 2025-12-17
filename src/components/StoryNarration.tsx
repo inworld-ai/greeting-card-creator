@@ -867,10 +867,30 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
     
     setIsGeneratingAudio(true)
     
-    // Stop any currently playing audio
-    shouldStopAllAudioRef.current = false
+    // Stop ALL currently playing audio (including from initial playthrough)
+    shouldStopAllAudioRef.current = true // Signal to stop any chained audio
+    
+    // Stop audioRef if it's playing
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.onended = null
+    }
+    
+    // Stop secondAudioRef if it's playing
+    if (secondAudioRef.current) {
+      secondAudioRef.current.pause()
+      secondAudioRef.current.onended = null
+    }
+    
+    // Pause cached chunks (in case they're mid-play from previous replay)
     firstChunk.pause()
-    remainingChunks.forEach(chunk => chunk.pause())
+    remainingChunks.forEach(chunk => {
+      chunk.pause()
+      chunk.onended = null // Clear any existing chain handlers
+    })
+    
+    // Reset stop flag so replay can proceed
+    shouldStopAllAudioRef.current = false
     
     // Reset all audio elements to beginning
     firstChunk.currentTime = 0
@@ -2346,7 +2366,7 @@ function StoryNarration({ storyText, childName, voiceId, storyType: _storyType, 
               }} 
               className="restart-button"
               style={{ background: '#166534' }}
-              disabled={isGeneratingAudio || isAudioPlaying}
+              disabled={isGeneratingAudio}
             >
               {isGeneratingAudio ? 'Replaying...' : 'Replay Story'}
             </button>
