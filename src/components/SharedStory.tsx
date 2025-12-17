@@ -102,28 +102,43 @@ function SharedStory() {
 
     const preloadStoryAudio = async () => {
       try {
+        // Strip "Title:" prefix if present (same as StoryGeneration)
+        let textForTTS = storyData.storyText
+        const titleMatch = textForTTS.match(/^Title:\s*(.+?)(?:\n\n|\n)/i)
+        if (titleMatch) {
+          // Replace "Title: X" with just "X" at the beginning
+          textForTTS = titleMatch[1].trim() + '. ' + textForTTS.substring(titleMatch[0].length).trim()
+          console.log('🎵 SharedStory: Stripped "Title:" prefix for TTS')
+        }
+        
         // Get first ~100 words for fast initial audio
-        const words = storyData.storyText.split(/\s+/)
+        const words = textForTTS.split(/\s+/)
         const firstPartText = words.slice(0, 100).join(' ')
+        const restPartText = words.slice(100).join(' ')
         
         console.log(`🎵 SharedStory: Preloading first ${Math.min(100, words.length)} words (${firstPartText.length} chars)...`)
         
-        // Generate TTS for first chunk with callback when first WAV chunk is ready
+        // Generate TTS for first chunk - wait for FULL audio (not just first WAV chunk)
+        // This eliminates the pause between first chunk and rest
         const audio = await synthesizeSpeech('[happy] ' + firstPartText, {
-          voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig',
-          onFirstChunkReady: (firstWavChunk) => {
-            // First ~3-4 seconds of audio is ready - can show the story now
-            console.log('🎵 SharedStory: First audio chunk ready! Showing story...')
-            setStoryPreloadedAudio(firstWavChunk)
-            setAudioLoading(false)
-          }
+          voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
         })
         
-        // If onFirstChunkReady didn't fire (older path), use full audio
-        if (!storyPreloadedAudio) {
-          console.log('🎵 SharedStory: Full audio ready, showing story...')
-          setStoryPreloadedAudio(audio)
-          setAudioLoading(false)
+        console.log(`🎵 SharedStory: Full first chunk audio ready (${audio.duration?.toFixed(1)}s)! Showing story...`)
+        setStoryPreloadedAudio(audio)
+        setAudioLoading(false)
+        
+        // Start generating rest of audio in background (will be used by StoryNarration)
+        if (restPartText && restPartText.length > 10) {
+          console.log(`🎵 SharedStory: Starting TTS for remaining ${restPartText.length} chars in background...`)
+          // Don't await - let it generate in background
+          synthesizeSpeech('[happy] ' + restPartText, {
+            voiceId: storyData.customVoiceId || storyData.voiceId || 'Craig'
+          }).then(restAudio => {
+            console.log(`🎵 SharedStory: Background TTS for rest complete (${restAudio.duration?.toFixed(1)}s)`)
+          }).catch(err => {
+            console.error('Error generating rest audio in background:', err)
+          })
         }
       } catch (error) {
         console.error('Error preloading story audio:', error)
