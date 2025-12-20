@@ -1,15 +1,21 @@
-# 🎄 Personalized Christmas Storyteller
-A delightful web application powered by Inworld AI that creates personalized Christmas stories for children. Using Inworld's Runtime technology, the AI storyteller generates custom stories and narrates them with Inworld's high-quality TTS voices, including support for custom voice clones.
+# 🎄 Story & Greeting Card Creator
 
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Powered by Inworld AI](https://img.shields.io/badge/Powered_by-Inworld_AI-orange)](https://inworld.ai/runtime)
+[![Documentation](https://img.shields.io/badge/Documentation-Read_Docs-blue)](https://docs.inworld.ai/)
+
+A delightful web application powered by Inworld AI that creates personalized Christmas stories and greeting cards. Using Inworld's Runtime technology, the AI generates custom content and narrates it with high-quality TTS voices, including support for custom voice clones.
 
 ## ✨ Features
+
 - 🎭 **Personalized Stories**: AI generates unique Christmas stories featuring the child as the main character
-- 🎙️ **Multiple Narrator Options**: Choose from preset elf narrators (Holly and Clark) or create your own custom narrator
-- 🎨 **Custom Voice Clones**: Support for Inworld Voice Clone technology - users can bring their own voices
+- 💌 **Custom Greeting Cards**: AI-generated Christmas cards with personalized messages and images
+- 🎙️ **Multiple Narrator Options**: Choose from preset elf narrators (Holly, Clark, Ralphy) or create your own
+- 🎨 **Custom Voice Clones**: Record your voice directly in the browser to create a personalized narrator
 - ⚡ **Ultra-Fast Generation**: Progressive story generation with TTS starting in 2-3 seconds
-- 🔊 **High-Quality Narration**: Powered by Inworld TTS with temperature control for expressive voices
+- 🔊 **High-Quality Narration**: Powered by Inworld TTS with expressive voices
 - 📱 **Responsive Design**: Beautiful, child-friendly interface that works on all devices
-- 🔗 **Story Sharing**: Share generated stories via unique links
+- 🔗 **Easy Sharing**: Share generated stories and cards via unique links
 - 🎄 **Christmas Themed**: Fully themed with Christmas colors, characters, and story types
 
 ## 🚀 Quick Start
@@ -18,43 +24,43 @@ A delightful web application powered by Inworld AI that creates personalized Chr
 
 - Node.js (v20 or higher)
 - npm or yarn
-- A Google AI API key ([Get one here](https://aistudio.google.com/app/apikey))
-- An Inworld API key ([Get one here](https://studio.inworld.ai/))
+- API Keys:
+  - [Inworld API Key](https://studio.inworld.ai/) (Base64-encoded)
+  - [Google AI API Key](https://aistudio.google.com/app/apikey) (for story generation & images)
+  - [Anthropic API Key](https://console.anthropic.com/) (for greeting card messages)
+  - [Assembly.AI API Key](https://www.assemblyai.com/) (for voice input)
 
 ### Installation
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/inworld-ai/personalized-christmas-storyteller.git
-   cd personalized-christmas-storyteller
-   ```
-   
-   Or if you prefer SSH:
-   ```bash
-   git clone git@github.com:inworld-ai/personalized-christmas-storyteller.git
-   cd personalized-christmas-storyteller
+   git clone https://github.com/inworld-ai/story-greetingcard-creator.git
+   cd story-greetingcard-creator
    ```
 
 2. **Install dependencies**:
    ```bash
+   # Install frontend dependencies
    npm install
+   
+   # Install server dependencies
+   cd server && npm install && cd ..
    ```
 
 3. **Set up environment variables**:
    
-   Create a `.env` file in the root directory:
-   ```env
-   GOOGLE_API_KEY=your_google_api_key_here
-   INWORLD_API_KEY=your_base64_inworld_api_key_here
-   INWORLD_VOICE_ID=christmas_story_generator__holly_the_elf
-   INWORLD_MODEL_ID=inworld-tts-1-max
+   Copy the sample env file and add your API keys:
+   ```bash
+   cp server/.env-sample server/.env
    ```
-
-   **Important Notes:**
-   - **Inworld API Key**: Get from [Inworld Studio](https://studio.inworld.ai/) → Settings → API Keys. Must be the **Base64-encoded** key
-   - **Inworld Voice ID**: Default voice to use. The app includes preset voices for "Holly the Elf" and "Clark the Elf"
-   - **Inworld Model ID**: Use `inworld-tts-1-max` (default, better quality) or `inworld-tts-1` (faster)
-   - **Google AI API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey) - used for story generation
+   
+   Edit `server/.env`:
+   ```env
+   INWORLD_API_KEY=your_base64_inworld_api_key
+   GOOGLE_API_KEY=your_google_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   ASSEMBLY_AI_API_KEY=your_assembly_ai_api_key
+   ```
 
 4. **Run the application**:
    ```bash
@@ -76,21 +82,29 @@ A delightful web application powered by Inworld AI that creates personalized Chr
 
 ## 🎯 How It Works
 
-1. **Story Type Selection**: Choose from preset Christmas story types (Meeting Santa Claus, Christmas Eve Adventure, Elf Workshop Visit) or create a custom story idea
-2. **Character Name**: Enter the child's name (or any name) to personalize the story
-3. **Narrator Selection**: Choose from preset narrators or create a custom narrator with your own Inworld API key and Voice ID
-4. **Story Generation**: AI generates a personalized Christmas story using Google's Gemini Flash Lite
-5. **Progressive TTS**: Text-to-speech starts playing as soon as the first chunk is ready (2-3 seconds)
-6. **Story Narration**: High-quality narration with Inworld TTS, with support for custom voice clones
-7. **Sharing**: Share stories via unique links that preserve the story text and narrator choice
+### Christmas Story Creator
+1. **Story Type Selection**: Choose from preset Christmas story types or create a custom idea
+2. **Character Name**: Enter the child's name to personalize the story
+3. **Narrator Selection**: Choose from preset narrators or create a custom voice clone
+4. **Story Generation**: AI generates a personalized Christmas story
+5. **Progressive TTS**: Narration starts playing within 2-3 seconds
+6. **Sharing**: Share stories via unique links
+
+### Christmas Card Creator
+1. **Recipient Info**: Enter the recipient's name and a fun fact about them
+2. **Sender Info**: Add your sign-off message
+3. **AI Generation**: Creates a personalized message and cover image
+4. **Narration**: Card message is read aloud with chosen narrator
+5. **Sharing**: Share cards via unique links
 
 ## 🏗️ Architecture
 
-This application uses **Inworld Runtime** to create an AI workflow that combines:
+This application uses **Inworld Runtime** to create AI workflows combining:
 
-- **LLM Node** (Google Gemini Flash Lite): Generates personalized Christmas stories
-- **TTS Node** (Inworld TTS): Converts story text to high-quality speech
-- **Progressive Streaming**: Story text streams from LLM while TTS generates audio in parallel
+- **LLM Node** (Google Gemini): Generates personalized stories
+- **TTS Node** (Inworld TTS): Converts text to high-quality speech
+- **Image Generation** (Google Imagen): Creates card cover images
+- **Voice Cloning** (Inworld): Creates custom narrator voices
 
 ### Technology Stack
 
@@ -101,85 +115,134 @@ This application uses **Inworld Runtime** to create an AI workflow that combines
 - Web Audio API for audio playback
 
 **Backend:**
-- Node.js + Express
+- Node.js + Express + TypeScript
 - Inworld Runtime SDK
-- Google Gemini Flash Lite API
-- Progressive WAV chunking for low-latency audio
-
-## 🎤 Custom Narrator Support
-
-Users can create their own narrator by:
-
-1. Logging into [Inworld Studio](https://studio.inworld.ai/)
-2. Creating a Voice Clone (TTS → Clone Voice)
-3. Getting their API Key (API Keys → Copy Base64 key)
-4. Getting their Voice ID (TTS → Select Voice list)
-5. Entering these in the "Create Your Own Narrator" page
-
-The app supports both standard Inworld voices and custom voice clones.
+- Redis for persistent storage
+- WebSocket for real-time audio
 
 ## 📦 Deployment
 
-### Vercel (Frontend)
+### Architecture Overview
 
-```bash
-npm i -g vercel
-vercel
-vercel env add GOOGLE_API_KEY
-vercel env add INWORLD_API_KEY
-vercel --prod
-```
+Due to the size of Inworld Runtime dependencies, the app uses a split deployment:
+- **Frontend**: Vercel (static site)
+- **Backend**: Railway (Node.js server with Redis)
 
-### Railway (Backend)
+### Step 1: Deploy Backend to Railway
 
-See `RAILWAY_SETUP.md` for detailed instructions.
+1. **Create a Railway project** at [railway.app](https://railway.app)
 
-The backend requires a persistent Node.js process, so Railway or similar platforms work best.
+2. **Add Redis** (for persistent story sharing):
+   - Click "New" → "Database" → "Redis"
 
-## 🎨 Customization
+3. **Deploy from GitHub**:
+   - Connect your repository
+   - Railway will auto-detect the configuration
 
-### Story Types
+4. **Set environment variables** in Railway dashboard:
+   ```
+   INWORLD_API_KEY=your_base64_inworld_api_key
+   GOOGLE_API_KEY=your_google_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   ASSEMBLY_AI_API_KEY=your_assembly_ai_api_key
+   ```
 
-Edit `src/components/StoryTypeSelection.tsx` to add or modify preset story options.
+5. **Link Redis**:
+   - Go to your web service → Variables
+   - Click "New Variable" → "Add Reference" → Select your Redis service → Select `REDIS_URL`
 
-### Story Prompts
+6. **Get your backend URL**:
+   - Go to Settings → Networking → Generate Domain
+   - Copy the URL (e.g., `https://your-app.railway.app`)
 
-Modify the system and user prompts in `graph.js` to change story style, length, or theme.
+### Step 2: Deploy Frontend to Vercel
 
-### TTS Settings
+1. **Deploy via CLI**:
+   ```bash
+   npm i -g vercel
+   vercel
+   ```
 
-Adjust TTS temperature, sample rate, or model in `graph.js`:
-```javascript
+2. **Set environment variable** in Vercel dashboard:
+   - `VITE_API_URL` = `https://your-backend.railway.app`
+
+3. **Deploy to production**:
+   ```bash
+   vercel --prod
+   ```
+
+### URL Structure
+
+- `/` - Landing page with both experience options
+- `/storyteller` - Christmas Story Creator
+- `/christmascard` - Christmas Card Creator  
+- `/share/:id` - Shared story/card view
+
+## 🎤 Custom Voice Clone
+
+Users can create their own narrator by recording directly in the browser:
+
+1. Click "Create Your Own Narrator"
+2. Select "Record Voice Clone"
+3. Speak for 10-15 seconds
+4. Enter a name for the voice
+5. Voice is cloned instantly and used for narration
+
+Alternatively, users with existing Inworld voice clones can enter their API key and Voice ID directly.
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `INWORLD_API_KEY` | Yes | Inworld API key (Base64-encoded) |
+| `GOOGLE_API_KEY` | Yes | Google AI API key (for LLM + images) |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key (for card messages) |
+| `ASSEMBLY_AI_API_KEY` | Yes | Assembly.AI key (for speech-to-text) |
+| `REDIS_URL` | Yes (prod) | Redis connection URL |
+| `INWORLD_PORTAL_API_KEY` | No | For voice cloning (uses INWORLD_API_KEY if not set) |
+| `TTS_MODEL_ID` | No | Default: `inworld-tts-1-max` |
+
+### Customization
+
+**Story Types**: Edit `src/components/StoryTypeSelection.tsx`
+
+**TTS Settings**: Adjust in `server/components/graph.ts`:
+```typescript
 new RemoteTTSNode({
   speakerId: selectedVoiceId,
   modelId: 'inworld-tts-1-max',
   sampleRate: 24000,
-  temperature: 1.1, // Adjust for more/less expressive voice
+  temperature: 1.1,
 })
 ```
 
-### UI Theme
-
-Modify colors and styling in:
-- `src/index.css` - Global styles
-- `src/components/*.css` - Component-specific styles
+**UI Theme**: Modify styles in `src/index.css` and component CSS files
 
 ## 📚 API Endpoints
 
-- `POST /api/generate-story` - Generate a personalized story
-- `POST /api/tts` - Convert text to speech
-- `POST /api/share-story` - Share a story and get a shareable link
-- `GET /api/story/:id` - Retrieve a shared story
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/generate-story` | POST | Generate a personalized story |
+| `/api/tts` | POST | Convert text to speech |
+| `/api/generate-greeting-card-message` | POST | Generate card message |
+| `/api/generate-greeting-card-image` | POST | Generate card cover image |
+| `/api/clone-voice` | POST | Clone a voice from audio |
+| `/api/share-story` | POST | Share a story/card |
+| `/api/story/:id` | GET | Retrieve a shared story/card |
+| `/health` | GET | Health check |
 
 ## 🔒 Security
 
 - All API keys are stored server-side only
-- Frontend never directly accesses Google AI or Inworld APIs
-- Custom API keys for custom narrators are only used for that user's requests
+- Frontend never directly accesses external APIs
+- Custom API keys for voice clones are only used for that user's requests
+- Shared stories are stored with Redis TTL (30 days)
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -187,19 +250,23 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-
 ## 🙏 Acknowledgments
 
 - Built with [Inworld Runtime](https://github.com/inworld-ai/inworld-runtime)
 - Story generation powered by [Google Gemini](https://ai.google.dev/)
 - TTS powered by [Inworld AI](https://www.inworld.ai/)
+- Card messages powered by [Anthropic Claude](https://www.anthropic.com/)
 
 ## 📧 Support
 
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Check the [Inworld Documentation](https://docs.inworld.ai/)
-- Visit [Inworld Community](https://community.inworld.ai/)
+- **Bug Reports**: [GitHub Issues](https://github.com/inworld-ai/story-greetingcard-creator/issues)
+- **Documentation**: [Inworld Docs](https://docs.inworld.ai/)
+- **Community**: [Inworld Community](https://community.inworld.ai/)
+- **Email**: support@inworld.ai
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

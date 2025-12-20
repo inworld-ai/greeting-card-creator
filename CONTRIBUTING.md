@@ -1,11 +1,11 @@
-# Contributing to Personalized Christmas Storyteller
+# Contributing to Story & Greeting Card Creator
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/personalized-christmas-storyteller.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/story-greetingcard-creator.git`
 3. Create a branch: `git checkout -b feature/your-feature-name`
 4. Make your changes
 5. Test your changes thoroughly
