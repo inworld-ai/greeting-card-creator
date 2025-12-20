@@ -3,17 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
 import StoryTypeSelection from './components/StoryTypeSelection'
 import NameInput from './components/NameInput'
-import SimpleNameInput from './components/SimpleNameInput'
 import VoiceSelection from './components/VoiceSelection'
-import QuestionnaireTypeSelection from './components/QuestionnaireTypeSelection'
 import VoiceConversation from './components/VoiceConversation'
-import YearInReviewQuestionnaire from './components/YearInReviewQuestionnaire'
-import WishListQuestionnaire from './components/WishListQuestionnaire'
 import CustomNarrator from './components/CustomNarrator'
-import ImageUpload from './components/ImageUpload'
 import StoryGeneration from './components/StoryGeneration'
-import YearInReviewGeneration from './components/YearInReviewGeneration'
-import WishListGeneration from './components/WishListGeneration'
 import StoryNarration from './components/StoryNarration'
 import GreetingCardGeneration from './components/GreetingCardGeneration'
 import GreetingCardDisplay from './components/GreetingCardDisplay'
@@ -21,7 +14,7 @@ import TextBasedChristmasCard from './components/TextBasedChristmasCard'
 import './App.css'
 
 export type StoryType = string | null
-export type ExperienceType = 'story' | 'greeting-card' | 'year-review' | 'wish-list'
+export type ExperienceType = 'story' | 'greeting-card'
 
 export type VoiceId = 'christmas_story_generator__male_elf_narrator' | 'christmas_story_generator__female_elf_narrator' | string
 
@@ -45,17 +38,6 @@ export interface StoryData {
     generatedImageUrl?: string | null
     conversationHistory?: Array<{ role: string; content: string }>
   }
-  // Legacy support for year-review and wish-list (kept for backward compatibility)
-  yearReviewAnswers?: {
-    favoriteMemory: string
-    newThing: string
-    lookingForward: string
-  }
-  wishListAnswers?: {
-    dreamGift: string
-    experience: string
-    practicalNeed: string
-  }
 }
 
 type Step = 
@@ -69,18 +51,7 @@ type Step =
   | 'greeting-card-display'
   | 'greeting-card-rewriting'
   | 'greeting-card-voice-selection'
-  | 'year-review-questionnaire-type'
-  | 'year-review-questionnaire'
-  | 'year-review-questionnaire-voice'
-  | 'wish-list-questionnaire-type'
-  | 'wish-list-questionnaire'
-  | 'wish-list-questionnaire-voice'
-  | 'year-review-name-input'
-  | 'wish-list-name-input'
-  | 'year-review-voice-selection'
-  | 'wish-list-voice-selection'
-  | 'custom-narrator' 
-  | 'image-upload'
+  | 'custom-narrator'
   | 'generating' 
   | 'narration'
 
@@ -179,22 +150,6 @@ function App() {
     }
   }
 
-  const handleQuestionnaireTypeSelected = (type: 'voice' | 'text') => {
-    if (storyData.experienceType === 'year-review') {
-      if (type === 'voice') {
-        setStep('year-review-questionnaire-voice')
-      } else {
-        setStep('year-review-questionnaire')
-      }
-    } else if (storyData.experienceType === 'wish-list') {
-      if (type === 'voice') {
-        setStep('wish-list-questionnaire-voice')
-      } else {
-        setStep('wish-list-questionnaire')
-      }
-    }
-  }
-
   const handleStoryTypeSelected = (type: StoryType) => {
     setStoryData(prev => ({ ...prev, type }))
     setStep('name-input')
@@ -212,84 +167,6 @@ function App() {
     }
   }
 
-  const handleYearReviewSubmitted = (answers: {
-    favoriteMemory?: string
-    newThing?: string
-    lookingForward?: string
-    dreamGift?: string
-    experience?: string
-    practicalNeed?: string
-  }) => {
-    // Ensure all required fields are present
-    if (!answers.favoriteMemory || !answers.newThing || !answers.lookingForward) {
-      alert('Please answer all questions before continuing.')
-      return
-    }
-    setStoryData(prev => ({ 
-      ...prev, 
-      yearReviewAnswers: {
-        favoriteMemory: answers.favoriteMemory!,
-        newThing: answers.newThing!,
-        lookingForward: answers.lookingForward!
-      }
-    }))
-    setStep('year-review-name-input')
-  }
-
-  const handleWishListSubmitted = (answers: {
-    favoriteMemory?: string
-    newThing?: string
-    lookingForward?: string
-    dreamGift?: string
-    experience?: string
-    practicalNeed?: string
-  }) => {
-    // Ensure all required fields are present
-    if (!answers.dreamGift || !answers.experience || !answers.practicalNeed) {
-      alert('Please answer all questions before continuing.')
-      return
-    }
-    setStoryData(prev => ({ 
-      ...prev, 
-      wishListAnswers: {
-        dreamGift: answers.dreamGift!,
-        experience: answers.experience!,
-        practicalNeed: answers.practicalNeed!
-      }
-    }))
-    setStep('wish-list-name-input')
-  }
-
-  const handleYearReviewNameSubmitted = (name: string) => {
-    setStoryData(prev => ({ ...prev, childName: name }))
-    setStep('year-review-voice-selection')
-  }
-
-  const handleWishListNameSubmitted = (name: string) => {
-    setStoryData(prev => ({ ...prev, childName: name }))
-    setStep('wish-list-voice-selection')
-  }
-
-  const handleVoiceSelected = (voiceId: VoiceId | 'custom') => {
-    if (voiceId === 'custom') {
-      setStep('custom-narrator')
-    } else {
-      setStoryData(prev => ({ 
-        ...prev, 
-        voiceId,
-        customVoiceId: undefined, // Clear custom voice when preset is selected
-        customApiKey: undefined   // Clear custom API key when preset is selected
-      }))
-      setFirstChunkText('')
-      // Show image upload for Year In Review (Christmas Story now auto-generates images)
-      if (storyData.experienceType === 'year-review') {
-        setStep('image-upload')
-      } else {
-        setStep('generating')
-      }
-    }
-  }
-
   const handleCustomNarratorSubmitted = (apiKey: string, voiceId: string) => {
     setStoryData(prev => ({ 
       ...prev, 
@@ -298,30 +175,9 @@ function App() {
       customVoiceId: voiceId 
     }))
     setFirstChunkText('')
-    // Show image upload for Year In Review (Christmas Story now auto-generates images)
-    if (storyData.experienceType === 'year-review') {
-      setStep('image-upload')
-    } else if (storyData.experienceType === 'greeting-card') {
+    if (storyData.experienceType === 'greeting-card') {
       // For greeting cards, go directly to narration since the card is already generated
       setStep('narration')
-    } else {
-      setStep('generating')
-    }
-  }
-
-  const handleImageSelected = (_imageFile: File, imageUrl: string) => {
-    setStoryData(prev => ({ ...prev, imageUrl }))
-    if (storyData.experienceType === 'greeting-card') {
-      setStep('greeting-card-questionnaire-voice')
-    } else {
-      setStep('generating')
-    }
-  }
-
-  const handleImageSkipped = () => {
-    setStoryData(prev => ({ ...prev, imageUrl: null }))
-    if (storyData.experienceType === 'greeting-card') {
-      setStep('greeting-card-questionnaire-voice')
     } else {
       setStep('generating')
     }
@@ -453,13 +309,7 @@ function App() {
     if (storyData.customApiKey) {
       setStep('custom-narrator')
     } else {
-      if (storyData.experienceType === 'story') {
-        setStep('name-input')
-      } else if (storyData.experienceType === 'year-review') {
-        setStep('year-review-questionnaire')
-      } else if (storyData.experienceType === 'wish-list') {
-        setStep('wish-list-questionnaire')
-      }
+      setStep('name-input')
     }
   }
 
@@ -482,12 +332,6 @@ function App() {
   const handleRemainingAudioReady = (remainingAudios: HTMLAudioElement[]) => {
     console.log(`🎵 Remaining audio ready early! ${remainingAudios.length} chunks, ${remainingAudios[0]?.duration?.toFixed(1)}s`)
     setPreloadedRemainingAudio(remainingAudios)
-  }
-
-  // Legacy handler for year-review and wish-list (text-only, no audio preload)
-  const handleFirstChunkReady = (chunkText: string) => {
-    setFirstChunkText(chunkText)
-    setStep('narration')
   }
 
   const handleStoryGenerated = (storyText: string, generatedImageUrl?: string | null) => {
@@ -558,24 +402,9 @@ function App() {
 
   const getBackStep = (): Step => {
     if (step === 'name-input') return 'type-selection'
-    if (step === 'year-review-questionnaire') return 'landing'
-    if (step === 'wish-list-questionnaire') return 'landing'
-    if (step === 'year-review-name-input') return 'year-review-questionnaire'
-    if (step === 'wish-list-name-input') return 'wish-list-questionnaire'
-    if (step === 'year-review-voice-selection') return 'year-review-name-input'
-    if (step === 'wish-list-voice-selection') return 'wish-list-name-input'
     if (step === 'custom-narrator') {
       if (storyData.experienceType === 'story') return 'name-input'
-      if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
-      if (storyData.experienceType === 'wish-list') return 'wish-list-voice-selection'
       if (storyData.experienceType === 'greeting-card') return 'greeting-card-display'
-    }
-    if (step === 'image-upload') {
-      if (storyData.customApiKey || storyData.customVoiceId) return 'custom-narrator'
-      if (storyData.experienceType === 'story') return 'name-input'
-      if (storyData.experienceType === 'year-review') return 'year-review-voice-selection'
-      // Fallback
-      return 'name-input'
     }
     return 'landing'
   }
@@ -584,22 +413,13 @@ function App() {
   const getTitle = (): string => {
     if (step === 'landing') {
       return 'Inworld Christmas Creations'
-    } else if (step === 'image-upload') {
-      if (storyData.experienceType === 'story') return 'Christmas Story Creator'
-      return 'Year In Review'
     } else if (step === 'type-selection' || step === 'name-input') {
       return 'Christmas Story Creator'
     } else if (step === 'custom-narrator' || step === 'generating' || step === 'narration') {
       // Check experience type for these steps
-      if (storyData.experienceType === 'year-review') return 'Year In Review'
-      if (storyData.experienceType === 'wish-list') return 'Christmas Wish List'
       if (storyData.experienceType === 'greeting-card') return 'Christmas Card Creator'
       // Hide title for story during generating and narration steps
       return ''
-    } else if (step.startsWith('year-review')) {
-      return 'Year In Review'
-    } else if (step.startsWith('wish-list')) {
-      return 'Christmas Wish List'
     } else if (step.startsWith('greeting-card')) {
       return 'Christmas Card Creator'
     }
@@ -720,96 +540,6 @@ function App() {
             title="Choose a narrator voice for your greeting card!"
           />
         )}
-
-        {step === 'year-review-questionnaire-type' && (
-          <QuestionnaireTypeSelection
-            experienceType="year-review"
-            onSelect={handleQuestionnaireTypeSelected}
-            onBack={() => setStep('landing')}
-          />
-        )}
-
-        {step === 'wish-list-questionnaire-type' && (
-          <QuestionnaireTypeSelection
-            experienceType="wish-list"
-            onSelect={handleQuestionnaireTypeSelected}
-            onBack={() => setStep('landing')}
-          />
-        )}
-
-        {step === 'year-review-questionnaire-voice' && (
-          <VoiceConversation
-            experienceType="year-review"
-            userName="Friend"
-            onSubmit={handleYearReviewSubmitted}
-            onBack={() => setStep('year-review-questionnaire-type')}
-          />
-        )}
-
-        {step === 'wish-list-questionnaire-voice' && (
-          <VoiceConversation
-            experienceType="wish-list"
-            userName="Friend"
-            onSubmit={handleWishListSubmitted}
-            onBack={() => setStep('wish-list-questionnaire-type')}
-          />
-        )}
-
-        {step === 'year-review-questionnaire' && (
-          <YearInReviewQuestionnaire
-            onSubmit={handleYearReviewSubmitted}
-            onBack={() => setStep('year-review-questionnaire-type')}
-          />
-        )}
-
-        {step === 'wish-list-questionnaire' && (
-          <WishListQuestionnaire
-            onSubmit={handleWishListSubmitted}
-            onBack={() => setStep('wish-list-questionnaire-type')}
-          />
-        )}
-
-        {step === 'year-review-name-input' && (
-          <SimpleNameInput
-            onSubmit={handleYearReviewNameSubmitted}
-            onBack={() => {
-              // Go back to the appropriate questionnaire type
-              const questionnaireType = storyData.yearReviewAnswers ? 'year-review-questionnaire-voice' : 'year-review-questionnaire'
-              setStep(questionnaireType as Step)
-            }}
-            title="Great! Now let's personalize your year in review! 🌟"
-            prompt="What's your name?"
-          />
-        )}
-
-        {step === 'wish-list-name-input' && (
-          <SimpleNameInput
-            onSubmit={handleWishListNameSubmitted}
-            onBack={() => {
-              // Go back to the appropriate questionnaire type
-              const questionnaireType = storyData.wishListAnswers ? 'wish-list-questionnaire-voice' : 'wish-list-questionnaire'
-              setStep(questionnaireType as Step)
-            }}
-            title="Great! Now let's personalize your wish list! 🌟"
-            prompt="What's your name?"
-          />
-        )}
-
-        {step === 'year-review-voice-selection' && (
-          <VoiceSelection
-            onSubmit={handleVoiceSelected}
-            onBack={() => setStep('year-review-name-input')}
-            title="Choose a narrator voice for your year in review!"
-          />
-        )}
-
-        {step === 'wish-list-voice-selection' && (
-          <VoiceSelection
-            onSubmit={handleVoiceSelected}
-            onBack={() => setStep('wish-list-name-input')}
-            title="Choose a narrator voice for your wish list!"
-          />
-        )}
         
         {step === 'custom-narrator' && (
           <CustomNarrator
@@ -818,56 +548,20 @@ function App() {
             onBack={() => setStep(getBackStep())}
           />
         )}
-
-        {step === 'image-upload' && storyData.experienceType === 'year-review' && (
-          <ImageUpload
-            onImageSelected={handleImageSelected}
-            onSkip={handleImageSkipped}
-            onBack={() => setStep(getBackStep())}
-            experienceType="story"
-            context={undefined}
-          />
-        )}
         
         {step === 'generating' && (
-          <>
-            {storyData.experienceType === 'story' && (
-              <StoryGeneration 
-                storyType={storyData.type!}
-                childName={storyData.childName}
-                voiceId={storyData.voiceId}
-                customVoiceId={storyData.customVoiceId}
-                onStoryGenerated={handleStoryGenerated}
-                onFirstAudioReady={handleFirstAudioReady}
-                onFullFirstChunkAudioReady={handleFullFirstChunkAudioReady}
-                onRemainingAudioReady={handleRemainingAudioReady}
-                customApiKey={storyData.customApiKey}
-                onError={handleStoryGenerationError}
-              />
-            )}
-            {storyData.experienceType === 'year-review' && storyData.yearReviewAnswers && (
-              <YearInReviewGeneration
-                answers={storyData.yearReviewAnswers}
-                name={storyData.childName || 'You'}
-                isCustomVoice={!!storyData.customVoiceId}
-                onStoryGenerated={handleStoryGenerated}
-                onFirstChunkReady={handleFirstChunkReady}
-                customApiKey={storyData.customApiKey}
-                onError={handleStoryGenerationError}
-              />
-            )}
-            {storyData.experienceType === 'wish-list' && storyData.wishListAnswers && (
-              <WishListGeneration
-                answers={storyData.wishListAnswers}
-                name={storyData.childName || 'You'}
-                isCustomVoice={!!storyData.customVoiceId}
-                onListGenerated={handleStoryGenerated}
-                onFirstChunkReady={handleFirstChunkReady}
-                customApiKey={storyData.customApiKey}
-                onError={handleStoryGenerationError}
-              />
-            )}
-          </>
+          <StoryGeneration 
+            storyType={storyData.type!}
+            childName={storyData.childName}
+            voiceId={storyData.voiceId}
+            customVoiceId={storyData.customVoiceId}
+            onStoryGenerated={handleStoryGenerated}
+            onFirstAudioReady={handleFirstAudioReady}
+            onFullFirstChunkAudioReady={handleFullFirstChunkAudioReady}
+            onRemainingAudioReady={handleRemainingAudioReady}
+            customApiKey={storyData.customApiKey}
+            onError={handleStoryGenerationError}
+          />
         )}
         
         {step === 'narration' && (
