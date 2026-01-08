@@ -33,19 +33,18 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
-      'https://inworld-christmas.vercel.app',
-      'https://christmas-personalized-storyteller.vercel.app',
       'http://localhost:5173',
       'http://localhost:5174',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      // Add your production Vercel URLs here after deployment
     ];
     
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    if (/^https:\/\/christmas-personalized-storyteller.*\.vercel\.app$/.test(origin) ||
-        /^https:\/\/inworld-christmas.*\.vercel\.app$/.test(origin)) {
+    // Allow any Vercel preview deployments
+    if (/^https:\/\/.*\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
     
@@ -64,8 +63,8 @@ app.use(express.static('frontend'));
 
 const inworldApp = new InworldApp();
 
-// In-memory storage for shared stories (fallback if Redis unavailable)
-const sharedStoriesMap = new Map();
+// In-memory storage for shared cards (fallback if Redis unavailable)
+const sharedCardsMap = new Map();
 
 // Redis client for persistent storage
 let redisClient: RedisClientType | null = null;
@@ -74,7 +73,7 @@ let redisConnected = false;
 // Initialize Redis if REDIS_URL is available
 async function initRedis() {
   if (!process.env.REDIS_URL) {
-    console.log('⚠️ REDIS_URL not set - using in-memory storage (stories will be lost on restart)');
+    console.log('⚠️ REDIS_URL not set - using in-memory storage (cards will be lost on restart)');
     return;
   }
   
@@ -92,7 +91,7 @@ async function initRedis() {
     });
     
     await redisClient.connect();
-    console.log('🗄️ Redis initialized for persistent story storage');
+    console.log('🗄️ Redis initialized for persistent card storage');
   } catch (error: any) {
     console.error('❌ Failed to connect to Redis:', error.message);
     console.log('⚠️ Falling back to in-memory storage');
@@ -148,7 +147,6 @@ webSocket.on('connection', (ws, request) => {
       connection.audioStreamManager = undefined;
     }
 
-    // Mark as unloaded and delete from connections to free memory
     connection.unloaded = true;
     if (inworldApp.connections[sessionId!]) {
       console.log(`[Session ${sessionId}] 🧹 Deleting session from connections`);
@@ -188,8 +186,38 @@ server.on('upgrade', async (request, socket, head) => {
 });
 
 // ============================================================================
-// REST API Endpoints (for non-realtime operations)
+// REST API Endpoints
 // ============================================================================
+
+// Occasion type labels for prompts
+const OCCASION_LABELS: Record<string, { greeting: string; tone: string }> = {
+  'birthday': { greeting: 'Happy Birthday', tone: 'celebratory and fun' },
+  'thank-you': { greeting: 'Thank You', tone: 'warm and grateful' },
+  'congratulations': { greeting: 'Congratulations', tone: 'excited and proud' },
+  'wedding': { greeting: 'Happy Wedding', tone: 'romantic and heartfelt' },
+  'get-well': { greeting: 'Get Well Soon', tone: 'caring and supportive' },
+  'anniversary': { greeting: 'Happy Anniversary', tone: 'loving and nostalgic' },
+  'new-baby': { greeting: 'Congratulations on Your New Baby', tone: 'joyful and sweet' },
+  'graduation': { greeting: 'Congratulations Graduate', tone: 'proud and inspiring' },
+  'thinking-of-you': { greeting: 'Thinking of You', tone: 'warm and thoughtful' },
+};
+
+// Helper function to get occasion config - handles custom occasions
+function getOccasionConfig(occasion: string): { greeting: string; tone: string } {
+  if (OCCASION_LABELS[occasion]) {
+    return OCCASION_LABELS[occasion];
+  }
+  // Custom occasion - use the text as-is (properly capitalized)
+  // This allows users to type "Merry Christmas", "Happy Retirement", "Good Luck", etc.
+  const capitalizedOccasion = occasion
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  return {
+    greeting: capitalizedOccasion,
+    tone: 'warm and heartfelt'
+  };
+}
 
 // Greeting card message generation using Claude
 app.post('/api/generate-greeting-card-message', async (req, res) => {
@@ -197,7 +225,7 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
   console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
   
   try {
-    const { senderName, conversationHistory, recipientName, relationship, specialAboutThem, funnyStory, signoff } = req.body;
+    const { senderName, conversationHistory, recipientName, relationship, specialAboutThem, funnyStory, signoff, occasion = 'birthday' } = req.body;
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return res.status(500).json({ 
@@ -205,42 +233,40 @@ app.post('/api/generate-greeting-card-message', async (req, res) => {
       });
     }
 
+    const occasionConfig = getOccasionConfig(occasion);
     let prompt: string;
-    let parsedRecipientName: string | null = null; // Will be set if we parse the name
+    let parsedRecipientName: string | null = null;
 
     // If we have conversation history, extract info and generate from it
     if (conversationHistory && Array.isArray(conversationHistory)) {
       console.log('📝 Using conversation history path');
-      console.log('📝 Conversation messages count:', conversationHistory.length);
       
       const conversationText = conversationHistory
-        .map((msg: any) => `${msg.role === 'assistant' ? 'Elf' : 'User'}: ${msg.content}`)
+        .map((msg: any) => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`)
         .join('\n');
-      
-      console.log('📝 Formatted conversation:\n', conversationText);
 
-      prompt = `Based on this conversation, write a SHORT Christmas card (under 300 characters).
+      prompt = `Based on this conversation, write a SHORT ${occasion} card (under 300 characters).
 
 CONVERSATION:
 ${conversationText}
 
-Extract: recipient name, sender relationship, and their quirk/obsession.
+Extract: recipient name, sender relationship, and their quirk/story.
 
 FORMAT (follow EXACTLY):
 Dear [Name],
 
-[3 short, fun sentences that reference the quirk and wish them a Merry Christmas]
+[3 short, ${occasionConfig.tone} sentences that reference the quirk and wish them ${occasionConfig.greeting}]
 
-[Sign-off based on relationship, e.g., "Love, Dad"]
+[Sign-off based on relationship]
 
 RULES:
 - Exactly 3 sentences in body
 - Total under 300 characters
-- Keep punchy and fun
+- Keep punchy and ${occasionConfig.tone}
 - Start DIRECTLY with "Dear"
 - End with sign-off on its own line`;
     } else {
-      // Legacy path with individual fields
+      // Standard path with individual fields
       if (!recipientName || !funnyStory) {
         return res.status(400).json({ 
           error: 'Missing required fields: recipientName, funnyStory' 
@@ -248,15 +274,10 @@ RULES:
       }
 
       // Parse the recipientName field to extract name and relationship
-      // Examples: "my son Mac" -> name: "Mac", relationship: "son"
-      //           "our daughter Sarah" -> name: "Sarah", relationship: "daughter"
-      //           "my dad Ed" -> name: "Ed", relationship: "dad"  
-      //           "Sarah" -> name: "Sarah", relationship: null
       let extractedName = recipientName;
       let extractedRelationship = relationship || '';
       
-      // Common patterns: "my/our [relationship] [name]", "[name] my/our [relationship]"
-      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis';
+      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis|coworker|colleague|boss|teacher|mentor';
       const relationshipPatterns = [
         new RegExp(`^(?:my|our)\\s+(${relationshipWords})\\s+(.+)$`, 'i'),
         new RegExp(`^(.+?),?\\s+(?:my|our)\\s+(${relationshipWords})$`, 'i'),
@@ -266,11 +287,9 @@ RULES:
         const match = recipientName.match(pattern);
         if (match) {
           if (pattern === relationshipPatterns[0]) {
-            // "my/our [relationship] [name]" pattern
             extractedRelationship = match[1];
             extractedName = match[2].trim();
           } else {
-            // "[name], my/our [relationship]" pattern
             extractedName = match[1].trim();
             extractedRelationship = match[2];
           }
@@ -278,31 +297,27 @@ RULES:
         }
       }
       
-      // Clean up the extracted name (remove trailing punctuation)
       extractedName = extractedName.replace(/[.,!?]+$/, '').trim();
-      
-      console.log(`📝 Parsed recipient: "${recipientName}" -> name: "${extractedName}", relationship: "${extractedRelationship}"`);
-      
-      // Set the parsed name for the response
       parsedRecipientName = extractedName;
 
-      prompt = `Write a SHORT Christmas card message (under 300 characters total).
+      prompt = `Write a SHORT ${occasion} card message (under 300 characters total).
 
 Recipient: ${extractedName}
 Anecdote: ${funnyStory}
-Sign-off: ${signoff || (extractedRelationship ? `Love, [appropriate for ${extractedRelationship}]` : 'Merry Christmas!')}
+Sign-off: ${signoff || (extractedRelationship ? `Love, [appropriate for ${extractedRelationship}]` : 'With love')}
+Occasion: ${occasionConfig.greeting}
 
 FORMAT (follow EXACTLY):
 Dear ${extractedName},
 
-[3 short, fun sentences that reference the anecdote and wish them a Merry Christmas]
+[3 short, ${occasionConfig.tone} sentences that reference the anecdote and wish them ${occasionConfig.greeting}]
 
 ${signoff || (extractedRelationship ? `[Sign-off for ${extractedRelationship}]` : 'With love')}
 
 CRITICAL RULES:
 - Exactly 3 sentences in the body
 - Total message under 300 characters
-- Keep it punchy and fun
+- Keep it punchy and ${occasionConfig.tone}
 - Do NOT write multiple paragraphs`;
     }
 
@@ -331,7 +346,7 @@ CRITICAL RULES:
 
     console.log(`💌 Generated card message - Characters: ${cardMessage.length}`);
     
-    // Enforce 400 character limit (allowing some buffer over 300 target)
+    // Enforce 400 character limit
     if (cardMessage.length > 400) {
       console.log(`⚠️ Message exceeded 400 characters (${cardMessage.length} chars), truncating...`);
       const truncated = cardMessage.substring(0, 397);
@@ -347,7 +362,6 @@ CRITICAL RULES:
 
     console.log(`✅ Generated greeting card message (${cardMessage.length} chars)`);
     
-    // Include the parsed recipient name if available (for display purposes)
     const responseBody: { cardMessage: string; parsedRecipientName?: string } = { cardMessage };
     if (parsedRecipientName) {
       responseBody.parsedRecipientName = parsedRecipientName;
@@ -364,7 +378,7 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
   console.log('\n🎨 GREETING CARD IMAGE GENERATION');
   
   try {
-    const { conversationHistory, recipientName, specialAboutThem, funnyStory } = req.body;
+    const { conversationHistory, recipientName, specialAboutThem, funnyStory, occasion = 'birthday' } = req.body;
 
     if (!process.env.GOOGLE_API_KEY) {
       return res.status(500).json({ 
@@ -372,29 +386,28 @@ app.post('/api/generate-greeting-card-image', async (req, res) => {
       });
     }
 
+    const occasionConfig = getOccasionConfig(occasion);
     let imagePrompt: string;
 
     // If we have conversation history, extract info for the image
     if (conversationHistory && Array.isArray(conversationHistory)) {
       const conversationText = conversationHistory
-        .map((msg: any) => `${msg.role === 'assistant' ? 'Elf' : 'User'}: ${msg.content}`)
+        .map((msg: any) => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`)
         .join('\n');
 
-      // Use a simple extraction prompt
-      imagePrompt = `Based on this conversation, create a festive Christmas card image:
+      imagePrompt = `Based on this conversation, create a festive ${occasion} greeting card image:
 
 CONVERSATION:
 ${conversationText}
 
-Create a beautiful Christmas greeting card illustration that:
+Create a beautiful ${occasion} greeting card illustration that:
 - Is in square 1:1 aspect ratio
-- Displays "Merry Christmas" prominently
-- Includes festive Christmas elements (snow, ornaments, presents, etc.)
-- References any specific things mentioned about the recipient (hobbies, interests, funny stories)
-- Style: cheerful, festive, humorous, cartoon-like
+- Displays "${occasionConfig.greeting}" prominently
+- Includes festive ${occasion} elements and decorations
+- References any specific things mentioned about the recipient (hobbies, interests, stories)
+- Style: cheerful, festive, ${occasionConfig.tone}, cartoon-like
 - CRITICAL: Do NOT show any people, faces, or human figures - only objects and decorations`;
     } else {
-      // Legacy path
       if (!recipientName || !funnyStory) {
         return res.status(400).json({ 
           error: 'Missing required fields: recipientName, funnyStory' 
@@ -402,30 +415,42 @@ Create a beautiful Christmas greeting card illustration that:
       }
 
       // Parse the recipientName field to extract just the name
-      // Examples: "my son Mac" -> "Mac", "our daughter Sarah" -> "Sarah"
-      let displayName = recipientName;
-      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis';
+      let displayName = recipientName.trim();
+      const relationshipWords = 'son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis|coworker|colleague|boss|teacher|mentor';
       const imageRelationshipPatterns = [
         new RegExp(`^(?:my|our)\\s+(?:${relationshipWords})\\s+(.+)$`, 'i'),
         new RegExp(`^(.+?),?\\s+(?:my|our)\\s+(?:${relationshipWords})$`, 'i'),
       ];
       
+      let matched = false;
       for (const pattern of imageRelationshipPatterns) {
-        const match = recipientName.match(pattern);
+        const match = displayName.match(pattern);
         if (match) {
           displayName = match[1].trim().replace(/[.,!?]+$/, '');
+          matched = true;
           break;
         }
       }
       
-      console.log(`📝 Image prompt using name: "${displayName}" (from "${recipientName}")`);
+      // Fallback: if no pattern matched, try to extract just the name
+      // Remove common prefixes and relationship words
+      if (!matched && displayName.toLowerCase() !== displayName) {
+        const fallbackName = displayName
+          .replace(/^(?:my|our|to my|to our|for my|for our)\s+/i, '')
+          .replace(/^(?:son|daughter|dad|father|mom|mother|wife|husband|brother|sister|friend|best friend|grandma|grandmother|grandpa|grandfather|aunt|uncle|cousin|nephew|niece|boyfriend|girlfriend|partner|kid|child|baby|bro|sis|coworker|colleague|boss|teacher|mentor)[,\s]+/i, '')
+          .trim()
+          .replace(/[.,!?]+$/, '');
+        if (fallbackName) {
+          displayName = fallbackName;
+        }
+      }
 
-      imagePrompt = `A beautiful, personalized Christmas greeting card illustration in square 1:1 aspect ratio. The card should display the text "Merry Christmas ${displayName}" prominently. `;
+      imagePrompt = `A beautiful, personalized ${occasion} greeting card illustration in square 1:1 aspect ratio. The card should display the text "${occasionConfig.greeting} ${displayName}" prominently. `;
       if (specialAboutThem) {
         imagePrompt += `The image should reflect: ${specialAboutThem}. `;
       }
       imagePrompt += `Include items, objects, and elements that reference: ${funnyStory}. `;
-      imagePrompt += `Style: cheerful, festive, humorous, cartoon-like. CRITICAL: Do NOT show any people, faces, or human figures.`;
+      imagePrompt += `Style: cheerful, festive, ${occasionConfig.tone}, cartoon-like. CRITICAL: Do NOT show any people, faces, or human figures.`;
     }
 
     const response = await fetch(
@@ -479,66 +504,6 @@ Create a beautiful Christmas greeting card illustration that:
   }
 });
 
-// Rewrite greeting card for elf narrator
-app.post('/api/rewrite-greeting-card-for-elf', async (req, res) => {
-  console.log('\n🎄 REWRITE FOR ELF NARRATOR');
-  
-  try {
-    const { originalMessage, senderName, recipientName } = req.body;
-
-    if (!originalMessage || !senderName || !recipientName) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
-    }
-
-    const prompt = `Rewrite this greeting card message in third-person, as if one of Santa's elves is sharing a message that ${senderName} asked them to deliver to ${recipientName}.
-
-Original message:
-${originalMessage}
-
-Requirements:
-- Write in third person (use "${senderName}", "their", "they" instead of "I", "my", "me")
-- Add a brief opening explaining that ${senderName} asked Santa's elves to share this message
-- Keep the same warm, humorous tone
-- End with a warm closing like "Happy holidays from Santa's Elves!"
-- Keep under 700 characters total`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
-    }
-
-    const data = await response.json() as { content: Array<{ text: string }> };
-    let rewrittenMessage = data.content[0].text.trim();
-
-    if (rewrittenMessage.length > 700) {
-      rewrittenMessage = rewrittenMessage.substring(0, 697) + '...';
-    }
-
-    console.log('✅ Rewritten for elf narrator');
-    return res.status(200).json({ rewrittenMessage });
-  } catch (error: any) {
-    console.error('❌ Error rewriting:', error);
-    return res.status(500).json({ error: error.message });
-  }
-});
-
 // Voice cloning endpoint
 app.post('/api/clone-voice', async (req, res) => {
   console.log('\n🎤 VOICE CLONING');
@@ -555,7 +520,7 @@ app.post('/api/clone-voice', async (req, res) => {
       return res.status(500).json({ error: 'INWORLD_PORTAL_API_KEY not set' });
     }
 
-    const workspace = 'christmas_story_generator';
+    const workspace = process.env.INWORLD_WORKSPACE || 'greeting_card_creator';
     const parent = `workspaces/${workspace}`;
 
     const cloneResponse = await fetch(`https://api.inworld.ai/voices/v1/${parent}/voices:clone`, {
@@ -616,7 +581,7 @@ app.post('/api/tts', async (req, res) => {
       return res.status(500).json({ error: 'INWORLD_API_KEY not set' });
     }
 
-    const selectedVoiceId = voiceId || 'christmas_story_generator__male_elf_narrator';
+    const selectedVoiceId = voiceId || 'Craig';
     console.log(`🎵 TTS - Voice: "${selectedVoiceId}", Text length: ${text.length}`);
 
     const { RemoteTTSNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
@@ -666,11 +631,10 @@ app.post('/api/tts', async (req, res) => {
 
             if (audioBuffer.byteLength === 0) continue;
 
-            // Send as newline-delimited JSON (for WAV chunk streaming)
             const chunkData = {
               index: chunkIndex++,
               data: audioBuffer.toString('base64'),
-              samples: audioBuffer.byteLength / 4, // Float32 = 4 bytes per sample
+              samples: audioBuffer.byteLength / 4,
             };
             res.write(JSON.stringify(chunkData) + '\n');
           }
@@ -700,31 +664,29 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
-// Share story endpoint
+// Share card endpoint
 app.post('/api/share-story', async (req, res) => {
-  console.log('📨 SHARE-STORY ENDPOINT HIT');
+  console.log('📨 SHARE-CARD ENDPOINT HIT');
   try {
-    const { storyText, childName, voiceId, storyType, imageUrl, customApiKey, customVoiceId, experienceType, senderName, relationship } = req.body;
+    const { storyText, childName, voiceId, imageUrl, customApiKey, customVoiceId, experienceType, occasion } = req.body;
     
-    console.log('📤 Share story request - experienceType:', experienceType, 'customVoiceId:', customVoiceId);
+    console.log('📤 Share card request - occasion:', occasion, 'customVoiceId:', customVoiceId);
 
     if (!storyText) {
       return res.status(400).json({ error: 'Missing storyText' });
     }
 
-    const storyId = `story_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const cardId = `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    const storyData = {
+    const cardData = {
       storyText,
       childName,
       voiceId,
-      storyType,
       imageUrl: imageUrl || null,
       customApiKey,
       customVoiceId,
-      experienceType: experienceType || 'story',
-      senderName,
-      relationship,
+      experienceType: experienceType || 'greeting-card',
+      occasion: occasion || 'birthday',
       createdAt: new Date().toISOString()
     };
 
@@ -732,40 +694,40 @@ app.post('/api/share-story', async (req, res) => {
     if (redisClient && redisConnected) {
       try {
         // Store in Redis with 30-day TTL (2592000 seconds)
-        await redisClient.set(`story:${storyId}`, JSON.stringify(storyData), { EX: 2592000 });
-        console.log('📤 Story stored in Redis with ID:', storyId, 'customVoiceId:', customVoiceId);
+        await redisClient.set(`card:${cardId}`, JSON.stringify(cardData), { EX: 2592000 });
+        console.log('📤 Card stored in Redis with ID:', cardId);
       } catch (redisError: any) {
         console.error('⚠️ Redis store failed, using in-memory fallback:', redisError.message);
-        sharedStoriesMap.set(storyId, storyData);
-        console.log('📤 Story stored in memory with ID:', storyId);
+        sharedCardsMap.set(cardId, cardData);
+        console.log('📤 Card stored in memory with ID:', cardId);
       }
     } else {
       // Fallback to in-memory storage
-      sharedStoriesMap.set(storyId, storyData);
-      console.log('📤 Story stored in memory with ID:', storyId, 'customVoiceId:', customVoiceId);
+      sharedCardsMap.set(cardId, cardData);
+      console.log('📤 Card stored in memory with ID:', cardId);
     }
 
-    const shareUrl = `${req.headers.origin || 'https://inworld-christmas.vercel.app'}/share/${storyId}`;
-    res.json({ storyId, shareUrl });
+    const shareUrl = `${req.headers.origin || 'http://localhost:5173'}/share/${cardId}`;
+    res.json({ storyId: cardId, shareUrl });
   } catch (error: any) {
-    console.error('Error sharing story:', error);
-    res.status(500).json({ error: 'Failed to share story' });
+    console.error('Error sharing card:', error);
+    res.status(500).json({ error: 'Failed to share card' });
   }
 });
 
-// Get shared story
+// Get shared card
 app.get('/api/story/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    let story = null;
+    let card = null;
 
     // Try Redis first, fall back to in-memory Map
     if (redisClient && redisConnected) {
       try {
-        const redisData = await redisClient.get(`story:${id}`);
+        const redisData = await redisClient.get(`card:${id}`);
         if (redisData) {
-          story = JSON.parse(redisData);
-          console.log('📥 Retrieved story from Redis:', id);
+          card = JSON.parse(redisData);
+          console.log('📥 Retrieved card from Redis:', id);
         }
       } catch (redisError: any) {
         console.error('⚠️ Redis retrieve failed:', redisError.message);
@@ -773,295 +735,23 @@ app.get('/api/story/:id', async (req, res) => {
     }
     
     // Fallback to in-memory if not found in Redis
-    if (!story) {
-      story = sharedStoriesMap.get(id);
-      if (story) {
-        console.log('📥 Retrieved story from memory:', id);
+    if (!card) {
+      card = sharedCardsMap.get(id);
+      if (card) {
+        console.log('📥 Retrieved card from memory:', id);
       }
     }
 
-    if (!story) {
-      return res.status(404).json({ error: 'Story not found' });
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found' });
     }
     
-    console.log('📥 Retrieved story:', id, 'experienceType:', story.experienceType, 'customVoiceId:', story.customVoiceId);
+    console.log('📥 Retrieved card:', id, 'occasion:', card.occasion);
 
-    res.json(story);
+    res.json(card);
   } catch (error: any) {
-    console.error('Error retrieving story:', error);
-    res.status(500).json({ error: 'Failed to retrieve story' });
-  }
-});
-
-// Story generation endpoint - uses inline graph creation
-app.post('/api/generate-story', async (req, res) => {
-  console.log('\n📖 STORY GENERATION ENDPOINT');
-  
-  try {
-    const { storyType, childName, apiKey } = req.body;
-
-    if (!storyType || !childName) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: storyType and childName' 
-      });
-    }
-
-    const selectedApiKey = apiKey || process.env.INWORLD_API_KEY;
-    if (!selectedApiKey) {
-      return res.status(500).json({ 
-        error: 'INWORLD_API_KEY not set' 
-      });
-    }
-
-    console.log(`📖 Generating story for "${childName}" about "${storyType}"`);
-
-    // Import and create graph inline (avoid path issues with graph.js)
-    const { RemoteLLMChatNode, SequentialGraphBuilder } = await import('@inworld/runtime/graph');
-    
-    const graphBuilder = new SequentialGraphBuilder({
-      id: 'storyteller-llm-text-only',
-      apiKey: selectedApiKey,
-      enableRemoteConfig: false,
-      nodes: [
-        new RemoteLLMChatNode({
-          provider: 'google',
-          modelName: 'gemini-2.5-flash-lite',
-          stream: true,
-          messageTemplates: [
-            {
-              role: 'system',
-              content: {
-                type: 'template',
-                template: `You write SHORT Christmas stories (150-200 words) with a clear beginning, middle, and end. Write fun, playful stories in Robert Munsch style.`,
-              },
-            },
-            {
-              role: 'user',
-              content: {
-                type: 'template',
-                template: `Write a SHORT Christmas story for {{childName}} about: "{{storyType}}"
-
-STRICT FORMAT:
-Title: [Short Title]
-
-[Story with BEGINNING, MIDDLE, and END - about 150-200 words total]
-
-STRUCTURE:
-- BEGINNING (2-3 sentences): Set the scene, introduce {{childName}}
-- MIDDLE (5-6 sentences): The adventure/problem unfolds with Christmas magic
-- END (2-3 sentences): Happy resolution, warm Christmas feeling
-
-RULES:
-- Main character: {{childName}} (the hero)
-- Theme: {{storyType}} with Christmas magic
-- Style: Playful, silly, fun - Robert Munsch style
-- Ending: Happy, joyful Christmas (NOT sleeping/bedtime)
-- NEVER use ALL-CAPS or all-uppercase letters for ANY word
-- No sound effects (BOOM, ZAP, etc.)
-- NEVER include "Ho ho ho" or any variation - Santa should speak in normal sentences only
-
-TARGET LENGTH: 150-200 words. This story should take about 1 minute to read aloud.`,
-              },
-            },
-          ],
-        }),
-      ],
-    });
-
-    const graph = graphBuilder.build();
-
-    const { outputStream } = await graph.start({
-      childName,
-      storyType,
-    });
-
-    // Set headers for streaming
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    
-    let storyText = '';
-    let firstChunkSent = false;
-    let done = false;
-
-    while (!done) {
-      const result = await outputStream.next();
-      
-      await result.processResponse({
-        ContentStream: async (contentStream: AsyncIterable<{ text?: string }>) => {
-          for await (const chunk of contentStream) {
-            if (chunk.text) {
-              storyText += chunk.text;
-              
-              if (!firstChunkSent && storyText.length >= 100) {
-                const sentenceEnd = storyText.search(/[.!?]\s+/);
-                const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
-                  ? storyText.substring(0, sentenceEnd + 1).trim()
-                  : storyText.substring(0, Math.min(200, storyText.length)).trim();
-                
-                if (firstChunk.length >= 80) {
-                  res.write(JSON.stringify({ 
-                    chunkIndex: 0, 
-                    text: firstChunk, 
-                    isFirst: true,
-                    isComplete: false 
-                  }) + '\n');
-                  firstChunkSent = true;
-                }
-              }
-            }
-          }
-        },
-        string: (text: string) => {
-          storyText += text;
-          
-          if (!firstChunkSent && storyText.length >= 100) {
-            const sentenceEnd = storyText.search(/[.!?]\s+/);
-            const firstChunk = sentenceEnd > 0 && sentenceEnd < storyText.length * 0.6 
-              ? storyText.substring(0, sentenceEnd + 1).trim()
-              : storyText.substring(0, Math.min(200, storyText.length)).trim();
-            
-            if (firstChunk.length >= 80) {
-              res.write(JSON.stringify({ 
-                chunkIndex: 0, 
-                text: firstChunk, 
-                isFirst: true,
-                isComplete: false 
-              }) + '\n');
-              firstChunkSent = true;
-            }
-          }
-        },
-        default: (data: any) => {
-          if (data?.text) {
-            storyText += data.text;
-          }
-        },
-      });
-
-      done = result.done;
-    }
-
-    await graph.stop();
-
-    if (!storyText || storyText.trim().length === 0) {
-      console.error('❌ No story text generated');
-      return res.status(500).json({ error: 'No story generated' });
-    }
-
-    console.log(`✅ Generated story: ${storyText.substring(0, 100)}...`);
-
-    // Send final chunk
-    if (firstChunkSent) {
-      res.write(JSON.stringify({ 
-        chunkIndex: 1, 
-        text: storyText.trim(),
-        isFirst: false,
-        isComplete: true 
-      }) + '\n');
-    } else {
-      // Story was short, send it all at once
-      res.write(JSON.stringify({ 
-        chunkIndex: 0, 
-        text: storyText.trim(), 
-        isFirst: true,
-        isComplete: true 
-      }) + '\n');
-    }
-    
-    res.end();
-  } catch (error: any) {
-    console.error('❌ Story generation error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: error.message || 'Story generation failed' });
-    } else {
-      res.end();
-    }
-  }
-});
-
-// Story image generation using Gemini
-app.post('/api/generate-story-image', async (req, res) => {
-  console.log('\n🎨 STORY IMAGE GENERATION');
-  
-  try {
-    const { storyType, childName, storyText } = req.body;
-
-    // storyType and childName are required; storyText is optional
-    if (!storyType || !childName) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: storyType, childName' 
-      });
-    }
-
-    if (!process.env.GOOGLE_API_KEY) {
-      return res.status(500).json({ 
-        error: 'GOOGLE_API_KEY not set' 
-      });
-    }
-
-    console.log(`🎨 Child name: ${childName}`);
-    console.log(`🎨 Story type: ${storyType}`);
-
-    // Build image prompt based on story type and character name
-    let imagePrompt = `Create a beautiful children's Christmas story book cover illustration. `;
-    imagePrompt += `Story theme: ${storyType}. `;
-    imagePrompt += `The illustration should be related to the story plot and theme, but do NOT include the story title as text on the cover. `;
-    imagePrompt += `Include the name "${childName}" somewhere naturally in the image (for example, on a letter, name tag, or sign), but NOT as a large title. `;
-    imagePrompt += `CRITICAL: Do NOT depict or show the main character ${childName} in the image. `;
-    imagePrompt += `It is okay to include Santa Claus, elves, reindeer, Christmas decorations, magical elements, and other story-related items, but absolutely NO depiction of the main character. `;
-    imagePrompt += `The image should be a scene related to the ${storyType} story theme, showing the setting, magical elements, and supporting characters (like Santa or elves), but never the main character. `;
-    imagePrompt += `Style: warm, whimsical, hand-drawn children's book illustration with soft colors, friendly characters, magical Christmas atmosphere, classic children's storybook art style. `;
-    imagePrompt += `The illustration should look like the cover of a beloved children's Christmas storybook. `;
-    imagePrompt += `Make it visually appealing and related to the story theme without showing any human main character.`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: imagePrompt }] }]
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Gemini API error:', errorText);
-      return res.status(200).json({ imageUrl: null, error: 'Image generation unavailable' });
-    }
-
-    const data = await response.json() as { 
-      candidates?: Array<{ 
-        content?: { 
-          parts?: Array<{ 
-            inlineData?: { data: string; mimeType?: string } 
-          }> 
-        } 
-      }> 
-    };
-    
-    let imageUrl: string | null = null;
-    
-    if (data.candidates?.[0]?.content?.parts) {
-      for (const part of data.candidates[0].content.parts) {
-        if (part.inlineData?.data) {
-          const mimeType = part.inlineData.mimeType || 'image/png';
-          imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
-          console.log(`✅ Generated story image (${imageUrl.length} chars)`);
-          break;
-        }
-      }
-    }
-
-    if (!imageUrl) {
-      console.warn('⚠️ No image data in response');
-    }
-    
-    return res.status(200).json({ imageUrl });
-  } catch (error: any) {
-    console.error('❌ Error generating story image:', error);
-    return res.status(200).json({ imageUrl: null, error: error.message });
+    console.error('Error retrieving card:', error);
+    res.status(500).json({ error: 'Failed to retrieve card' });
   }
 });
 
@@ -1073,17 +763,17 @@ server.listen(WS_APP_PORT, async () => {
     console.error(error);
   }
 
-  console.log(`🚀 Server running on port ${WS_APP_PORT}`);
+  console.log(`🚀 Greeting Card Server running on port ${WS_APP_PORT}`);
   console.log(`📡 WebSocket endpoint: ws://localhost:${WS_APP_PORT}/session`);
   console.log(`🔌 REST API endpoints:`);
   console.log(`   POST /load - Create session`);
   console.log(`   POST /unload - End session`);
-  console.log(`   POST /api/generate-story`);
-  console.log(`   POST /api/generate-story-image`);
   console.log(`   POST /api/generate-greeting-card-message`);
   console.log(`   POST /api/generate-greeting-card-image`);
   console.log(`   POST /api/clone-voice`);
+  console.log(`   POST /api/tts`);
   console.log(`   POST /api/share-story`);
+  console.log(`   GET  /api/story/:id`);
 });
 
 // Graceful shutdown

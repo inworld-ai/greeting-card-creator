@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import './NameInput.css'
 
 interface CustomNarratorProps {
   childName: string
@@ -8,8 +7,6 @@ interface CustomNarratorProps {
 }
 
 function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
-  const [apiKey, setApiKey] = useState('')
-  const [voiceId, setVoiceId] = useState('')
   const [error, setError] = useState<string | null>(null)
   
   // Voice cloning state
@@ -18,11 +15,12 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const useVoiceClone = true // Always use voice clone recording
+  const [isDragging, setIsDragging] = useState(false)
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Cleanup audio URL on unmount
   useEffect(() => {
@@ -49,11 +47,10 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 24000, // 24kHz - good quality for voice while keeping file size reasonable
+          sampleRate: 24000,
         } 
       })
       
-      // Try to use a more compressed format, fallback to webm
       let mimeType = 'audio/webm;codecs=opus'
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         mimeType = 'audio/webm;codecs=opus'
@@ -65,7 +62,7 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: mimeType,
-        audioBitsPerSecond: 64000, // 64kbps - good quality for voice while keeping file size reasonable
+        audioBitsPerSecond: 64000,
       })
       
       mediaRecorderRef.current = mediaRecorder
@@ -82,8 +79,6 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
         setAudioBlob(blob)
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
-        
-        // Stop all tracks
         stream.getTracks().forEach(track => track.stop())
       }
       
@@ -91,11 +86,9 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
       setIsRecording(true)
       setRecordingTime(0)
       
-      // Start timer
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 1
-          // Auto-stop at 15 seconds (API limit)
           if (newTime >= 15) {
             stopRecording()
           }
@@ -130,13 +123,60 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
     setError(null)
   }
 
+  // File upload handlers
+  const handleFileUpload = (file: File) => {
+    // Validate file type
+    const validTypes = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/webm', 'audio/ogg', 'audio/m4a', 'audio/x-m4a']
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(wav|mp3|webm|ogg|m4a)$/i)) {
+      setError('Please upload a valid audio file (WAV, MP3, WebM, OGG, or M4A)')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File too large. Please upload an audio file under 10MB.')
+      return
+    }
+
+    setError(null)
+    setAudioBlob(file)
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl)
+    }
+    setAudioUrl(URL.createObjectURL(file))
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      handleFileUpload(file)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileUpload(file)
+    }
+  }
+
   const convertAudioToBase64 = async (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
-      // Use the original compressed WebM/Opus format (already optimized)
-      // Converting to WAV would make it larger, so we keep the original
       const reader = new FileReader()
       reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1] // Remove data:audio/webm;base64, prefix
+        const base64 = (reader.result as string).split(',')[1]
         resolve(base64)
       }
       reader.onerror = reject
@@ -146,22 +186,19 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
   const handleCloneVoice = async () => {
     if (!audioBlob) {
-      setError('Please record an audio sample first')
+      setError('Please record or upload an audio sample first')
       return
     }
 
-    // Use the child's name for the voice name
     const voiceName = `${childName}'s Voice`
 
     setIsProcessing(true)
     setError(null)
 
     try {
-      // Convert audio to base64
       const base64Audio = await convertAudioToBase64(audioBlob)
       
-      // Call backend clone API
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://inworld-christmas-story-production.up.railway.app'
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
       const response = await fetch(`${API_BASE_URL}/api/clone-voice`, {
         method: 'POST',
         headers: {
@@ -182,20 +219,16 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
 
       const data = await response.json()
       
-      // Check for validation errors
       if (data.errors && data.errors.length > 0) {
         setError(`Voice cloning validation failed: ${data.errors.map((e: any) => e.text).join(', ')}`)
         setIsProcessing(false)
         return
       }
 
-      // Show warnings if any
       if (data.warnings && data.warnings.length > 0) {
         console.warn('Voice clone warnings:', data.warnings)
       }
 
-      // Use the cloned voice immediately
-      // No API key needed - server uses its own Portal key
       onSubmit('', data.voiceId)
       
     } catch (err: any) {
@@ -205,219 +238,203 @@ function CustomNarrator({ childName, onSubmit, onBack }: CustomNarratorProps) {
     }
   }
 
-  const handleSubmit = () => {
-    setError(null)
-    // Always use voice clone flow
-    handleCloneVoice()
-  }
-
   return (
-    <div className="name-input">
-      
-      {/* Voice Clone Recording Only */}
-      {useVoiceClone ? (
-        // Voice Clone Flow
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ 
-            marginTop: '10px', 
-            padding: '18px', 
-            backgroundColor: '#fff5f5', 
-            borderRadius: '8px',
-            border: '1px solid #f0d0d0',
-            marginBottom: '20px',
-            maxWidth: '500px',
-            textAlign: 'center'
-          }}>
-            <p style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#555', margin: '0 0 12px 0' }}>
-              <strong>🎤 Record a 10-15 second audio sample of yourself speaking clearly.</strong>
-              <br /><br />
-              <strong>Find a quiet place to record for the best results.</strong>
-              <br /><br />
-              An AI voice will be made instantly and ready to use! Follow this script when recording:
-            </p>
-            <div style={{ 
-              backgroundColor: '#fff', 
-              padding: '14px', 
-              borderRadius: '6px', 
-              border: '1px solid #d0e7ff',
-              fontSize: '1rem',
-              lineHeight: '1.8',
-              color: '#333',
-              fontStyle: 'italic'
-            }}>
-              "Hi there! I'm excited to show you my Christmas creation. This year has been wonderful, and I can't wait to spread a little magic with you. Thanks for listening!"
-            </div>
-          </div>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center',
+      padding: '1rem',
+    }}>
+      <div style={{ 
+        marginTop: '10px', 
+        padding: '18px', 
+        backgroundColor: '#fff5f5', 
+        borderRadius: '12px',
+        border: '1px solid #f0d0d0',
+        marginBottom: '20px',
+        maxWidth: '500px',
+        textAlign: 'center'
+      }}>
+        <p style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#555', margin: '0 0 12px 0' }}>
+          <strong>Record a 10-15 second audio sample</strong> or <strong>upload an existing audio file</strong>.
+          <br /><br />
+          Find a quiet place for the best results. An AI voice will be created instantly!
+          <br /><br />
+          Sample script:
+        </p>
+        <div style={{ 
+          backgroundColor: '#fff', 
+          padding: '14px', 
+          borderRadius: '8px', 
+          border: '1px solid #d0e7ff',
+          fontSize: '1rem',
+          lineHeight: '1.8',
+          color: '#333',
+          fontStyle: 'italic'
+        }}>
+          "Hi there! I'm excited to share this personalized greeting card that I made just for you. I hope it brings a smile to your face. Thanks for listening!"
+        </div>
+      </div>
 
-          {/* Recording Interface */}
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            {!audioBlob ? (
-              <div>
-                <button
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className="submit-button"
-                  style={{
-                    backgroundColor: '#dc3545',
-                    fontSize: '1.1rem',
-                    padding: '16px 32px',
-                    marginBottom: '12px'
-                  }}
-                >
-                  {isRecording ? (
-                    <>
-                      ⏹️ Stop Recording ({recordingTime}s)
-                    </>
-                  ) : (
-                    <>
-                      🎙️ Start Recording
-                    </>
-                  )}
-                </button>
-                {isRecording && (
-                  <p style={{ color: '#dc3545', fontSize: '0.9rem', marginTop: '8px' }}>
-                    Recording... Speak clearly for 10-15 seconds
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div>
-                <audio 
-                  src={audioUrl || undefined} 
-                  controls 
-                  style={{ width: '100%', marginBottom: '16px' }}
-                />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
-                  <button
-                    onClick={handleRecordAgain}
-                    className="back-button"
-                    style={{ padding: '10px 20px' }}
-                  >
-                    🎙️ Record Again
-                  </button>
-                </div>
-                
-                <div style={{ marginTop: '20px' }}>
-                  <button
-                    onClick={handleCloneVoice}
-                    disabled={isProcessing}
-                    className="submit-button"
-                    style={{ 
-                      marginTop: '0',
-                      opacity: isProcessing ? 0.6 : 1,
-                      cursor: isProcessing ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    {isProcessing ? 'Creating Narrator...' : 'Create Narrator'}
-                  </button>
-                </div>
-              </div>
+      {/* Recording/Upload Interface */}
+      <div style={{ marginTop: '20px', textAlign: 'center', maxWidth: '500px', width: '100%' }}>
+        {!audioBlob ? (
+          <div>
+            {/* Drag & Drop Upload Zone */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => !isRecording && fileInputRef.current?.click()}
+              style={{
+                padding: '24px',
+                marginBottom: '20px',
+                border: `2px dashed ${isDragging ? '#333' : '#ddd'}`,
+                borderRadius: '12px',
+                backgroundColor: isDragging ? '#f5f5f5' : '#fafafa',
+                cursor: isRecording ? 'default' : 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleFileInputChange}
+                style={{ display: 'none' }}
+              />
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📁</div>
+              <p style={{ 
+                color: '#666', 
+                margin: '0 0 4px 0',
+                fontSize: '1rem',
+              }}>
+                Drag & drop an audio file here, or click to browse
+              </p>
+              <p style={{ 
+                color: '#999', 
+                margin: 0,
+                fontSize: '0.85rem',
+              }}>
+                WAV, MP3, WebM, OGG, M4A (max 10MB)
+              </p>
+            </div>
+
+            <p style={{ color: '#999', margin: '0 0 20px 0' }}>— or —</p>
+
+            {/* Record Button */}
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              style={{
+                backgroundColor: isRecording ? '#333' : '#dc3545',
+                color: 'white',
+                fontSize: '1.1rem',
+                padding: '16px 32px',
+                marginBottom: '12px',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+            >
+              {isRecording ? (
+                <>
+                  Stop Recording ({recordingTime}s)
+                </>
+              ) : (
+                <>
+                  Start Recording
+                </>
+              )}
+            </button>
+            {isRecording && (
+              <p style={{ color: '#dc3545', fontSize: '0.9rem', marginTop: '8px' }}>
+                Recording... Speak clearly for 10-15 seconds
+              </p>
             )}
           </div>
-        </div>
-      ) : (
-        // Original Manual Entry Flow
-        <>
-          <div style={{ 
-            marginTop: '10px', 
-            padding: '18px', 
-            backgroundColor: '#fff5f5', 
-            borderRadius: '8px',
-            border: '1px solid #f0d0d0'
-          }}>
-            <p style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '14px', color: '#333' }}>
-              Getting Started:
-            </p>
-            <ol style={{ fontSize: '0.85rem', lineHeight: '1.7', color: '#555', marginLeft: '20px', paddingLeft: '0', marginBottom: '16px' }}>
-              <li style={{ marginBottom: '10px' }}>
-                <strong>Log in to Inworld:</strong> Go to <a href="https://studio.inworld.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'underline' }}>studio.inworld.ai</a> and sign in to your account
-              </li>
-              <li style={{ marginBottom: '10px' }}>
-                <strong>Get your API Key:</strong> Navigate to API Keys → Copy the "Basic (Base64) key"
-              </li>
-              <li style={{ marginBottom: '10px' }}>
-                <strong>Create a Voice Clone (optional):</strong> Go to TTS → Clone Voice → Upload/record audio samples to create your custom narrator voice
-              </li>
-              <li style={{ marginBottom: '0' }}>
-                <strong>Get your Voice ID:</strong> Go to TTS → In the Select Voice list, copy the Voice ID (see format details below)
-              </li>
-            </ol>
-            
-            <p style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '14px', marginTop: '16px', color: '#333' }}>
-              Important:
-            </p>
-            <ul style={{ fontSize: '0.85rem', lineHeight: '1.7', color: '#555', marginLeft: '20px', paddingLeft: '0', marginBottom: '0' }}>
-              <li style={{ marginBottom: '10px' }}>
-                <strong>API Key:</strong> Must be the Basic (Base64) key copied from your Inworld workspace (API Keys → Copy the "Basic (Base64) key")
-              </li>
-              <li style={{ marginBottom: '0' }}>
-                <strong>Voice ID:</strong> Copy directly from your Select Voice list
-                <ul style={{ marginTop: '8px', marginLeft: '20px', marginBottom: '0' }}>
-                  <li style={{ marginBottom: '6px' }}>Inworld voices: Just the name (e.g., "Alex")</li>
-                  <li style={{ marginBottom: '0' }}>Custom voices: Full format (e.g., <code style={{ fontSize: '0.8em', background: '#f0f0f0', padding: '2px 6px', borderRadius: '3px', fontFamily: 'monospace' }}>default-workspaceid__voice_name</code>)</li>
-                </ul>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="input-group" style={{ marginTop: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="voice-selection-label" style={{ marginBottom: '8px', display: 'block' }}>
-                  Inworld API Key (Base64):
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your Base64-encoded Inworld API Key..."
-                  className="name-input-field"
-                  autoFocus
-                  style={{ width: '100%' }}
-                />
-              </div>
-              
-              <div>
-                <label className="voice-selection-label" style={{ marginBottom: '8px', display: 'block' }}>
-                  Inworld Voice ID:
-                </label>
-                <input
-                  type="text"
-                  value={voiceId}
-                  onChange={(e) => setVoiceId(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder="Enter your Inworld Voice ID..."
-                  className="name-input-field"
-                  style={{ width: '100%' }}
-                />
-              </div>
+        ) : (
+          <div>
+            <audio 
+              src={audioUrl || undefined} 
+              controls 
+              style={{ width: '100%', marginBottom: '16px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
+              <button
+                onClick={handleRecordAgain}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'white',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  color: '#333',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#333'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = '#ddd'
+                }}
+              >
+                Try Again
+              </button>
             </div>
             
-            <button
-              onClick={handleSubmit}
-              disabled={!apiKey.trim() || !voiceId.trim()}
-              className="submit-button"
-              style={{ marginTop: '20px' }}
-            >
-              Create Story with Custom Narrator
-            </button>
+            <div style={{ marginTop: '20px' }}>
+              <button
+                onClick={handleCloneVoice}
+                disabled={isProcessing}
+                style={{ 
+                  marginTop: '0',
+                  opacity: isProcessing ? 0.6 : 1,
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#333',
+                  color: 'white',
+                  fontSize: '1.1rem',
+                  padding: '16px 32px',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontWeight: '600',
+                }}
+              >
+                {isProcessing ? 'Creating Narrator...' : 'Create Narrator'}
+              </button>
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
       
       {error && (
-        <div className="error-message" style={{ color: '#f5576c', marginTop: '10px', textAlign: 'center' }}>
+        <div style={{ color: '#f5576c', marginTop: '10px', textAlign: 'center' }}>
           {error}
         </div>
       )}
       
       <button 
         onClick={onBack} 
-        className="back-button" 
         style={{ 
           marginTop: '20px',
           fontSize: '1.1rem',
           padding: '16px 32px',
-          alignSelf: 'center'
+          alignSelf: 'center',
+          backgroundColor: 'white',
+          border: '2px solid #ddd',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          color: '#333',
+          fontWeight: '600',
+          transition: 'all 0.2s ease',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.borderColor = '#333'
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.borderColor = '#ddd'
         }}
       >
         ← Go Back

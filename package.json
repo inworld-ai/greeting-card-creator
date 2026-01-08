@@ -1,35 +1,27 @@
 {
-  "name": "story-greetingcard-creator",
+  "name": "personalized-greeting-card",
   "version": "1.0.0",
-  "description": "Create personalized Christmas stories and greeting cards with AI-generated narration, powered by Inworld Runtime",
+  "description": "Create personalized greeting cards with AI-generated messages, images, and voice narration",
   "type": "module",
   "keywords": [
     "inworld",
     "inworld-runtime",
     "tts",
     "llm",
-    "christmas",
-    "storytelling",
     "greeting-card",
     "personalized",
     "ai",
     "voice-clone",
     "react",
-    "nodejs"
+    "nodejs",
+    "birthday",
+    "wedding",
+    "thank-you"
   ],
   "author": "Inworld AI",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/inworld-ai/story-greetingcard-creator.git"
-  },
-  "bugs": {
-    "url": "https://github.com/inworld-ai/story-greetingcard-creator/issues"
-  },
-  "homepage": "https://github.com/inworld-ai/story-greetingcard-creator#readme",
   "scripts": {
     "dev": "vite",
     "dev:server": "cd server && npm start",
-    "dev:server:old": "node server.js",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "tsc && vite build",
     "build:backend": "cd server && npm install",
