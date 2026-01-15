@@ -1,11 +1,11 @@
-# Contributing to Story & Greeting Card Creator
+# Contributing to Inworld Greeting Card
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/story-greetingcard-creator.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/greeting-card-node.git`
 3. Create a branch: `git checkout -b feature/your-feature-name`
 4. Make your changes
 5. Test your changes thoroughly
@@ -15,7 +15,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ## Development Setup
 
-1. Install dependencies: `npm install`
+1. Install dependencies: `npm install && cd server && npm install`
 2. Set up environment variables (see README.md)
 3. Run the development server: `npm run dev:all`
 
@@ -60,7 +60,6 @@ When reporting bugs, please include:
 
 ## Questions?
 
-Feel free to open an issue for any questions or reach out to the maintainers.
+Feel free to open an issue for any questions or reach out to the maintainers at support@inworld.ai.
 
-Thank you for contributing! 🎄
-
+Thank you for contributing!

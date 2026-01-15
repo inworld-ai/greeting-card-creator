@@ -1,62 +1,63 @@
-# Personalized Greeting Card Creator
+<p align="center">
+  <h1 align="center">Inworld Greeting Card</h1>
+</p>
 
-Create personalized greeting cards with AI-generated messages, images, and voice narration powered by Inworld AI.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://inworld.ai"><img src="https://img.shields.io/badge/Powered%20by-Inworld%20AI-blueviolet" alt="Powered by Inworld AI"></a>
+  <a href="https://docs.inworld.ai"><img src="https://img.shields.io/badge/docs-inworld.ai-green" alt="Documentation"></a>
+</p>
 
-## Features
+Create personalized greeting cards with AI-generated messages, cover art, and voice narration. Supports birthdays, weddings, thank yous, and custom occasions—perfect for customer outreach, employee recognition, or marketing campaigns.
 
-- **Multiple Occasions**: Birthday, Wedding, Thank You, Congratulations, Get Well, Anniversary, New Baby, Graduation, Thinking of You, or Custom
-- **AI-Generated Messages**: Uses Claude to create personalized, funny, heartfelt messages
-- **AI-Generated Images**: Uses Gemini to create custom card cover art
-- **Custom Voice Narration**: Uses Inworld to narrate the card's message or add your own voice
-- **Shareable Cards**: Share your creations via link
+![Greeting Card Creator Screenshot](public/screenshot.png)
 
-## Tech Stack
+## Prerequisites
 
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: Node.js + Express + TypeScript
-- **AI Services**:
-  - Anthropic Claude (message generation)
-  - Google Gemini (image generation)
-  - Inworld Runtime (TTS & voice cloning)
-- **Storage**: Redis (optional, for persistent card sharing)
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 20+
+- Node.js (v20 or higher)
 - npm
+- An [Inworld AI](https://inworld.ai) account and API key
+- [Anthropic](https://console.anthropic.com) API key (for message generation)
+- [Google AI](https://aistudio.google.com) API key (for image generation)
 
-### Environment Variables
+## Get Started
 
-Create a `.env` file in the `server/` directory:
+### Step 1: Clone the Repository
 
-```env
-# Required
-ANTHROPIC_API_KEY=your_anthropic_api_key
-GOOGLE_API_KEY=your_google_api_key
-INWORLD_API_KEY=your_inworld_api_key
-
-# Optional
-INWORLD_PORTAL_API_KEY=your_inworld_portal_key  # For voice cloning
-INWORLD_WORKSPACE=greeting_card_creator         # Your Inworld workspace
-REDIS_URL=redis://localhost:6379                # For persistent storage
+```bash
+git clone https://github.com/inworld-ai/greeting-card-node.git
+cd greeting-card-node
 ```
 
-### Development
+### Step 2: Install Dependencies
 
-1. Install dependencies:
 ```bash
 npm install
 cd server && npm install
 ```
 
-2. Start both frontend and backend:
+### Step 3: Configure Environment Variables
+
+Create a `.env` file in the `server/` directory:
+
+```env
+INWORLD_API_KEY=your_inworld_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+GOOGLE_API_KEY=your_google_api_key
+```
+
+Get your Inworld API key from the [Inworld Portal](https://studio.inworld.ai).
+
+### Step 4: Run the Application
+
+For development (with auto-reload):
+
 ```bash
 npm run dev:all
 ```
 
-Or start them separately:
+Or run frontend and backend separately:
+
 ```bash
 # Terminal 1 - Backend
 npm run dev:server
@@ -65,38 +66,51 @@ npm run dev:server
 npm run dev
 ```
 
-3. Open http://localhost:5173
-
-### Build for Production
+For production:
 
 ```bash
 npm run build
 ```
 
-## Deployment
+## Repo Structure
 
-### Frontend (Vercel)
+```
+greeting-card-node/
+├── src/                  # Frontend React application
+│   ├── components/       # UI components
+│   └── services/         # API services (TTS, sharing)
+├── server/               # Backend Express server
+│   ├── components/       # Inworld Runtime SDK integration
+│   └── index.ts          # API endpoints
+├── public/               # Static assets (audio, fonts)
+├── README.md             # Documentation
+├── package.json          # Frontend dependencies
+└── LICENSE               # MIT License
+```
 
-1. Create a new Vercel project
-2. Set environment variable:
-   - `VITE_API_URL`: Your Railway backend URL
+## Architecture
 
-### Backend (Railway)
+This template demonstrates three key Inworld technologies:
 
-1. Create a new Railway project
-2. Set environment variables:
-   - `ANTHROPIC_API_KEY`
-   - `GOOGLE_API_KEY`
-   - `INWORLD_API_KEY`
-   - `REDIS_URL` (optional)
+| Technology | Purpose | Endpoint |
+|------------|---------|----------|
+| **Inworld TTS** | Voice narration for card messages | `/api/tts` |
+| **Voice Cloning API** | Custom narrator from audio sample | `/api/clone-voice` |
+| **Runtime SDK** | Audio streaming & orchestration | `server/components/` |
 
-## API Endpoints
+Additional integrations:
+- **Anthropic Claude** - Personalized message generation
+- **Google Gemini** - AI-generated cover art
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/generate-greeting-card-message` | POST | Generate card message |
-| `/api/generate-greeting-card-image` | POST | Generate card cover image |
-| `/api/clone-voice` | POST | Clone voice from audio sample |
-| `/api/tts` | POST | Text-to-speech synthesis |
-| `/api/share-story` | POST | Create shareable card link |
-| `/api/story/:id` | GET | Retrieve shared card |
+## Troubleshooting
+
+- **Bug Reports**: [GitHub Issues](https://github.com/inworld-ai/greeting-card-node/issues)
+- **General Questions**: For inquiries and support, email us at support@inworld.ai
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
