@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Inworld Greeting Card</h1>
+  <h1 align="center">Greeting Card Creator</h1>
 </p>
 
 <p align="center">
