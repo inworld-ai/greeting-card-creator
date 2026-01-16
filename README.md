@@ -11,7 +11,7 @@
 Create personalized greeting cards with AI-generated messages, cover art, and voice narration. Supports birthdays, weddings, thank yous, and custom occasions—perfect for customer outreach, employee recognition, or marketing campaigns.
 
 <p align="center">
-  <img src="public/screenshot.png" alt="Greeting Card Creator Screenshot" width="600">
+  <img src="public/screenshot.png" alt="Greeting Card Creator Screenshot" width="480">
 </p>
 
 ## Prerequisites
